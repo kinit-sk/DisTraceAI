@@ -1,0 +1,20 @@
+# core
+numpy
+scikit-learn
+sentence-transformers
+torch
+transformers==4.57.6
+rank-bm25
+# retrieval
+NodeRAG==0.1.0
+chromadb
+# pipeline
+feedparser
+trafilatura
+fasttext-langdetect
+bertopic
+# eval / utils
+rich
+
+# dev / testing
+pytest
