@@ -18,6 +18,9 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 
 from core.claims.cw_detector import CheckWorthinessDetector
+from core.converters.polynarrative import metadata_for as _poly_metadata_for
+from core.converters.polynarrative import parse_train_annotations, parse_dev_annotations
+from core.ids import article_name_from_relpath
 from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
 from core.structures import ArticleClaims, CheckWorthyClaim
 
@@ -44,18 +47,38 @@ def split_sentences(text: str) -> list[str]:
 # PolyNarrative article iterator
 # ---------------------------------------------------------------------------
 
+def _poly_annotations(split_lang_dir: Path, split: str) -> dict:
+    """Load the annotation map for one <split>/<lang> directory (best effort)."""
+    if split == "train":
+        return parse_train_annotations(split_lang_dir / "subtask-3-annotations.txt")
+    return parse_dev_annotations(split_lang_dir / "subtask-3-dominant-narratives.txt")
+
+
 def _polynarrative_articles(data_root: Path):
-    """Yield (article_name, text, source_path) for each PolyNarrative document.
+    """Yield (article_name, text, source_path, meta) for each PolyNarrative document.
 
     Expects the raw PolyNarrative layout:
         data/PolyNarrative/<split>/<lang>/raw-documents/*.txt   (train)
         data/PolyNarrative/<split>/<lang>/subtask-*-documents/*.txt  (dev/test)
     Falls back to any *.txt found recursively under data_root.
+
+    ``meta`` carries the synthetic title/author/metadata produced by the
+    PolyNarrative converter, keyed off the same document, so the per-article KB
+    record is self-contained.
     """
     txt_files = sorted(data_root.rglob("*.txt"))
     if not txt_files:
         logger.warning("[cw_generate] No .txt files found under %s", data_root)
         return
+
+    # Annotation / label files share the .txt extension but are not documents.
+    _NON_DOCUMENT = {
+        "subtask-3-annotations.txt",
+        "subtask-3-dominant-narratives.txt",
+    }
+    txt_files = [p for p in txt_files if p.name not in _NON_DOCUMENT]
+
+    _ann_cache: dict[Path, dict] = {}
 
     for path in txt_files:
         try:
@@ -65,13 +88,25 @@ def _polynarrative_articles(data_root: Path):
                 text = path.read_text(encoding="latin-1")
             if not text.strip():
                 continue
-            # article_name: make it path-safe and unique by using relative path stem
+            # article_name: path-safe and unique via the canonical helper.
             rel = path.relative_to(data_root)
-            article_name = str(rel).replace("/", "_").replace("\\", "_")
-            if article_name.endswith(".txt"):
-                article_name = article_name[:-4]
+            article_name = article_name_from_relpath(rel)
             source_path = str(Path("data/PolyNarrative") / rel)
-            yield article_name, text, source_path
+
+            # Derive <split>/<lang> from the relative path: <split>/<lang>/<subdir>/<file>
+            parts = rel.parts
+            split = parts[0] if len(parts) >= 1 else ""
+            lang  = parts[1] if len(parts) >= 2 else "EN"
+            doc_id = path.name
+
+            ann_dir = data_root / split / lang
+            if ann_dir not in _ann_cache:
+                _ann_cache[ann_dir] = _poly_annotations(ann_dir, split) if ann_dir.is_dir() else {}
+            entry = _ann_cache[ann_dir].get(doc_id) or _ann_cache[ann_dir].get(Path(doc_id).stem)
+            narratives = entry.get("narratives") if entry else None
+
+            meta = _poly_metadata_for(doc_id, text, lang, narratives)
+            yield article_name, text, source_path, meta
         except Exception as exc:
             logger.warning("[cw_generate] skipping %s: %s", path, exc)
 
@@ -81,7 +116,7 @@ def _polynarrative_articles(data_root: Path):
 # ---------------------------------------------------------------------------
 
 def _fakecti_articles(csv_path: Path):
-    """Yield (article_name, text, source_path) for each FakeCTI row."""
+    """Yield (article_name, text, source_path, meta) for each FakeCTI row."""
     if not csv_path.exists():
         logger.warning("[cw_generate] FakeCTI CSV not found: %s", csv_path)
         return
@@ -97,12 +132,22 @@ def _fakecti_articles(csv_path: Path):
     df["TEXT"] = df["TEXT"].fillna("").astype(str)
     df = df[df["TEXT"].str.strip() != ""].reset_index(drop=True)
 
+    # Columns beyond TEXT/ID become free-form metadata so the per-article record
+    # keeps whatever the dataset provides.
+    extra_cols = [c for c in df.columns if c not in ("TEXT", "ID")]
+
     for _, row in df.iterrows():
         article_id   = str(row["ID"])
         text         = row["TEXT"]
         article_name = f"article_{article_id}"
         source_path  = str(Path("data/FakeCTI/FakeCTI.csv"))
-        yield article_name, text, source_path
+        first_line   = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+        meta = {
+            "title":  first_line[:200],
+            "author": None,
+            "metadata": {c: (None if pd.isna(row[c]) else row[c]) for c in extra_cols},
+        }
+        yield article_name, text, source_path, meta
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +176,7 @@ def _process_dataset(dataset_slug: str,
         art_task = progress.add_task(
             f"[cyan]{dataset_slug}[/cyan] · {detector.slug}", total=len(articles))
 
-        for article_name, text, source_path in articles:
+        for article_name, text, source_path, meta in articles:
             if kb.claims_exist(dataset_slug, detector.slug, article_name):
                 skipped += 1
                 progress.advance(art_task)
@@ -142,16 +187,14 @@ def _process_dataset(dataset_slug: str,
                 progress.advance(art_task)
                 continue
 
-            # Batch inference with a nested progress task
-            batch_size = detector.batch_size
-            batches    = list(range(0, len(sentences), batch_size))
+            # Single batching point inside predict(); the callback advances the
+            # per-article progress task once per completed batch.
+            n_batches  = detector.num_batches(len(sentences))
             batch_task = progress.add_task(
-                f"  [dim]{article_name[:40]}[/dim]", total=len(batches))
+                f"  [dim]{article_name[:40]}[/dim]", total=n_batches)
 
-            labels: list[int] = []
-            for start in batches:
-                labels.extend(detector.predict(sentences[start : start + batch_size]))
-                progress.advance(batch_task)
+            labels = detector.predict(
+                sentences, progress_callback=lambda: progress.advance(batch_task))
 
             progress.remove_task(batch_task)
 
@@ -166,6 +209,9 @@ def _process_dataset(dataset_slug: str,
                 detector=detector.slug,
                 dataset=dataset_slug,
                 article_name=article_name,
+                title=meta.get("title", "") if meta else "",
+                author=meta.get("author") if meta else None,
+                metadata=meta.get("metadata", {}) if meta else {},
                 claims=cw_claims,
             )
             kb.save_article_claims(ac)

@@ -18,51 +18,19 @@ from rich.text import Text
 
 console = Console()
 
-# Settings shown on the pre-launch review screen, per action.
+# Settings shown on the pre-launch review screen, per action. Only fields that
+# exist on Config are listed; unimplemented pipeline steps (2–7) will add their
+# own entries here as they land.
 RELEVANT = {
-    "pipeline":  ["enable_veracity", "retrieval_backend",
-                  "generator_model", "assignment_threshold", "enable_reclustering",
-                  "coord_threshold", "campaign_min_narratives"],
-    "dataset":   ["massivesumm_src", "massivesumm_source", "massivesumm_hf_repo",
-                  "massivesumm_languages", "massivesumm_rebuild", "dataset_out",
-                  "enable_veracity", "retrieval_backend",
-                  "embedder_model", "generator_model", "generator_quant",
-                  "generator_workers", "generator_server_url", "cw_model",
-                  "assignment_threshold", "new_narrative_threshold",
-                  "min_sns_per_narrative", "enable_reclustering",
-                  "campaign_grouping", "campaign_linkage", "campaign_group_threshold",
-                  "campaign_min_narratives", "coord_burst_window_hours",
-                  "coord_neardup_threshold", "coord_threshold"],
-    "claim-extraction": ["detector"],
-    "retrieval": ["noderag_index", "polynm_data_dir",
-                  "retrieval_domain", "retrieval_languages", "retrieval_eval_split",
-                  "retrieval_query_source", "retrieval_query_min_claims",
-                  "retrieval_query_rebuild",
-                  "retrieval_rebuild_index", "sfc_n_hypotheticals", "sfc_temperature",
-                  "generator_context_size", "context1_context_size",
-                  "embedder_model", "generator_model", "context1_quant",
-                  "cw_model", "generator_workers", "generator_server_url"],
-    "veracity":  ["enable_veracity", "context1_model", "context1_quant", "context1_context_size",
-                  "generator_model", "embedder_model", "generator_workers", "generator_server_url"],
-    "campaigns": ["campaign_method",
-                  "fakecti_type", "fakecti_min_campaign", "fakecti_rebuild", "fakecti_src",
-                  "embedder_model", "generator_model", "generator_quant",
-                  "generator_workers", "generator_server_url", "generator_context_size",
-                  "cw_model",
-                  "noderag_index", "sfc_n_hypotheticals", "sfc_temperature",
-                  "assignment_threshold", "new_narrative_threshold", "min_sns_per_narrative",
-                  "campaign_grouping", "campaign_linkage", "campaign_group_threshold", "campaign_min_narratives",
-                  "coord_burst_window_hours", "coord_neardup_threshold", "coord_threshold",
-                  "campaign_min_total_narratives"],
-    "cw":        ["cw_model"],
+    "claim-detection":    ["detector"],
+    "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
+    # Evaluation of canonization is a fixed full benchmark — no editable params.
+    "claim-canonization-eval": [],
 }
 
 _CAT_COLOR = {
-    "detector": "bright_cyan",
-    "retrieval": "green", "assignment": "green", "noderag": "bright_blue",
-    "sfc": "bright_blue", "bench": "white", "coord": "magenta",
-    "campaign": "magenta", "recluster": "yellow", "fakecti": "cyan",
-    "embedder": "blue", "generator": "blue", "cw": "blue", "context1": "blue",
+    "detector":  "bright_cyan",
+    "canon":     "blue",
 }
 
 
@@ -179,8 +147,13 @@ def _edit_value(cfg, key: str) -> str:
 
 
 def edit_settings(cfg, keys: list[str], title: str, *,
-                  allow_launch: bool = False, save_on_exit: bool = True) -> bool:
-    """Two-panel editor over `keys`. Returns True only if the user chose Launch."""
+                  allow_launch: bool = False, save_on_exit: bool = True,
+                  launch_desc: str | None = None) -> bool:
+    """Two-panel editor over `keys`. Returns True only if the user chose Launch.
+
+    `launch_desc` overrides the text shown in the right-hand box when the Launch
+    row is highlighted (used to describe parameterless runs such as benchmarks).
+    """
     idx = 0
     rows = list(keys) + (["__launch__"] if allow_launch else [])
     label_w = max((len(cfg.label(k)) for k in keys), default=10)
@@ -207,7 +180,7 @@ def edit_settings(cfg, keys: list[str], title: str, *,
             caret = "›" if i == idx else " "
             raw_rows.append((i, f" {caret} {cfg.label(key).ljust(label_w)}   {val}{hint_n}{lock}",
                              "locked" if cfg.is_locked(key) else "normal"))
-        inner = min(max(len(s) for _, s, _ in raw_rows) + 1, 110)
+        inner = min(max((len(s) for _, s, _ in raw_rows), default=20) + 1, 110)
 
         body = Text()
         for i, s, kind in raw_rows:
@@ -224,7 +197,7 @@ def edit_settings(cfg, keys: list[str], title: str, *,
 
         cur = rows[idx]
         if cur == "__launch__":
-            desc = "[bold]Launch[/bold]\nStart this run with the settings above."
+            desc = launch_desc or "[bold]Launch[/bold]\nStart this run with the settings above."
             border = "green"
         else:
             wrapped = textwrap.fill(cfg.desc(cur), width=46) or "(no description)"
@@ -286,6 +259,27 @@ def edit_settings(cfg, keys: list[str], title: str, *,
                 cfg.reset(); message = "✓ Settings reset to defaults."
 
 
+# Custom right-box text shown on the Launch row for actions that take no
+# editable parameters (e.g. fixed benchmarks).
+_CANON_BENCH_DESC = (
+    "[bold]Launch — Canonization benchmark[/bold]\n"
+    f"[dim]{'─' * 44}[/dim]\n"
+    "Runs the full canonization benchmark: every one of the 6 models "
+    "is evaluated at all 3 quantizations (Q4_K_M, Q6_K, Q8_0).\n\n"
+    "[bold]Models[/bold]\n"
+    "Qwen3.5-2B, Qwen3.5-4B, Qwen3.5-9B,\n"
+    "Gemma-4-E2B-IT, Gemma-4-E4B-IT, Gemma-4-12B-IT\n\n"
+    "[bold]Quantizations[/bold]\n"
+    "Q4_K_M, Q6_K, Q8_0\n\n"
+    "[dim]18 model × quant combinations. This ignores the canonization "
+    "Generate parameters — they apply only to the Generate action.[/dim]"
+)
+
+LAUNCH_DESC = {
+    "claim-canonization-eval": _CANON_BENCH_DESC,
+}
+
+
 # ── top-level screens ────────────────────────────────────────────────────────
 def settings_menu(cfg) -> None:
     edit_settings(cfg, cfg.field_names(), "Settings", allow_launch=False, save_on_exit=True)
@@ -295,4 +289,5 @@ def prelaunch_review(cfg, action: str) -> bool:
     keys = RELEVANT.get(action, cfg.field_names())
     keys = [k for k in keys if k in cfg.field_names()]
     return edit_settings(cfg, keys, f"Review settings — {action}",
-                         allow_launch=True, save_on_exit=True)
+                         allow_launch=True, save_on_exit=True,
+                         launch_desc=LAUNCH_DESC.get(action))

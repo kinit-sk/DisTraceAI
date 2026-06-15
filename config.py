@@ -23,10 +23,32 @@ def _f(default, label, desc, choices=None):
 @dataclass
 class Config:
     detector: str = _f(
-        "Models/xlm-multicw",
+        "models/xlm-multicw",
         "Check-worthiness classifier",
-        "Fine-tuned check-worthiness classifier (mDeBERTa or XLM-R), under Models/.",
-        choices=["Models/xlm-multicw", "Models/mdb-multicw"],
+        "Fine-tuned check-worthiness classifier (mDeBERTa or XLM-R), under models/.",
+        choices=["models/xlm-multicw", "models/mdb-multicw"],
+    )
+
+    canon_detector: str = _f(
+        "models/xlm-multicw",
+        "Canonization source detector",
+        "Which claim detector's output to canonize (must match a prior claim-detection run).",
+        choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
+    )
+
+    canon_generator: str = _f(
+        "qwen3.5-2b",
+        "Canonization generator",
+        "LLM used to decontextualize and translate check-worthy claims to English.",
+        choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
+                 "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    canon_quantization: str = _f(
+        "Q4_K_M",
+        "Canonization quantization",
+        "GGUF quantization level for the canonization generator model.",
+        choices=["Q4_K_M", "Q6_K", "Q8_0"],
     )
 
     # ------------------------------------------------------------------ #

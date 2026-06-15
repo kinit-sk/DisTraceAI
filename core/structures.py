@@ -39,12 +39,27 @@ class CheckWorthyClaim:
 
 @dataclass
 class ArticleClaims:
-    """KB record: check-worthy claims extracted from one article."""
+    """KB record: check-worthy claims extracted from one article.
+
+    Carries the article's own metadata (title, author, source language and any
+    extra fields under ``metadata``) so the per-article JSON is self-contained.
+    Downstream steps fill in ``canonized_claims`` (canonization) and
+    ``verdicts`` / ``verified`` (veracity estimation).
+
+    Index alignment: ``canonized_claims[i]`` and ``verdicts[i]`` both correspond
+    to ``claims[i]``.
+    """
     source_path: str                  # relative path to original article in data/
     detector: str                     # e.g. 'xlm-multicw' or 'mdb-multicw'
     dataset: str                      # 'polynarrative' or 'fake-cti'
     article_name: str                 # stem used as the filename
+    title: str = ""
+    author: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     claims: list[CheckWorthyClaim] = field(default_factory=list)
+    canonized_claims: list[str] = field(default_factory=list)
+    verdicts: list[str] = field(default_factory=list)   # per-claim: True/False/Disputed
+    verified: bool = False            # True once claims have been verified
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

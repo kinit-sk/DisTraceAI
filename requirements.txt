@@ -13,6 +13,7 @@ feedparser
 trafilatura
 fasttext-langdetect
 bertopic
+llama-cpp-python
 # eval / utils
 rich
 

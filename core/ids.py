@@ -50,3 +50,16 @@ def article_id(name: str, *, registry: IdRegistry | None = None) -> str:
 def reset_default_registry() -> None:
     """Clear the module-level registry (useful between test runs)."""
     _default_registry.reset()
+
+
+def article_name_from_relpath(rel: "str | Path") -> str:
+    """Canonical article-name derivation from a path relative to a dataset root.
+
+    Replaces path separators with underscores and drops a trailing ``.txt`` so
+    the same on-disk document always maps to the same KB filename, whether the
+    name is produced by the converter or by the claim-detection generator.
+    """
+    name = str(rel).replace("/", "_").replace("\\", "_")
+    if name.endswith(".txt"):
+        name = name[:-4]
+    return name

@@ -23,7 +23,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
 
-from core.ids import article_id, IdRegistry
+from core.ids import article_id, IdRegistry, article_name_from_relpath
 from core.structures import Article
 from core.knowledge_base import KnowledgeBase
 
@@ -197,8 +197,21 @@ AUTHORS: dict[str, list] = {
 
 
 # --- deterministic synthetic metadata -------------------------------------
+# A simple counter assigns each distinct doc_id a stable integer in encounter
+# order; that integer seeds the per-document RNG. This replaces the previous
+# md5-based seed — no hashing, just a counter.
+_doc_counter: dict[str, int] = {}
+
+
 def _doc_seed(doc_id: str) -> int:
-    return int(hashlib.md5(doc_id.encode()).hexdigest(), 16) % (2 ** 31)
+    if doc_id not in _doc_counter:
+        _doc_counter[doc_id] = len(_doc_counter) + 1
+    return _doc_counter[doc_id]
+
+
+def reset_doc_seeds() -> None:
+    """Clear the counter so a fresh convert() run produces stable seeds."""
+    _doc_counter.clear()
 
 
 def generate_publish_date(doc_id: str) -> str:
@@ -239,6 +252,30 @@ def extract_title(content: str) -> str:
         if line.strip():
             return line.strip()[:200]
     return "Untitled"
+
+
+def metadata_for(doc_id: str, content: str, lang: str,
+                 narratives: list | None = None) -> dict:
+    """Synthetic article metadata for one PolyNarrative document.
+
+    Returns the title, author and a ``metadata`` sub-dict (outlet, language,
+    publish date, domain topic) so the claim-detection generator can attach it
+    to the per-article KB record without re-deriving any of it. Deterministic
+    for a given ``doc_id`` via the counter-based seed.
+    """
+    topic = _domain_from_narratives(narratives) or infer_topic(doc_id)
+    domain, outlet_name = generate_outlet(doc_id, lang, topic)
+    return {
+        "title":  extract_title(content),
+        "author": generate_author(doc_id, lang),
+        "metadata": {
+            "source_domain":   domain,
+            "outlet":          outlet_name,
+            "source_language": lang,
+            "published_at":    generate_publish_date(doc_id),
+            "domain_topic":    topic,
+        },
+    }
 
 
 def _read(path: Path) -> str:
@@ -303,6 +340,7 @@ def convert(src: Path, out_root: Path,
     ground_truth: dict = {}
     total = 0
     registry = IdRegistry()          # per-run registry: IDs stay stable within one convert() call
+    reset_doc_seeds()                # counter-based seeds stable within one convert() call
     for split in splits:
         for lang in languages:
             sld = src / split / lang
@@ -315,9 +353,12 @@ def convert(src: Path, out_root: Path,
                 if not content.strip():
                     continue
                 url = f"polynarrative://{lang}/{split}/{doc_id}"
-                # Use the original document name as the ID; the registry appends
-                # a counter only when the same stem appears in multiple splits/langs.
-                aid = article_id(Path(doc_id).stem, registry=registry)
+                # Canonical article_name from the path RELATIVE TO src — identical
+                # to what the claim-detection generator derives from
+                # data/PolyNarrative, so ground-truth keys join to the per-article
+                # KB records. Includes the subdir (raw-documents / subtask-*).
+                rel = path.relative_to(src)
+                aid = article_id(article_name_from_relpath(rel), registry=registry)
                 entry = ann.get(doc_id) or ann.get(Path(doc_id).stem)
                 # Domain from the gold narrative-label prefix (CC:/URW:) — present in
                 # every language — so non-EN articles are tagged correctly. The old
@@ -362,6 +403,6 @@ if __name__ == "__main__":
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument("--src", type=Path, default=Path("data/PolyNarrative"))
-    p.add_argument("--out", type=Path, default=Path("knowledge/polynm"))
+    p.add_argument("--out", type=Path, default=Path("knowledge"))
     a = p.parse_args()
     convert(a.src, a.out)

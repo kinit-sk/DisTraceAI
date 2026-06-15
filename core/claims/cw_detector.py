@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import logging
 import os
-
 import torch
+
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -55,18 +55,18 @@ class _TextDataset(Dataset):
 def _resolve_path(model_path: str) -> str | None:
     """Return the first existing path among several candidates.
 
-    Tries the path as given first, then looks under both 'Models/' (capital M
-    — where the training script saves checkpoints) and 'models/' (lowercase).
+    Tries the path as given first, then looks under 'models/' (lowercase — the
+    project-wide convention) and 'Models/' (capital M) as fallbacks.
     """
     if not model_path:
         return None
     name = os.path.basename(model_path.rstrip("/\\"))
     candidates = [
         model_path,
-        os.path.join("Models", name),   # capital M — matches training script
-        os.path.join("models", name),   # lowercase fallback
-        os.path.join("Models", model_path),
+        os.path.join("models", name),   # lowercase — project convention
+        os.path.join("Models", name),   # capital M fallback
         os.path.join("models", model_path),
+        os.path.join("Models", model_path),
     ]
     return next((p for p in candidates if os.path.exists(p)), None)
 
@@ -102,7 +102,7 @@ class CheckWorthinessDetector:
         # Mirror load_model() from full-evaluation.py:
         # both tokenizer and model load from the checkpoint directory, no
         # extra flags — the saved tokenizer_config.json picks the right class.
-        self.tokenizer = AutoTokenizer.from_pretrained(resolved, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(resolved, use_fast=False)
 
         # Prefer safetensors when loading — safetensors is exempt from the
         # torch.load CVE-2025-32434 restriction (requires torch>=2.6 for .bin).
@@ -116,8 +116,15 @@ class CheckWorthinessDetector:
 
     # ------------------------------------------------------------------ #
 
-    def predict(self, sentences: list[str]) -> list[int]:
-        """Return a 0/1 label per sentence (1 = check-worthy)."""
+    def predict(self, sentences: list[str],
+                progress_callback=None) -> list[int]:
+        """Return a 0/1 label per sentence (1 = check-worthy).
+
+        Batching happens here once, governed by ``self.batch_size``. Callers
+        should pass the full list of sentences rather than pre-slicing — pass
+        ``progress_callback`` (called once per completed batch) to drive a
+        progress bar without re-batching on the caller side.
+        """
         if not sentences:
             return []
         loader = DataLoader(
@@ -130,7 +137,15 @@ class CheckWorthinessDetector:
                 batch  = {k: v.to(self.device) for k, v in batch.items()}
                 logits = self.model(**batch).logits
                 preds.extend(torch.argmax(logits, dim=1).cpu().numpy().tolist())
+                if progress_callback is not None:
+                    progress_callback()
         return preds
+
+    def num_batches(self, n_items: int) -> int:
+        """Number of batches ``predict`` will run for ``n_items`` inputs."""
+        if n_items <= 0:
+            return 0
+        return (n_items + self.batch_size - 1) // self.batch_size
 
     def flag(self, sentences: list[str]) -> list[bool]:
         """Return True for each check-worthy sentence."""
@@ -140,19 +155,42 @@ class CheckWorthinessDetector:
     def slug(self) -> str:
         return os.path.basename(self.model_path.rstrip("/\\"))
 
+# Example use
 if __name__ == "__main__":
-    import pandas as pd
     import numpy as np
+    import pandas as pd
+
     from os.path import join
     from sklearn.metrics import classification_report
 
     multicw = pd.read_csv(join("data", "MultiCW", "multicw-test.csv"))
 
-    multicw["label"] = (pd.to_numeric(multicw["label"], errors="coerce").fillna(0).astype(np.int32))
-    multicw["text"] = (multicw["text"].fillna("").astype(str))
-    multicw = multicw[multicw["text"].str.strip() != ""].reset_index(drop=True)
+    multicw["label"] = (
+        pd.to_numeric(multicw["label"], errors="coerce")
+        .fillna(0)
+        .astype(np.int32)
+    )
+
+    multicw["text"] = (
+        multicw["text"]
+        .fillna("")
+        .astype(str)
+    )
+
+    multicw = multicw[
+        multicw["text"].str.strip() != ""
+        ].reset_index(drop=True)
+
     texts = multicw["text"].tolist()
-    preds = CheckWorthinessDetector(model_path=join("models", "mdb-multicw")).predict(texts)
-    report = classification_report(multicw["label"].to_numpy(), np.array(preds), digits=3,)
+
+    preds = CheckWorthinessDetector(
+        model_path=join("models", "mdb-multicw")
+    ).predict(texts)
+
+    report = classification_report(
+        multicw["label"].to_numpy(),
+        np.array(preds),
+        digits=3,
+    )
 
     print(report)

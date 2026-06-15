@@ -17,11 +17,13 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn, MofNCompleteColumn
 from rich.table import Table
 from rich import box
+from rich.terminal_theme import MONOKAI
 
 logger = logging.getLogger(__name__)
-console = Console()
+console = Console(record=True)
 
-DATA_PATH = Path("data/MultiCW/multicw-test.csv")
+DATA_PATH    = Path("data/MultiCW/multicw-test.csv")
+EVAL_HTML_OUT = Path("evaluation/eval_claim_detection.html")
 
 
 # ---------------------------------------------------------------------------
@@ -77,9 +79,7 @@ def evaluate(detector, rows: list[dict]) -> tuple[dict, dict[str, dict]]:
     y_true = [int(r["label"]) for r in rows]
     langs  = [r["lang"]  for r in rows]
 
-    batch_size = detector.batch_size
-    batches    = list(range(0, len(texts), batch_size))
-    y_pred: list[int] = []
+    n_batches = detector.num_batches(len(texts))
 
     with Progress(
         SpinnerColumn(),
@@ -90,11 +90,9 @@ def evaluate(detector, rows: list[dict]) -> tuple[dict, dict[str, dict]]:
         console=console,
     ) as progress:
         task = progress.add_task(
-            f"[cyan]Evaluating[/cyan] {detector.slug}", total=len(batches))
-        for start in batches:
-            batch_texts = texts[start : start + batch_size]
-            y_pred.extend(detector.predict(batch_texts))
-            progress.advance(task)
+            f"[cyan]Evaluating[/cyan] {detector.slug}", total=n_batches)
+        y_pred = detector.predict(
+            texts, progress_callback=lambda: progress.advance(task))
 
     return cw_metrics(y_true, y_pred), per_language_metrics(langs, y_true, y_pred)
 
@@ -195,6 +193,10 @@ def main(cfg=None) -> None:
     overall, per_lang = evaluate(detector, rows)
     print_results(detector.slug, overall, per_lang)
     save_csv(detector.slug, overall, per_lang)
+
+    EVAL_HTML_OUT.parent.mkdir(parents=True, exist_ok=True)
+    console.save_html(str(EVAL_HTML_OUT), theme=MONOKAI, clear=False)
+    console.print(f"[dim]HTML report saved to {EVAL_HTML_OUT}[/dim]")
 
 
 if __name__ == "__main__":

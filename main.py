@@ -51,7 +51,7 @@ STEP_LABELS = {
 # Config fields shown in the pre-launch review for each step
 STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
-    "claim-canonization": [],
+    "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
     "claim-veracity":     [],
     "sub-narratives":     [],
     "narratives":         [],
@@ -92,11 +92,19 @@ def run_generate(step: str, cfg: Config) -> None:
 
     if step == "claim-detection":
         from core.claims.cw_detector import CheckWorthinessDetector
-        from core.claims.cw_generate import generate
+        from core.claims.gen_cw_detect import generate
         console.print(f"\n[bold cyan]Claim detection — Generate[/bold cyan]")
         console.print(f"[dim]Detector: {cfg.detector}[/dim]\n")
         detector = CheckWorthinessDetector(cfg.detector)
         summary = generate(detector, kb)
+        console.print("\n[bold]Summary:[/bold]")
+        for dataset, counts in summary.items():
+            console.print(f"  {dataset}: {counts}")
+    elif step == "claim-canonization":
+        from core.claims.gen_canonize import canonize
+        console.print(f"\n[bold cyan]Claim canonization — Generate[/bold cyan]")
+        console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}  Quant: {cfg.canon_quantization}[/dim]\n")
+        summary = canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_quantization, kb)
         console.print("\n[bold]Summary:[/bold]")
         for dataset, counts in summary.items():
             console.print(f"  {dataset}: {counts}")
@@ -117,9 +125,13 @@ def _step_submenu(step: str, cfg: Config) -> None:
     """Arrow-key sub-menu for a single pipeline step."""
     from core.ui import tui as ui
 
-    params    = STEP_PARAMS.get(step, [])
-    tui_key   = "claim-extraction" if step == "claim-detection" else step
+    params     = STEP_PARAMS.get(step, [])
     menu_items = ["Evaluation", "Generate", "← Back"]
+
+    # Evaluation and Generate can need different review screens. Canonization
+    # Evaluation is a fixed full benchmark (no params) with its own description;
+    # Generate keeps the canon_* parameters.
+    eval_key = f"{step}-eval" if step == "claim-canonization" else step
 
     while True:
         choice = ui.arrow_menu(STEP_LABELS[step], menu_items)
@@ -128,15 +140,17 @@ def _step_submenu(step: str, cfg: Config) -> None:
             return
 
         if choice == 0:
-            # Show parameter review before running (allows editing detector etc.)
-            if params and not ui.prelaunch_review(cfg, tui_key):
+            # Canonization eval is a benchmark: always show the review/launch
+            # screen (it describes the benchmark) even though it has no params.
+            review_needed = (step == "claim-canonization") or bool(params)
+            if review_needed and not ui.prelaunch_review(cfg, eval_key):
                 continue
             run_eval(step, cfg)
             input("\n[done] press Enter to continue…")
 
         elif choice == 1:
             # Show parameter review before running
-            if params and not ui.prelaunch_review(cfg, tui_key):
+            if params and not ui.prelaunch_review(cfg, step):
                 continue
             run_generate(step, cfg)
             input("\n[done] press Enter to continue…")
