@@ -51,6 +51,57 @@ class Config:
         choices=["Q4_K_M", "Q6_K", "Q8_0"],
     )
 
+    subnar_detector: str = _f(
+        "models/xlm-multicw",
+        "Sub-narrative source detector",
+        "Which claim detector's canonized output to use for sub-narrative extraction.",
+        choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
+    )
+
+    subnar_embedder: str = _f(
+        "Qwen/Qwen3-Embedding-0.6B",
+        "Sub-narrative embedder",
+        "SentenceTransformer model used to embed canonized claims for similarity clustering.",
+        choices=["Qwen/Qwen3-Embedding-0.6B", "Qwen/Qwen3-Embedding-4B",
+                 "intfloat/multilingual-e5-large-instruct"],
+    )
+
+    subnar_generator: str = _f(
+        "qwen3.5-2b",
+        "Sub-narrative generator",
+        "LLM used to synthesize the central claim for each sub-narrative cluster.",
+        choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
+                 "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    subnar_quantization: str = _f(
+        "Q4_K_M",
+        "Sub-narrative quantization",
+        "GGUF quantization level for the sub-narrative generator model.",
+        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    )
+
+    subnar_min_similarity: float = _f(
+        0.45,
+        "Min claim similarity",
+        "Cosine similarity threshold: canonized claims at or above this value are "
+        "assigned to the current sub-narrative cluster.",
+    )
+
+    subnar_min_claims: int = _f(
+        2,
+        "Min claims per sub-narrative",
+        "Minimum number of claims required to form a sub-narrative. Remaining "
+        "claims are discarded when the pool falls below this threshold.",
+    )
+
+    subnar_hypotheticals: int = _f(
+        3,
+        "HyDE hypotheticals",
+        "Number of hypothetical sub-narrative descriptions generated per central "
+        "claim during evaluation retrieval (HyDE style).",
+    )
+
     # ------------------------------------------------------------------ #
     def __post_init__(self):
         self._locked: set = set()

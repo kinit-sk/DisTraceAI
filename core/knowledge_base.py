@@ -7,8 +7,10 @@ knowledge/
   <dataset>/<detector>/articles/<article-name>.json
       {source_path, detector, dataset, article_name, claims: [{sentence, sentence_index}]}
 
+  # Sub-narratives (per dataset / detector / article)
+  <dataset>/<detector>/sub-narratives/<sn-id>.json
+
   # Downstream pipeline structures (namespaced by retrieval backend)
-  sub_narratives/<sn_id>.json
   narratives/<backend>/<nar_id>.json
   campaigns/<backend>/<camp_id>.json
 
@@ -78,22 +80,37 @@ class KnowledgeBase:
         return [Article.from_dict(self._read(p)) for p in d.glob("*.json")] if d.is_dir() else []
 
     # ------------------------------------------------------------------ #
-    # Sub-narratives
+    # Sub-narratives  (detector-scoped: downstream of a specific detector run)
     # ------------------------------------------------------------------ #
 
+    def _sub_narratives_dir(self, dataset: str, detector: str) -> Path:
+        """knowledge/<dataset>/<detector>/sub-narratives/"""
+        return self.root / dataset / detector / "sub-narratives"
+
     def save_sub_narrative(self, sn: SubNarrative) -> None:
-        d = self.root / "sub_narratives"
+        d = self._sub_narratives_dir(sn.dataset, sn.detector)
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / f"{sn.id}.json", sn.to_dict())
 
-    def sub_narratives(self) -> list[SubNarrative]:
-        d = self.root / "sub_narratives"
-        return [SubNarrative.from_dict(self._read(p))
-                for p in d.glob("*.json")] if d.is_dir() else []
+    def sub_narratives(self, dataset: str, detector: str) -> list[SubNarrative]:
+        d = self._sub_narratives_dir(dataset, detector)
+        if not d.is_dir():
+            return []
+        return [SubNarrative.from_dict(self._read(p)) for p in sorted(d.glob("*.json"))]
 
-    def get_sub_narrative(self, sn_id: str) -> SubNarrative | None:
-        path = self.root / "sub_narratives" / f"{sn_id}.json"
+    def get_sub_narrative(self, dataset: str, detector: str,
+                          sn_id: str) -> SubNarrative | None:
+        path = self._sub_narratives_dir(dataset, detector) / f"{sn_id}.json"
         return SubNarrative.from_dict(self._read(path)) if path.exists() else None
+
+    def sub_narratives_exist(self, dataset: str, detector: str,
+                             article_name: str) -> bool:
+        """True if any sub-narrative has already been extracted for this article."""
+        d = self._sub_narratives_dir(dataset, detector)
+        if not d.is_dir():
+            return False
+        # Sub-narrative IDs are prefixed with article_name (see gen_sub_narratives).
+        return any(True for _ in d.glob(f"{article_name}_sn*.json"))
 
     # ------------------------------------------------------------------ #
     # Narratives

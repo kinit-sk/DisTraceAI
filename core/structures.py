@@ -74,13 +74,22 @@ class ArticleClaims:
 
 @dataclass
 class SubNarrative:
+    """A cluster of thematically related canonized claims from one article.
+
+    ``central_claim`` is a synthesized English sentence that summarises the
+    cluster.  ``claims`` are the canonized claim strings that were assigned to
+    this cluster (cosine-similarity ≥ threshold).  ``article_name`` references
+    the ``ArticleClaims`` record so full article metadata is always retrievable.
+    ``veracity`` / ``veracity_confidence`` are filled by the veracity step.
+    """
     id: str
-    article_id: str                   # plain field; replaces the old `article_ref` hash
-    central_claim: str                # English
-    related_claims: list[str] = field(default_factory=list)
+    article_name: str                 # FK → ArticleClaims.article_name
+    dataset: str                      # 'polynarrative' or 'fake-cti'
+    detector: str                     # e.g. 'xlm-multicw'
+    central_claim: str                # synthesized English summary
+    claims: list[str] = field(default_factory=list)   # canonized claim strings
     veracity: float | None = None     # 0..1, lower = more likely false
     veracity_confidence: float | None = None
-    confidence: float = 1.0           # clustering confidence (N6)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

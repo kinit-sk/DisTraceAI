@@ -53,9 +53,19 @@ STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
     "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
     "claim-veracity":     [],
-    "sub-narratives":     [],
+    "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
+                           "subnar_quantization", "subnar_min_similarity",
+                           "subnar_min_claims"],
     "narratives":         [],
     "campaigns":          [],
+}
+
+# Evaluation-specific param lists (when they differ from generate params).
+# Steps not listed here reuse STEP_PARAMS for both actions.
+STEP_EVAL_PARAMS: dict[str, list[str]] = {
+    "sub-narratives": ["subnar_detector", "subnar_embedder", "subnar_generator",
+                       "subnar_quantization", "subnar_min_similarity",
+                       "subnar_min_claims", "subnar_hypotheticals"],
 }
 
 # Evaluation module for each step
@@ -108,6 +118,27 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print("\n[bold]Summary:[/bold]")
         for dataset, counts in summary.items():
             console.print(f"  {dataset}: {counts}")
+    elif step == "sub-narratives":
+        from core.claims.gen_sub_narratives import generate as generate_sub_narratives
+        console.print(f"\n[bold cyan]Sub-narratives — Generate[/bold cyan]")
+        console.print(
+            f"[dim]Detector: {cfg.subnar_detector}  Embedder: {cfg.subnar_embedder}  "
+            f"Generator: {cfg.subnar_generator}  Quant: {cfg.subnar_quantization}  "
+            f"MinSim: {cfg.subnar_min_similarity}  MinClaims: {cfg.subnar_min_claims}[/dim]\n"
+        )
+        summary = generate_sub_narratives(
+            detector_path=cfg.subnar_detector,
+            embedder_name=cfg.subnar_embedder,
+            generator_key=cfg.subnar_generator,
+            quantization=cfg.subnar_quantization,
+            kb=kb,
+            min_similarity=cfg.subnar_min_similarity,
+            min_claims=cfg.subnar_min_claims,
+        )
+        console.print("\n[bold]Summary:[/bold]")
+        for dataset, det_map in summary.items():
+            for detector, counts in det_map.items():
+                console.print(f"  {dataset}/{detector}: {counts}")
     else:
         print(f"Generate not yet implemented for step '{step}'.")
 
@@ -125,12 +156,11 @@ def _step_submenu(step: str, cfg: Config) -> None:
     """Arrow-key sub-menu for a single pipeline step."""
     from core.ui import tui as ui
 
-    params     = STEP_PARAMS.get(step, [])
-    menu_items = ["Evaluation", "Generate", "← Back"]
+    gen_params  = STEP_PARAMS.get(step, [])
+    eval_params = STEP_EVAL_PARAMS.get(step, gen_params)
+    menu_items  = ["Evaluation", "Generate", "← Back"]
 
-    # Evaluation and Generate can need different review screens. Canonization
-    # Evaluation is a fixed full benchmark (no params) with its own description;
-    # Generate keeps the canon_* parameters.
+    # Canonization Evaluation is a fixed full benchmark with its own key.
     eval_key = f"{step}-eval" if step == "claim-canonization" else step
 
     while True:
@@ -140,17 +170,14 @@ def _step_submenu(step: str, cfg: Config) -> None:
             return
 
         if choice == 0:
-            # Canonization eval is a benchmark: always show the review/launch
-            # screen (it describes the benchmark) even though it has no params.
-            review_needed = (step == "claim-canonization") or bool(params)
+            review_needed = (step == "claim-canonization") or bool(eval_params)
             if review_needed and not ui.prelaunch_review(cfg, eval_key):
                 continue
             run_eval(step, cfg)
             input("\n[done] press Enter to continue…")
 
         elif choice == 1:
-            # Show parameter review before running
-            if params and not ui.prelaunch_review(cfg, step):
+            if gen_params and not ui.prelaunch_review(cfg, step):
                 continue
             run_generate(step, cfg)
             input("\n[done] press Enter to continue…")

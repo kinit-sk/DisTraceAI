@@ -34,13 +34,55 @@ KNOWLEDGE_ROOT     = Path("knowledge")
 # ---------------------------------------------------------------------------
 # Sentence splitting
 # ---------------------------------------------------------------------------
-_SENT_RE = re.compile(r"(?<=[.!?])\s+")
+
+# Matches sentence-ending punctuation (.!?।) optionally followed by closing
+# quote/bracket characters, then a lookahead requiring an uppercase letter to
+# start the next sentence.  This handles:
+#   - Normal periods:   "He said. She replied."
+#   - Closing quotes:   '"Done." Next sentence.'  (curly or straight)
+#   - Always-safe !?:   "Alert! The system. Restart."
+#   - Hindi danda ।:    split on newlines (one sentence per line)
+#   - Cyrillic capital: "Россия напала. Украина устояла."
+#   - Abbreviations:    "U.S. forces" NOT split ("forces" starts lowercase)
+#
+# Note: two-letter titles like "Dr." and "Mr." still produce false splits when
+# followed by a capitalised surname ("Dr. Smith" → ["Dr", "Smith went home"]).
+# This was equally true of the original regex and is an acceptable trade-off
+# for a multilingual corpus without a language-specific abbreviation allowlist.
+_SENT_BOUNDARY = re.compile(
+    r'(?<=[.!?।])'                                      # after terminating punctuation
+    r'["\u2018\u2019\u201c\u201d)]*'                # consume any trailing quotes/brackets
+    r'(?=\s+[A-Z\u0400-\u042F\"\u201c\u0900-\u0939])'  # uppercase/Devanagari continuation
+)
 
 
 def split_sentences(text: str) -> list[str]:
-    """Minimal sentence splitter — splits on .!? followed by whitespace."""
-    sentences = _SENT_RE.split(text.strip())
-    return [s.strip() for s in sentences if s.strip()]
+    """Multilingual sentence splitter for news articles and CTI reports.
+
+    Strategy:
+    1. Split on every newline so that line-per-sentence news formatting and
+       paragraph breaks are handled correctly.
+    2. Within each line, split on sentence boundaries: .!?। optionally
+       followed by closing quotes/brackets, then an uppercase-letter start.
+
+    Handles Latin, Cyrillic, Devanagari (Hindi) scripts and quoted sentences.
+    Avoids false splits on common abbreviations like "U.S." (lowercase follows).
+    """
+    if not text or not text.strip():
+        return []
+
+    sentences: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        parts = _SENT_BOUNDARY.split(line)
+        for part in parts:
+            part = part.strip()
+            if part:
+                sentences.append(part)
+
+    return sentences
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +261,12 @@ def _process_dataset(dataset_slug: str,
             total_claims += len(cw_claims)
             progress.advance(art_task)
 
+    skip_note = (f"  [dim]{skipped} already processed (skipped)[/dim]"
+                 if skipped else "")
+    console.print(
+        f"  processed={processed}  skipped={skipped}  new_cw_claims={total_claims}"
+        + (f"\n{skip_note}" if skipped else "")
+    )
     return processed, skipped, total_claims
 
 
@@ -245,8 +293,7 @@ def generate(detector: CheckWorthinessDetector,
             _polynarrative_articles(POLYNARRATIVE_DATA),
             detector, kb)
         summary[DATASET_POLYNARRATIVE] = {
-            "processed": proc, "skipped": skip, "cw_claims": claims}
-        console.print(f"  processed={proc}  skipped={skip}  cw_claims={claims}")
+            "processed": proc, "skipped": skip, "new_cw_claims": claims}
     else:
         console.print(f"[yellow]PolyNarrative not found at {POLYNARRATIVE_DATA} — skipping.[/yellow]")
 
@@ -258,8 +305,7 @@ def generate(detector: CheckWorthinessDetector,
             _fakecti_articles(FAKECTI_CSV),
             detector, kb)
         summary[DATASET_FAKECTI] = {
-            "processed": proc, "skipped": skip, "cw_claims": claims}
-        console.print(f"  processed={proc}  skipped={skip}  cw_claims={claims}")
+            "processed": proc, "skipped": skip, "new_cw_claims": claims}
     else:
         console.print(f"[yellow]FakeCTI not found at {FAKECTI_CSV} — skipping.[/yellow]")
 

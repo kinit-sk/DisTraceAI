@@ -8,6 +8,7 @@
 #SBATCH -o stdout.%J.out
 #SBATCH -e stderr.%J.out
 
+module load GCC/13.2.0
 module load CUDA/12.4.0
 
 eval "$(conda shell.bash hook)"

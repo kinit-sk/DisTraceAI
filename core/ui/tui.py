@@ -26,11 +26,15 @@ RELEVANT = {
     "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
     # Evaluation of canonization is a fixed full benchmark — no editable params.
     "claim-canonization-eval": [],
+    "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
+                           "subnar_quantization", "subnar_min_similarity",
+                           "subnar_min_claims", "subnar_hypotheticals"],
 }
 
 _CAT_COLOR = {
     "detector":  "bright_cyan",
     "canon":     "blue",
+    "subnar":    "magenta",
 }
 
 
