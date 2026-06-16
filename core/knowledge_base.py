@@ -11,8 +11,12 @@ knowledge/
   <dataset>/<detector>/sub-narratives/<sn-id>.json
 
   # Downstream pipeline structures (namespaced by retrieval backend)
-  narratives/<backend>/<nar_id>.json
-  campaigns/<backend>/<camp_id>.json
+  narratives/<dataset>/<backend>/<nar_id>.json
+  campaigns/<dataset>/<backend>/<camp_id>.json
+  veracity/cache/<claim_hash>.json
+  veracity/multiclaim_test_paraphrases.json
+  veracity/multiclaim_embs.npz          (pre-cached MultiClaim embeddings)
+  veracity/multiclaim_embs_meta.json    (cache key: embedder name + record hash)
 
 <dataset>  : 'polynarrative' | 'fake-cti'
 <detector> : 'xlm-multicw'  | 'mdb-multicw'
@@ -67,17 +71,42 @@ class KnowledgeBase:
     # PolyNarrative raw article store (used by the converter)
     # ------------------------------------------------------------------ #
 
-    def _poly_articles_dir(self) -> Path:
-        return self.root / "polynarrative" / "_articles"
+    def _articles_dir(self, dataset: str | None = None) -> Path:
+        """Dataset-generic article store: <dataset>/_articles/"""
+        if dataset:
+            return self.root / dataset / "_articles"
+        return self.root / "polynarrative" / "_articles"   # legacy default
 
-    def save_article(self, a: Article) -> None:
-        d = self._poly_articles_dir()
+    def save_article(self, a: Article, dataset: str | None = None) -> None:
+        d = self._articles_dir(dataset)
         d.mkdir(parents=True, exist_ok=True)
-        self._write(d / f"{a.source_domain}_{a.id}.json", a.to_dict())
+        self._write(d / f"{a.id}.json", a.to_dict())
 
-    def articles(self) -> list[Article]:
-        d = self._poly_articles_dir()
-        return [Article.from_dict(self._read(p)) for p in d.glob("*.json")] if d.is_dir() else []
+    def load_article(self, article_id: str,
+                     dataset: str | None = None) -> "Article | None":
+        # Try dataset-specific path, then fall back to scanning all datasets
+        if dataset:
+            path = self._articles_dir(dataset) / f"{article_id}.json"
+            if path.exists():
+                return Article.from_dict(self._read(path))
+            return None
+        # Scan known datasets
+        for ds in ("polynarrative", "fake-cti", "massivesumm"):
+            path = self._articles_dir(ds) / f"{article_id}.json"
+            if path.exists():
+                return Article.from_dict(self._read(path))
+        # Legacy filename pattern (polynarrative old format: domain_id.json)
+        for p in self._articles_dir(None).glob(f"*_{article_id}.json"):
+            try:
+                return Article.from_dict(self._read(p))
+            except Exception:
+                pass
+        return None
+
+    def articles(self, dataset: str | None = None) -> "list[Article]":
+        d = self._articles_dir(dataset)
+        return [Article.from_dict(self._read(p))
+                for p in d.glob("*.json")] if d.is_dir() else []
 
     # ------------------------------------------------------------------ #
     # Sub-narratives  (detector-scoped: downstream of a specific detector run)
@@ -117,17 +146,17 @@ class KnowledgeBase:
     # ------------------------------------------------------------------ #
 
     def save_narrative(self, n: Narrative) -> None:
-        d = self.root / "narratives" / n.backend
+        d = self.root / "narratives" / n.dataset / n.backend
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / f"{n.id}.json", n.to_dict())
 
-    def narratives(self, backend: str) -> list[Narrative]:
-        d = self.root / "narratives" / backend
+    def narratives(self, dataset: str, backend: str) -> list[Narrative]:
+        d = self.root / "narratives" / dataset / backend
         return [Narrative.from_dict(self._read(p))
                 for p in d.glob("*.json")] if d.is_dir() else []
 
-    def delete_narrative(self, backend: str, narrative_id: str) -> None:
-        path = self.root / "narratives" / backend / f"{narrative_id}.json"
+    def delete_narrative(self, dataset: str, backend: str, narrative_id: str) -> None:
+        path = self.root / "narratives" / dataset / backend / f"{narrative_id}.json"
         if path.exists():
             path.unlink()
 
@@ -136,14 +165,92 @@ class KnowledgeBase:
     # ------------------------------------------------------------------ #
 
     def save_campaign(self, c: Campaign) -> None:
-        d = self.root / "campaigns" / c.backend
+        d = self.root / "campaigns" / c.dataset / c.backend
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / f"{c.id}.json", c.to_dict())
 
-    def campaigns(self, backend: str) -> list[Campaign]:
-        d = self.root / "campaigns" / backend
+    def campaigns(self, dataset: str, backend: str) -> list[Campaign]:
+        d = self.root / "campaigns" / dataset / backend
         return [Campaign.from_dict(self._read(p))
                 for p in d.glob("*.json")] if d.is_dir() else []
+
+    def delete_campaign(self, dataset: str, backend: str, cid: str) -> None:
+        path = self.root / "campaigns" / dataset / backend / f"{cid}.json"
+        if path.exists():
+            path.unlink()
+
+    # ------------------------------------------------------------------ #
+    # Veracity cache
+    # ------------------------------------------------------------------ #
+
+    def _veracity_cache_dir(self) -> Path:
+        return self.root / "veracity" / "cache"
+
+    def save_veracity_cache(self, claim_hash: str, record: dict) -> None:
+        d = self._veracity_cache_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        self._write(d / f"{claim_hash}.json", record)
+
+    def load_veracity_cache(self, claim_hash: str) -> dict | None:
+        path = self._veracity_cache_dir() / f"{claim_hash}.json"
+        return self._read(path) if path.exists() else None
+
+    def save_paraphrase_test(self, records: list, generator: str, quant: str) -> None:
+        d = self.root / "veracity"
+        d.mkdir(parents=True, exist_ok=True)
+        self._write(d / "multiclaim_test_paraphrases.json",
+                    {"generator": generator, "quant": quant, "records": records})
+
+    def load_paraphrase_test(self, generator: str,
+                             quant: str) -> list | None:
+        path = self.root / "veracity" / "multiclaim_test_paraphrases.json"
+        if not path.exists():
+            return None
+        data = self._read(path)
+        if data.get("generator") != generator or data.get("quant") != quant:
+            return None   # stale cache — different generator or quant
+        return data.get("records", [])
+
+    def save_multiclaim_embs(self, ids: list[str], embs: "np.ndarray",
+                             embedder_name: str, record_hash: str) -> None:
+        """Persist the pre-computed MultiClaim embedding matrix to disk.
+
+        Stored as a compressed .npz (ids + float32 matrix) alongside a small
+        JSON metadata file. Invalidated automatically when the embedder or the
+        MultiClaim records change (detected via record_hash).
+        """
+        import numpy as np
+        d = self.root / "veracity"
+        d.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(str(d / "multiclaim_embs.npz"),
+                            ids=np.array(ids, dtype=object),
+                            embs=embs.astype(np.float32))
+        self._write(d / "multiclaim_embs_meta.json",
+                    {"embedder": embedder_name, "record_hash": record_hash,
+                     "n": len(ids)})
+
+    def load_multiclaim_embs(self, embedder_name: str,
+                             record_hash: str) -> "tuple | None":
+        """Load cached MultiClaim embeddings if the cache is still valid.
+
+        Returns (ids: list[str], embs: np.ndarray) or None if stale/absent.
+        The cache is valid iff both the embedder name and the record content
+        hash match — so changing the embedder OR the MultiClaim CSV invalidates
+        it automatically.
+        """
+        import numpy as np
+        meta_path = self.root / "veracity" / "multiclaim_embs_meta.json"
+        npz_path  = self.root / "veracity" / "multiclaim_embs.npz"
+        if not meta_path.exists() or not npz_path.exists():
+            return None
+        meta = self._read(meta_path)
+        if meta.get("embedder") != embedder_name or \
+           meta.get("record_hash") != record_hash:
+            return None   # stale: different embedder or CSV changed
+        data = np.load(str(npz_path), allow_pickle=True)
+        ids  = list(data["ids"])
+        embs = data["embs"].astype(np.float32)
+        return ids, embs
 
     # ------------------------------------------------------------------ #
     # Helpers
@@ -155,4 +262,7 @@ class KnowledgeBase:
 
     @staticmethod
     def _read(path: Path) -> dict:
-        return json.loads(path.read_text(encoding="utf-8"))
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Corrupt KB record at {path}: {exc}") from exc

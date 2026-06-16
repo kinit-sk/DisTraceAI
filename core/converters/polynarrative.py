@@ -394,8 +394,24 @@ def convert(src: Path, out_root: Path,
     (gt_dir / "annotations_by_narrative.json").write_text(
         json.dumps(by_nar_clean, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    # Inverted index over fine-grained sub-narrative labels — the join the
+    # narrative-retrieval benchmark uses to decide a correct match (a retrieved
+    # train sub-narrative is correct iff it shares a sub-narrative label with the
+    # query). Mirrors annotations_by_narrative.json but at the finer level.
+    by_sub: dict = defaultdict(lambda: {"article_ids": [], "languages": set()})
+    for aid, a in ground_truth.items():
+        for sub in a.get("sub_narratives", []):
+            by_sub[sub]["article_ids"].append(aid)
+            by_sub[sub]["languages"].add(a["language"])
+    by_sub_clean = {s: {"article_ids": sorted(set(v["article_ids"])),
+                        "languages": sorted(v["languages"])}
+                    for s, v in sorted(by_sub.items())}
+    (gt_dir / "annotations_by_sub_narrative.json").write_text(
+        json.dumps(by_sub_clean, ensure_ascii=False, indent=2), encoding="utf-8")
+
     print(f"PolyNarrative: {total} articles, {len(ground_truth)} annotated, "
-          f"{len(by_nar_clean)} narratives -> {out_root}")
+          f"{len(by_nar_clean)} narratives, {len(by_sub_clean)} sub-narratives "
+          f"-> {out_root}")
     return total
 
 

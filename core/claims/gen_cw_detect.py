@@ -263,11 +263,12 @@ def _process_dataset(dataset_slug: str,
 
     skip_note = (f"  [dim]{skipped} already processed (skipped)[/dim]"
                  if skipped else "")
+    total_in_kb = kb.all_article_claims(dataset_slug, detector.slug)
     console.print(
-        f"  processed={processed}  skipped={skipped}  new_cw_claims={total_claims}"
+        f"  new={total_claims} claims  skipped={skipped}  total_articles_in_kb={len(total_in_kb)}"
         + (f"\n{skip_note}" if skipped else "")
     )
-    return processed, skipped, total_claims
+    return processed, skipped, total_claims, len(total_in_kb)
 
 
 # ---------------------------------------------------------------------------
@@ -288,24 +289,26 @@ def generate(detector: CheckWorthinessDetector,
     # PolyNarrative
     if POLYNARRATIVE_DATA.exists():
         console.print(f"\n[bold]PolyNarrative[/bold] — {POLYNARRATIVE_DATA}")
-        proc, skip, claims = _process_dataset(
+        proc, skip, claims, total = _process_dataset(
             DATASET_POLYNARRATIVE,
             _polynarrative_articles(POLYNARRATIVE_DATA),
             detector, kb)
         summary[DATASET_POLYNARRATIVE] = {
-            "processed": proc, "skipped": skip, "new_cw_claims": claims}
+            "processed": proc, "skipped": skip,
+            "new_cw_claims": claims, "total_in_kb": total}
     else:
         console.print(f"[yellow]PolyNarrative not found at {POLYNARRATIVE_DATA} — skipping.[/yellow]")
 
     # FakeCTI
     if FAKECTI_CSV.exists():
         console.print(f"\n[bold]FakeCTI[/bold] — {FAKECTI_CSV}")
-        proc, skip, claims = _process_dataset(
+        proc, skip, claims, total = _process_dataset(
             DATASET_FAKECTI,
             _fakecti_articles(FAKECTI_CSV),
             detector, kb)
         summary[DATASET_FAKECTI] = {
-            "processed": proc, "skipped": skip, "new_cw_claims": claims}
+            "processed": proc, "skipped": skip,
+            "new_cw_claims": claims, "total_in_kb": total}
     else:
         console.print(f"[yellow]FakeCTI not found at {FAKECTI_CSV} — skipping.[/yellow]")
 

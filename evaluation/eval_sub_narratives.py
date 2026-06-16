@@ -431,6 +431,19 @@ def main(cfg=None) -> None:
         _print_results(detector_slug, overall, per_lang)
         _save_csv(detector_slug, overall, per_lang)
 
+        try:
+            from core.ui.stats import save_eval_stats
+            save_eval_stats(
+                "sub-narratives",
+                param_key=detector_slug,
+                params={"detector": detector_slug},
+                scores={"f1": overall["f1"], "acc": overall["accuracy"],
+                        "n": overall["n"]},
+                det_slug=detector_slug,
+            )
+        except Exception:
+            pass
+
     del llm
 
     html_out.parent.mkdir(parents=True, exist_ok=True)

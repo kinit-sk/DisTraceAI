@@ -52,6 +52,29 @@ def reset_default_registry() -> None:
     _default_registry.reset()
 
 
+def narrative_id(seq: int) -> str:
+    """Counter-based narrative ID: ``nar_<seq>``.
+
+    Narratives are the one DisTraceAI record type that is NOT name-derived: a
+    narrative spans many articles (and even datasets/languages), so there is no
+    single source name to derive from. A monotone counter, managed by the
+    assigner, is the deliberate exception to the name-derived convention used
+    everywhere else. The ``nar_`` prefix is what the assigner's ``_max_seq``
+    parser keys on to resume numbering across runs.
+    """
+    return f"nar_{seq}"
+
+
+def campaign_id(seq: int) -> str:
+    """Counter-based campaign ID: ``camp_<seq>``.
+
+    Same rationale as narrative_id: campaigns span many articles and datasets
+    so there is no single source name to derive from.
+    """
+    return f"camp_{seq}"
+
+
+
 def article_name_from_relpath(rel: "str | Path") -> str:
     """Canonical article-name derivation from a path relative to a dataset root.
 

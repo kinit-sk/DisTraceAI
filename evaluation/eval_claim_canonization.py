@@ -379,6 +379,28 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
             writer.writerows(flat_rows)
         _print(f"\n[green]Full results saved to[/green] [cyan]{csv_out}[/cyan]")
 
+    # Persist per-model×quant stats to the KB stats dir.
+    try:
+        from core.ui.stats import save_eval_stats
+        for model_key in BENCH_MODEL_KEYS:
+            for quant in BENCH_QUANTIZATIONS:
+                rows_mq = all_results[quant].get(model_key, [])
+                if not rows_mq:
+                    continue
+                ok_vals  = [r["english_ok"] for r in rows_mq]
+                lat_vals = [r["latency_s"]  for r in rows_mq]
+                save_eval_stats(
+                    "claim-canonization",
+                    param_key=f"{model_key}__{quant}",
+                    params={"model": _BENCH_DISPLAY.get(model_key, model_key),
+                            "quant": quant},
+                    scores={"english_ok":    sum(ok_vals)  / len(ok_vals),
+                            "median_lat_s":  statistics.median(lat_vals),
+                            "n":             len(rows_mq)},
+                )
+    except Exception:
+        pass
+
 
 def main(cfg=None) -> None:
     eval_claim_canonization_benchmark(Path(os.getcwd()))

@@ -194,6 +194,19 @@ def main(cfg=None) -> None:
     print_results(detector.slug, overall, per_lang)
     save_csv(detector.slug, overall, per_lang)
 
+    try:
+        from core.ui.stats import save_eval_stats
+        save_eval_stats(
+            "claim-detection",
+            param_key=detector.slug,
+            params={"detector": detector.slug},
+            scores={"f1": overall["f1"], "acc": overall["accuracy"],
+                    "n": overall["n"]},
+            det_slug=detector.slug,
+        )
+    except Exception:
+        pass
+
     EVAL_HTML_OUT.parent.mkdir(parents=True, exist_ok=True)
     console.save_html(str(EVAL_HTML_OUT), theme=MONOKAI, clear=False)
     console.print(f"[dim]HTML report saved to {EVAL_HTML_OUT}[/dim]")

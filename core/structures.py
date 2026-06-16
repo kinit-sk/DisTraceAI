@@ -20,7 +20,14 @@ class Article:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Article":
-        return cls(**{k: d.get(k) for k in cls.__dataclass_fields__})
+        # Use MISSING sentinel so absent optional fields fall back to their
+        # declared defaults (e.g. source_language defaults to "und", not None).
+        import dataclasses
+        return cls(**{
+            k: d[k] if k in d else f.default
+            for k, f in cls.__dataclass_fields__.items()
+            if k in d or f.default is not dataclasses.MISSING
+        })
 
 
 @dataclass
@@ -101,10 +108,33 @@ class SubNarrative:
 
 @dataclass
 class Narrative:
+    """A central claim anchored in relevant sub-narratives.
+
+    Membership lives in ``sub_narratives`` (a list of SubNarrative IDs). The
+    remaining fields are metadata ACCUMULATED from the member sub-narratives and
+    recomputed by the assigner on every merge / new-narrative event, so a
+    narrative is a self-contained, enriched summary of its members:
+
+      * ``languages``           — sorted ISO codes present among members' source
+                                  articles (feeds the later N4 coordination signal).
+      * ``veracity`` /          — confidence-weighted mean of member veracity
+        ``veracity_confidence``   (None until the veracity step has populated
+                                  members; ignores members without a verdict).
+      * ``member_count``        — number of member sub-narratives (denormalised
+                                  for quick inspection / sweep thresholds).
+
+    ``dataset`` scopes the narrative so polynarrative and fake-cti pools never
+    merge; the KB stores it under ``narratives/<dataset>/<backend>/``.
+    """
     id: str
     backend: str                      # which retrieval backend produced it
     central_claim: str                # English
+    dataset: str = "polynarrative"    # scopes the pool; KB path component
     sub_narratives: list[str] = field(default_factory=list)   # membership lives here
+    languages: list[str] = field(default_factory=list)        # accumulated (N4)
+    veracity: float | None = None             # accumulated, conf-weighted mean
+    veracity_confidence: float | None = None  # accumulated mean confidence
+    member_count: int = 0                     # = len(sub_narratives)
     confidence: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
@@ -117,12 +147,38 @@ class Narrative:
 
 @dataclass
 class Campaign:
+    """A cluster of narratives sharing a coordinated pattern.
+
+    ``label`` is one of:
+      - "Disinformation Campaign"  — coordinated + low veracity
+      - "Information Campaign"     — coordinated + high veracity
+      - "Organic Trend"            — not coordinated
+
+    ``coordination`` holds per-signal scores (N1–N4); ``coordination_score``
+    is their weighted combination and the primary classification threshold.
+    ``veracity`` / ``veracity_confidence`` are propagated up from member
+    narrative veracity scores (conf-weighted mean, None until verified).
+    ``central_claim`` is synthesized from member narrative central claims.
+    ``dataset`` scopes the campaign to polynarrative / fake-cti.
+    ``source_domains`` and ``published_ats`` are collected from all articles
+    in the member narrative → sub-narrative → article chain and used to compute
+    the N1 (burst) and N2 (co-amplification) coordination signals.
+    """
     id: str
     backend: str
-    label: str                        # Disinformation Campaign / Information Campaign / Organic Trend
+    central_claim: str = ""
+    dataset: str = "polynarrative"
+    label: str = "Organic Trend"     # Disinformation Campaign / Information Campaign / Organic Trend
     narratives: list[str] = field(default_factory=list)
-    coordination: dict[str, float] = field(default_factory=dict)  # per-signal scores (N1–N4)
-    confidence: float = 1.0           # propagated campaign-level confidence (N6)
+    coordination: dict[str, float] = field(default_factory=dict)  # per-signal N1–N4
+    coordination_score: float = 0.0   # weighted combination → classification threshold
+    veracity: float | None = None             # propagated conf-weighted mean
+    veracity_confidence: float | None = None  # propagated mean confidence
+    member_count: int = 0
+    languages: list[str] = field(default_factory=list)   # accumulated N4 signal
+    source_domains: list[str] = field(default_factory=list)   # for N1/N2
+    published_ats: list[str] = field(default_factory=list)    # ISO timestamps (N1)
+    confidence: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
