@@ -36,7 +36,11 @@ install_llama_cpp_cuda () {
     # Build llama-cpp-python with CUDA offload enabled.
     export CMAKE_ARGS="-DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON"
     export FORCE_CMAKE=1
-    pip install --no-cache-dir --force-reinstall llama-cpp-python
+    cd cd modules/
+    git clone --recurse-submodules https://github.com/abetlen/llama-cpp-python.git
+    cd llama-cpp-python/
+    pip install --no-cache-dir --force-reinstall .
+    cd ../..
 }
 
 install_llama_cpp_cpu () {
@@ -62,7 +66,7 @@ case "$MODE" in
         ;;
     desktop)
         echo "[setup] Desktop (GPU) install"
-        # Assumes a working CUDA toolkit + nvcc on PATH (or conda-installed).
+        conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
         export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
         export CUDACXX="${CUDA_HOME}/bin/nvcc"
         install_llama_cpp_cuda
