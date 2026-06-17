@@ -124,9 +124,31 @@ RELEVANT: dict[str, list[str]] = {
 }
 
 DYNAMIC_FOLLOWERS: dict[str, object] = {
-    "nar_extractor":  lambda val: _NAR_METHOD_PARAMS.get(val, []),
-    "camp_extractor": lambda val: _CAMP_METHOD_PARAMS.get(val, []),
+    "nar_extractor":  lambda val: _method_followers(val, _NAR_METHOD_PARAMS),
+    "camp_extractor": lambda val: _method_followers(val, _CAMP_METHOD_PARAMS),
 }
+
+
+def _method_followers(value: str, method_params: dict[str, list[str]]) -> list[str]:
+    """Resolve the follower params for a selector value.
+
+    For a concrete method, returns that method's params. For the "all"
+    benchmark option, returns the UNION of every method's params (preserving
+    first-seen order) so the user can still configure each method's settings
+    even though no single method is selected.
+    """
+    if value == "all":
+        seen: set[str] = set()
+        out: list[str] = []
+        for key, params in method_params.items():
+            if key == "all":
+                continue
+            for p in params:
+                if p not in seen:
+                    seen.add(p)
+                    out.append(p)
+        return out
+    return method_params.get(value, [])
 
 
 

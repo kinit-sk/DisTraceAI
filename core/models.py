@@ -102,8 +102,8 @@ def encode_with_backoff(embedder, texts: Sequence[str],
 # GGUF catalogue: model key -> (HF repo, filename template). The default
 # generator is Gemma E4B (README §7); Context-1 is the agentic retriever/verifier.
 _CATALOGUE: dict[str, tuple[str, str]] = {
-    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-e2b-it-{quant}.gguf"),
-    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-e4b-it-{quant}.gguf"),
+    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-E2B-it-{quant}.gguf"),
+    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-E4B-it-{quant}.gguf"),
     "gemma4-12b":     ("unsloth/gemma-4-12b-it-GGUF", "gemma-4-12b-it-{quant}.gguf"),
     "gemma4-26b-a4b": ("unsloth/gemma-4-26B-A4B-it-GGUF", "gemma-4-26B-A4B-it-{quant}.gguf"),
     "gemma4-31b":     ("unsloth/gemma-4-31B-it-GGUF", "gemma-4-31B-it-{quant}.gguf"),
@@ -129,6 +129,34 @@ def resolve_generator(model_key: str, quant: str) -> tuple[str, str]:
     return repo, filename_tmpl.format(quant=quant)
 
 
+def _warn_if_cpu_only(llm, n_gpu: int, main_gpu: int) -> None:
+    """Loudly warn when a generator ended up running on CPU.
+
+    Two cases produce a silent CPU model that shows 0% GPU in nvidia-smi:
+      1. llama-cpp-python built WITHOUT CUDA (n_gpu_layers is ignored), or
+      2. the backoff ladder degraded to n_gpu_layers=0 under VRAM pressure.
+    Either way the run will be very slow, so make it visible rather than silent.
+    """
+    try:
+        import llama_cpp
+        supports = getattr(llama_cpp, "llama_supports_gpu_offload", None)
+        gpu_built = bool(supports()) if callable(supports) else None
+    except Exception:
+        gpu_built = None
+
+    if gpu_built is False:
+        logger.warning(
+            "[gen] llama-cpp-python was built WITHOUT CUDA support - the model "
+            "is running on CPU (nvidia-smi will show 0%% GPU). Reinstall with: "
+            'CMAKE_ARGS="-DGGML_CUDA=on" pip install --force-reinstall '
+            "--no-cache-dir llama-cpp-python")
+    elif n_gpu == 0:
+        logger.warning(
+            "[gen] generator loaded with n_gpu_layers=0 (CPU only) on cuda:%d "
+            "after VRAM back-off - expect slow generation. Free VRAM or lower "
+            "the worker count (DISTRACE_NODERAG_WORKERS).", main_gpu)
+
+
 class LlamaGenerator:
     """Callable llama.cpp generator implementing the `generate(system, user, **kw)`
     contract used across the pipeline. Per-call `temperature`/`max_tokens` are
@@ -138,7 +166,7 @@ class LlamaGenerator:
 
     def __init__(self, model_key: str, quant: str, *,
                  context_size: int | None = None, temperature: float = 0.0,
-                 main_gpu: int = 0) -> None:
+                 main_gpu: int = 0, gpu_only: bool = False) -> None:
         from llama_cpp import Llama
         repo, filename = resolve_generator(model_key, quant)
         self.model_key, self.quant = model_key, quant
@@ -163,7 +191,15 @@ class LlamaGenerator:
         file_markers = ("failed to load model", "failed to load model from file")
         seen_vram = False
 
-        for n_gpu in (-1, 32, 16, 0):   # back off GPU offload under VRAM pressure
+        # gpu_only: when loading as a POOL WORKER, the backoff ladder must NOT
+        # degrade to CPU. A worker that cannot fit fully on its assigned GPU
+        # must raise so LlamaPool.from_placement stops adding workers (keeping
+        # the ones that fit on GPU) — otherwise we silently end up with CPU
+        # workers that saturate the cores and leave the GPU at 0%. We therefore
+        # restrict the ladder to GPU-only layer counts and re-raise on OOM.
+        ladder = (-1,) if gpu_only else (-1, 32, 16, 0)
+
+        for n_gpu in ladder:
             try:
                 self.llm = Llama.from_pretrained(
                     repo_id=repo, filename=filename, n_ctx=context_size,
@@ -172,6 +208,7 @@ class LlamaGenerator:
                     verbose=False)
                 if n_gpu != -1:
                     logger.warning("[gen] loaded with n_gpu_layers=%d (VRAM pressure)", n_gpu)
+                _warn_if_cpu_only(self.llm, n_gpu, main_gpu)
                 return
             except Exception as exc:
                 last_exc = exc
@@ -186,6 +223,12 @@ class LlamaGenerator:
                 is_file = any(k in msg for k in file_markers)
                 if is_vram:
                     seen_vram = True
+                # gpu_only workers never fall back to CPU — raise on the first
+                # VRAM failure so the pool stops growing.
+                if gpu_only:
+                    raise RuntimeError(
+                        f"[gen] gpu_only worker for {filename} did not fit on "
+                        f"cuda:{main_gpu} ({exc})") from exc
                 # Retry lower on a VRAM error, or on a file error that is
                 # plausibly fallout from a prior VRAM failure this run.
                 if is_vram or (is_file and seen_vram):
@@ -458,7 +501,14 @@ def plan_noderag_workers(model_key: str, quant: str, *,
     gguf = _gguf_size_bytes(model_key, quant)
     weights = int(gguf * 1.15) if gguf else 6 * 1024**3
     kv_margin = int((ctx / 16384) * 1.5 * 1024**3)   # ~1.5 GiB at 16k ctx
-    per_worker = max(weights + kv_margin, 1)
+    # Each llama.cpp context also reserves a CUDA context + compute buffers that
+    # the GGUF size does not account for (~1 GiB). Counting it keeps the planner
+    # from over-packing a GPU and forcing later workers off it.
+    overhead = 1 * 1024**3
+    per_worker = max(weights + kv_margin + overhead, 1)
+    # Keep one worker's worth of headroom free per GPU so fragmentation / other
+    # processes don't push the last worker into an OOM.
+    reserve = per_worker
 
     if override is not None:
         try:
@@ -470,10 +520,11 @@ def plan_noderag_workers(model_key: str, quant: str, *,
             return []
         return [usable[i % len(usable)] for i in range(min(want, ceiling))]
 
-    # Auto: floor(free / per_worker) per GPU (the floor leaves a safety reserve),
-    # then INTERLEAVE across GPUs so the ceiling is distributed evenly rather
-    # than packing the first GPU to capacity and starving the rest.
-    capacity = {g: int(free.get(g, 0) // per_worker) for g in (gpus or sorted(free))}
+    # Auto: floor((free - reserve) / per_worker) per GPU (the reserve leaves a
+    # safety margin), then INTERLEAVE across GPUs so the ceiling is distributed
+    # evenly rather than packing the first GPU to capacity and starving the rest.
+    capacity = {g: max(0, int((free.get(g, 0) - reserve) // per_worker))
+                for g in (gpus or sorted(free))}
     plan: list[int] = []
     order = [g for g in (gpus or sorted(free)) if capacity.get(g, 0) > 0]
     round_no = 0
@@ -547,13 +598,14 @@ class LlamaPool:
         for i, gpu in enumerate(placement):
             inst_kw = dict(kw)
             inst_kw["main_gpu"] = gpu
+            inst_kw["gpu_only"] = True   # never fall back to CPU for a pool worker
             try:
                 logger.info("[gen] LlamaPool: loading worker %d/%d on cuda:%d",
                             i + 1, len(placement), gpu)
                 gen = LlamaGenerator(model_key, quant, **inst_kw)
             except Exception as exc:
-                logger.warning("[gen] LlamaPool: worker %d failed to load (%s); "
-                               "stopping at %d workers", i + 1, exc, self.n_workers)
+                logger.warning("[gen] LlamaPool: worker %d did not fit on GPU (%s); "
+                               "stopping at %d GPU workers", i + 1, exc, self.n_workers)
                 break
             self.instances.append(gen)
             self._free.put(gen)
