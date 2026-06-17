@@ -113,13 +113,97 @@ def _split_of(annotations, article_name):
     return ann.get("split") if ann else None
 
 
+def _domain_of(article_name: str) -> str | None:
+    """Infer the PolyNarrative domain from an article name.
+
+    PolyNarrative names embed the domain as a token, e.g.
+    ``test_PT_subtask-3-documents_PT_CC_TEST_523`` (CC = climate change) or
+    ``..._PT_URW_TEST_486`` (URW = Ukraine-Russia war). Returns "CC", "URW",
+    or None when no domain token is present.
+    """
+    if not article_name:
+        return None
+    tokens = {t.upper() for t in article_name.replace("-", "_").split("_")}
+    if "CC" in tokens:
+        return "CC"
+    if "URW" in tokens:
+        return "URW"
+    return None
+
+
+def _domain_ok(article_name: str, domain: str | None) -> bool:
+    """True if the article belongs to the requested domain (or domain is all/None)."""
+    if not domain or domain.lower() == "all":
+        return True
+    return _domain_of(article_name) == domain
+
+
+def _dataset_seg(domain: str | None) -> str:
+    """Dataset path segment for HTML reports; appends the domain when subset."""
+    if not domain or domain.lower() == "all":
+        return "polynarrative"
+    return f"polynarrative-{domain}"
+
+
+def _print_benchmark_table(rows, domain=None):
+    """Print a side-by-side benchmark table for the 'all' method run.
+
+    rows: list of (detector_slug, method, overall_dict, n_scored).
+    Highlights the best method per metric and prints simple spread statistics.
+    """
+    from rich.table import Table
+    from rich import box
+
+    dom = "" if domain in (None, "all") else f"  ·  domain={domain}"
+    console.rule(f"[bold cyan]Narrative retrieval benchmark{dom}[/bold cyan]")
+
+    metrics = [("Acc@1", 1), ("Acc@3", 3), ("Acc@5", 5), ("MAP", "map")]
+    t = Table(box=box.SIMPLE_HEAVY, show_header=True, header_style="bold white")
+    t.add_column("Detector", style="dim")
+    t.add_column("Method", style="bold")
+    for label, _ in metrics:
+        t.add_column(label, justify="right")
+    t.add_column("N", justify="right", style="dim")
+
+    # Best value per (detector, metric) for highlighting.
+    best: dict[tuple, float] = {}
+    for det, _method, overall, _n in rows:
+        for _, key in metrics:
+            v = overall.get(key, 0.0)
+            best[(det, key)] = max(best.get((det, key), float("-inf")), v)
+
+    for det, method, overall, n in rows:
+        cells = [det, method]
+        for _, key in metrics:
+            v = overall.get(key, 0.0)
+            s = f"{v:.3f}"
+            if abs(v - best.get((det, key), v)) < 1e-9:
+                s = f"[bold green]{s}[/bold green]"
+            cells.append(s)
+        cells.append(str(n))
+        t.add_row(*cells)
+    console.print(t)
+
+    # Spread statistics across methods (per detector) for the headline metric.
+    import statistics as _stats
+    by_det: dict[str, list[float]] = defaultdict(list)
+    for det, _method, overall, _n in rows:
+        by_det[det].append(overall.get("map", 0.0))
+    for det, maps in by_det.items():
+        if len(maps) >= 2:
+            console.print(
+                f"  [dim]{det}: MAP min={min(maps):.3f}  max={max(maps):.3f}  "
+                f"mean={_stats.mean(maps):.3f}  stdev={_stats.pstdev(maps):.3f}[/dim]")
+
+
 def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
-                 is_query=False):
+                 is_query=False, domain=None):
     """Assemble retrievable items for one split.
 
     repr_mode in {subnar, article, canonized}.
     When is_query=True and repr_mode=subnar, the item's .claims list is
     populated from the sub-narrative (used by cSpecFi for conditioning).
+    domain: optional "CC"/"URW" filter (None or "all" keeps both).
     """
     sns = kb.sub_narratives(DATASET_POLYNARRATIVE, detector_slug)
     by_article = defaultdict(list)
@@ -131,6 +215,8 @@ def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
     if repr_mode == "subnar":
         for sn in sns:
             if _split_of(annotations, sn.article_name) != want_split:
+                continue
+            if not _domain_ok(sn.article_name, domain):
                 continue
             labels = _gold_labels(annotations, sn.article_name)
             if not labels:
@@ -151,6 +237,8 @@ def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
     for article_name in sorted(by_article):
         if _split_of(annotations, article_name) != want_split:
             continue
+        if not _domain_ok(article_name, domain):
+            continue
         labels = _gold_labels(annotations, article_name)
         if not labels:
             continue
@@ -170,17 +258,20 @@ def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
     return items
 
 
-def _build_article_texts(kb, detector_slug, annotations, want_split="train"):
+def _build_article_texts(kb, detector_slug, annotations, want_split="train",
+                         domain=None):
     """Raw article texts for the SpecFi-CS NodeRAG graph.
 
     The published SpecFi paper (Upravitelev et al.) builds NodeRAG over the
     raw article texts of the training set — not over sub-narrative central
     claims. This matches noderag_pn_training in the reference implementation.
     Returns {article_name: raw_text} for articles in want_split with labels.
+    domain: optional "CC"/"URW" filter (None or "all" keeps both).
     """
     sns = kb.sub_narratives(DATASET_POLYNARRATIVE, detector_slug)
     article_names = {sn.article_name for sn in sns
                      if _split_of(annotations, sn.article_name) == want_split
+                     and _domain_ok(sn.article_name, domain)
                      and _gold_labels(annotations, sn.article_name)}
     out = {}
     for name in sorted(article_names):
@@ -190,6 +281,34 @@ def _build_article_texts(kb, detector_slug, annotations, want_split="train"):
         text = " ".join(c.sentence for c in ac.claims) or ac.title or ""
         if text.strip():
             out[name] = text
+    return out
+
+
+def _build_article_canonized(kb, detector_slug, annotations, want_split="train",
+                             domain=None):
+    """Per-article canonized claims for the SpecFi-CCS NodeRAG graph.
+
+    SpecFi-CCS builds the graph from the CANONIZED CLAIMS extracted per article
+    rather than the raw article text. One input document per article: that
+    article's canonized claims joined together (newline-separated) so NodeRAG
+    still forms communities ACROSS articles while seeing decontextualised,
+    English-normalised claim text instead of raw multilingual prose.
+    Returns {article_name: joined_canonized_claims} for articles in want_split.
+    domain: optional "CC"/"URW" filter (None or "all" keeps both).
+    """
+    sns = kb.sub_narratives(DATASET_POLYNARRATIVE, detector_slug)
+    article_names = {sn.article_name for sn in sns
+                     if _split_of(annotations, sn.article_name) == want_split
+                     and _domain_ok(sn.article_name, domain)
+                     and _gold_labels(annotations, sn.article_name)}
+    out = {}
+    for name in sorted(article_names):
+        ac = kb.load_article_claims(DATASET_POLYNARRATIVE, detector_slug, name)
+        if ac is None:
+            continue
+        claims = [c.strip() for c in ac.canonized_claims if c and c.strip()]
+        if claims:
+            out[name] = "\n".join(claims)
     return out
 
 
@@ -384,12 +503,18 @@ def _run_bm25rag(query_items, corpus_items, embedder):
     return rankings
 
 
-def _build_noderag_on_articles(article_texts, embedder, llm, index_path):
-    """Build a NodeRAG graph over raw article texts (SpecFi-CS paper setup).
+def _build_noderag_on_articles(article_texts, embedder, llm, index_path,
+                                *, model_key=None, quant=None, ctx=16384):
+    """Build a NodeRAG graph over the supplied input documents.
 
-    The published SpecFi paper builds NodeRAG over article *texts*, not over
-    sub-narrative claims. Each article becomes one input document. The graph
-    is built once and reused across all queries in this eval run.
+    Used by both SpecFi-CS (raw article texts) and SpecFi-CCS (per-article
+    canonized claims). Each entry of ``article_texts`` becomes one input
+    document. The graph is built once and reused across all queries.
+
+    ``model_key``/``quant`` enable an auto-sized parallel build pool inside
+    NodeRagGraph.build(): the graph construction fills spare VRAM with extra
+    worker contexts and tears them down afterwards, dramatically cutting build
+    time versus the single-context default.
     """
     from core.hierarchy.noderag import NodeRagGraph
 
@@ -398,7 +523,9 @@ def _build_noderag_on_articles(article_texts, embedder, llm, index_path):
     for name, text in article_texts.items():
         (inp / f"{name}.txt").write_text(text, encoding="utf-8")
 
-    graph = NodeRagGraph(index_path, generate=llm, embedder=embedder)
+    graph = NodeRagGraph(index_path, generate=llm, embedder=embedder,
+                         build_model_key=model_key, build_quant=quant,
+                         build_context_size=ctx)
     graph.ensure_loaded()   # builds once if HNSW.bin absent, reuses if present
     return graph
 
@@ -435,39 +562,87 @@ def _rank_via_specfi_backend(query_items, corpus_items, embedder, backend, desc,
 
 
 def _run_specfi_cs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
-                   annotations):
+                   annotations, domain=None):
     """Reproduced original SpecFi-CS.
 
     NodeRAG graph is built over raw train article texts (matching the paper's
     noderag_pn_training setup). Corpus for ranking = sub-narrative central
     claims. n=10 hypotheticals per query (matching paper's generate_hypotheticals
     n=10 call). Graph is built once and reused across queries.
+    domain: optional "CC"/"URW" subset filter (separate index cache per domain).
     """
-    from core.models import make_generator
+    from core.models import make_generator, close_generator
     from core.hierarchy.backends.specfi_c import SpecFiCBackend
 
     llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
 
     # Build NodeRAG over article texts, not sub-narrative claims.
     article_texts = _build_article_texts(kb, detector_slug, annotations,
-                                         want_split="train")
+                                         want_split="train", domain=domain)
     if not article_texts:
         console.print(
             "  [yellow]No article texts found for SpecFi-CS NodeRAG build.[/yellow]")
-        del llm
+        close_generator(llm)
         return None
 
+    dom_seg = "" if domain in (None, "all") else f"_{domain}"
     index_path = os.getenv(
         "DISTRACE_NAR_NODERAG_INDEX",
-        str(Path("knowledge") / "noderag" / "specfi_cs" / detector_slug))
-    graph = _build_noderag_on_articles(article_texts, embedder, llm, index_path)
+        str(Path("knowledge") / "noderag" / "specfi_cs" / f"{detector_slug}{dom_seg}"))
+    graph = _build_noderag_on_articles(article_texts, embedder, llm, index_path,
+                                       model_key=cfg.nar_generator,
+                                       quant=cfg.nar_quantization,
+                                       ctx=getattr(cfg, "nar_context1_token_budget", 16384))
 
     backend = SpecFiCBackend(embedder, llm, graph,
                              k=cfg.nar_specfi_hypotheticals,
                              mode="static")
     out = _rank_via_specfi_backend(query_items, corpus_items, embedder, backend,
                                    "SpecFi-CS retrieval")
-    del llm
+    close_generator(llm)
+    return out
+
+
+def _run_specfi_ccs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
+                    annotations, domain=None):
+    """SpecFi-CCS — Canonized Community Summaries.
+
+    Identical to SpecFi-CS EXCEPT the NodeRAG graph is built from the per-article
+    CANONIZED CLAIMS rather than raw article text. The graph still forms
+    communities across articles, but over decontextualised English claims, so
+    the community summaries are claim-centric. Conditioning and ranking are
+    otherwise the same as SpecFi-CS. Uses a separate index cache directory so it
+    never collides with the CS graph.
+    domain: optional "CC"/"URW" subset filter (separate index cache per domain).
+    """
+    from core.models import make_generator, close_generator
+    from core.hierarchy.backends.specfi_c import SpecFiCBackend
+
+    llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
+
+    canonized = _build_article_canonized(kb, detector_slug, annotations,
+                                          want_split="train", domain=domain)
+    if not canonized:
+        console.print(
+            "  [yellow]No canonized claims found for SpecFi-CCS NodeRAG build.[/yellow]")
+        close_generator(llm)
+        return None
+
+    dom_seg = "" if domain in (None, "all") else f"_{domain}"
+    index_path = os.getenv(
+        "DISTRACE_NAR_NODERAG_CCS_INDEX",
+        str(Path("knowledge") / "noderag" / "specfi_ccs" / f"{detector_slug}{dom_seg}"))
+    graph = _build_noderag_on_articles(canonized, embedder, llm, index_path,
+                                       model_key=cfg.nar_generator,
+                                       quant=cfg.nar_quantization,
+                                       ctx=getattr(cfg, "nar_context1_token_budget", 16384))
+
+    backend = SpecFiCBackend(embedder, llm, graph,
+                             k=cfg.nar_specfi_hypotheticals,
+                             mode="static-ccs")
+    out = _rank_via_specfi_backend(query_items, corpus_items, embedder, backend,
+                                   "SpecFi-CCS retrieval")
+    close_generator(llm)
     return out
 
 
@@ -481,7 +656,7 @@ def _run_cspecfi(query_items, corpus_items, embedder, cfg):
     The specfi-cs vs cspecfi comparison isolates the conditioning source:
     graph community summaries vs. claim-level evidence in the sub-narrative.
     """
-    from core.models import make_generator
+    from core.models import make_generator, close_generator
     from core.hierarchy.backends.specfi_c import SpecFiCBackend
 
     llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
@@ -494,12 +669,12 @@ def _run_cspecfi(query_items, corpus_items, embedder, cfg):
         query_items, corpus_items, embedder, backend,
         "cSpecFi retrieval",
         get_claims=lambda q: q.claims)
-    del llm
+    close_generator(llm)
     return out
 
 
 def _run_context1(query_items, corpus_items, embedder, cfg):
-    from core.models import make_generator
+    from core.models import make_generator, close_generator
     from core.hierarchy.backends.context1 import Context1Backend
 
     llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
@@ -524,7 +699,7 @@ def _run_context1(query_items, corpus_items, embedder, cfg):
             idxs += [i for i in range(n) if i not in seen]
             rankings.append(idxs)
             prog.advance()
-    del llm
+    close_generator(llm)
     return rankings
 
 
@@ -561,101 +736,138 @@ def main(cfg=None):
     detector_slugs = (["xlm-multicw", "mdb-multicw"] if detector_path == "both"
                       else [os.path.basename(detector_path.rstrip("/\\"))])
 
-    method     = cfg.nar_extractor
-    repr_mode  = cfg.nar_dense_repr if method == "dense" else "subnar"
+    configured = cfg.nar_extractor
     query_split = cfg.nar_eval_split
+    domain = getattr(cfg, "nar_eval_domain", "all")
+    dom_label = "" if domain in (None, "all") else f"  domain={domain}"
+
+    # "all" runs the full benchmark across every method; otherwise a single one.
+    ALL_METHODS = ["dense", "bm25-rag", "specfi-cs", "specfi-ccs",
+                   "cspecfi", "context-1"]
+    methods = ALL_METHODS if configured == "all" else [configured]
+    benchmark = configured == "all"
 
     console.print(f"\n[bold]Loading embedder[/bold] [cyan]{cfg.nar_embedder}[/cyan]…")
     embedder = make_embedder(cfg.nar_embedder)
 
-    html_out = Path("evaluation") / "eval_narratives.html"
+    from evaluation.report_paths import report_path
+
+    # Collected for the benchmark summary table: (detector, method, overall, n).
+    bench_rows: list[tuple[str, str, dict, int]] = []
 
     for detector_slug in detector_slugs:
-        console.print(
-            f"\n[bold cyan]Evaluating — {detector_slug} / {method}"
-            f"{f' / repr={repr_mode}' if method == 'dense' else ''}[/bold cyan]")
-
-        # Query items always need claims populated for cSpecFi.
-        corpus_items = _build_items(kb, detector_slug, annotations,
-                                    repr_mode, want_split="train", is_query=False)
-        query_items  = _build_items(kb, detector_slug, annotations,
-                                    repr_mode, want_split=query_split, is_query=True)
-
-        if not corpus_items:
+        for method in methods:
+            repr_mode = cfg.nar_dense_repr if method == "dense" else "subnar"
             console.print(
-                f"  [yellow]No train sub-narratives for polynarrative/"
-                f"{detector_slug}. Run sub-narrative Generate first.[/yellow]")
-            continue
-        if not query_items:
-            console.print(
-                f"  [yellow]No '{query_split}' sub-narratives to query.[/yellow]")
-            continue
+                f"\n[bold cyan]Evaluating — {detector_slug} / {method}"
+                f"{f' / repr={repr_mode}' if method == 'dense' else ''}"
+                f"{dom_label}[/bold cyan]")
 
-        unit = corpus_items[0].unit
-        console.print(
-            f"  Corpus: {len(corpus_items)} items  Queries: {len(query_items)} "
-            f"(unit: {unit})")
+            corpus_items = _build_items(kb, detector_slug, annotations,
+                                        repr_mode, want_split="train",
+                                        is_query=False, domain=domain)
+            query_items  = _build_items(kb, detector_slug, annotations,
+                                        repr_mode, want_split=query_split,
+                                        is_query=True, domain=domain)
 
-        rankings = None
-        if method == "dense":
-            rankings = _run_dense(query_items, corpus_items, embedder)
-        elif method == "bm25-rag":
-            rankings = _run_bm25rag(query_items, corpus_items, embedder)
-        elif method == "specfi-cs":
-            rankings = _run_specfi_cs(query_items, corpus_items, embedder, cfg,
-                                      kb, detector_slug, annotations)
-        elif method == "cspecfi":
-            # Verify query items have claims (requires sub-narrative Generate
-            # to have stored them; warn and skip if missing).
-            missing = sum(1 for q in query_items if not q.claims)
-            if missing:
+            if not corpus_items:
                 console.print(
-                    f"  [yellow]{missing}/{len(query_items)} query sub-narratives "
-                    f"have no canonized claims stored. cSpecFi conditioning will "
-                    f"fall back to the central claim for those items.[/yellow]")
-            rankings = _run_cspecfi(query_items, corpus_items, embedder, cfg)
-        elif method == "context-1":
-            rankings = _run_context1(query_items, corpus_items, embedder, cfg)
-        else:
-            console.print(f"  [red]Unknown nar_extractor: {method!r}[/red]")
-            continue
+                    f"  [yellow]No train sub-narratives for polynarrative/"
+                    f"{detector_slug}{dom_label}. Run sub-narrative Generate "
+                    f"first.[/yellow]")
+                continue
+            if not query_items:
+                console.print(
+                    f"  [yellow]No '{query_split}' sub-narratives to query"
+                    f"{dom_label}.[/yellow]")
+                continue
 
-        if rankings is None:
-            continue
-
-        hits, aps, langs, n_skipped = _score_rankings(
-            rankings, query_items, corpus_items)
-        if n_skipped:
+            unit = corpus_items[0].unit
             console.print(
-                f"  [dim]{n_skipped} query(ies) skipped (no label match in corpus).[/dim]")
-        n_scored = len(langs)
-        if n_scored == 0:
-            console.print("  [yellow]No answerable queries; nothing to score.[/yellow]")
-            continue
+                f"  Corpus: {len(corpus_items)} items  Queries: {len(query_items)} "
+                f"(unit: {unit})")
 
-        overall = {c: _acc(hits[c]) for c in _CUTOFFS}
-        overall["map"] = sum(aps) / len(aps)
-        per_lang, lang_counts = _per_language(hits, aps, langs)
+            rankings = None
+            if method == "dense":
+                rankings = _run_dense(query_items, corpus_items, embedder)
+            elif method == "bm25-rag":
+                rankings = _run_bm25rag(query_items, corpus_items, embedder)
+            elif method == "specfi-cs":
+                rankings = _run_specfi_cs(query_items, corpus_items, embedder, cfg,
+                                          kb, detector_slug, annotations,
+                                          domain=domain)
+            elif method == "specfi-ccs":
+                rankings = _run_specfi_ccs(query_items, corpus_items, embedder, cfg,
+                                           kb, detector_slug, annotations,
+                                           domain=domain)
+            elif method == "cspecfi":
+                missing = sum(1 for q in query_items if not q.claims)
+                if missing:
+                    console.print(
+                        f"  [yellow]{missing}/{len(query_items)} query sub-narratives "
+                        f"have no canonized claims stored. cSpecFi conditioning will "
+                        f"fall back to the central claim for those items.[/yellow]")
+                rankings = _run_cspecfi(query_items, corpus_items, embedder, cfg)
+            elif method == "context-1":
+                rankings = _run_context1(query_items, corpus_items, embedder, cfg)
+            else:
+                console.print(f"  [red]Unknown nar_extractor: {method!r}[/red]")
+                continue
 
-        _print_results(detector_slug, method, unit, overall, per_lang,
-                       lang_counts, n_scored, len(corpus_items))
-        _save_csv(detector_slug, method, unit, overall, per_lang,
-                  lang_counts, n_scored)
+            if rankings is None:
+                continue
 
-        try:
-            from core.ui.stats import save_eval_stats
-            save_eval_stats(
-                "narratives",
-                param_key=f"{detector_slug}__{method}",
-                params={"detector": detector_slug, "method": method},
-                scores={"acc@1": overall[1], "acc@3": overall[3],
-                        "acc@5": overall[5], "map": overall["map"],
-                        "n": n_scored},
-                det_slug=detector_slug,
-            )
-        except Exception:
-            pass
+            hits, aps, langs, n_skipped = _score_rankings(
+                rankings, query_items, corpus_items)
+            if n_skipped:
+                console.print(
+                    f"  [dim]{n_skipped} query(ies) skipped "
+                    f"(no label match in corpus).[/dim]")
+            n_scored = len(langs)
+            if n_scored == 0:
+                console.print("  [yellow]No answerable queries; nothing to score.[/yellow]")
+                continue
 
-    html_out.parent.mkdir(parents=True, exist_ok=True)
-    console.save_html(str(html_out), theme=MONOKAI, clear=False)
-    console.print(f"[dim]HTML report → {html_out}[/dim]")
+            overall = {c: _acc(hits[c]) for c in _CUTOFFS}
+            overall["map"] = sum(aps) / len(aps)
+            per_lang, lang_counts = _per_language(hits, aps, langs)
+
+            _print_results(detector_slug, method, unit, overall, per_lang,
+                           lang_counts, n_scored, len(corpus_items))
+            _save_csv(detector_slug, method, unit, overall, per_lang,
+                      lang_counts, n_scored)
+            bench_rows.append((detector_slug, method, dict(overall), n_scored))
+
+            try:
+                from core.ui.stats import save_eval_stats
+                dom_suffix = "" if domain in (None, "all") else f"__{domain}"
+                save_eval_stats(
+                    "narratives",
+                    param_key=f"{detector_slug}__{method}{dom_suffix}",
+                    params={"detector": detector_slug, "method": method,
+                            "domain": domain},
+                    scores={"acc@1": overall[1], "acc@3": overall[3],
+                            "acc@5": overall[5], "map": overall["map"],
+                            "n": n_scored},
+                    det_slug=detector_slug,
+                )
+            except Exception:
+                pass
+
+            if not benchmark:
+                # Single-method run: one structured HTML report per detector × method.
+                html_out = report_path(
+                    "narratives", dataset=_dataset_seg(domain),
+                    detector=detector_slug, method=method)
+                console.save_html(str(html_out), theme=MONOKAI, clear=False)
+                console.print(f"[dim]HTML report → {html_out}[/dim]")
+
+    # ── Benchmark summary ─────────────────────────────────────────────────
+    if benchmark and bench_rows:
+        _print_benchmark_table(bench_rows, domain)
+        html_out = report_path(
+            "narratives", dataset=_dataset_seg(domain),
+            detector=(detector_slugs[0] if len(detector_slugs) == 1 else "both"),
+            method="all")
+        console.save_html(str(html_out), theme=MONOKAI, clear=False)
+        console.print(f"[dim]Benchmark HTML report → {html_out}[/dim]")

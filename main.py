@@ -160,6 +160,13 @@ def run_generate(step: str, cfg: Config) -> None:
         save_generate_stats(step, summary)
     elif step == "narratives":
         from core.claims.gen_narratives import generate as generate_narratives
+        if cfg.nar_extractor == "all":
+            console.print(
+                "[red]nar_extractor='all' is an Evaluation-only benchmark mode "
+                "and cannot be used for Generate.[/red] "
+                "Pick a concrete method (dense / bm25-rag / specfi-cs / "
+                "specfi-ccs / cspecfi / context-1) before generating.")
+            return
         console.print(f"\n[bold cyan]Narratives — Generate[/bold cyan]")
         console.print(
             f"[dim]Detector: {cfg.nar_detector}  Method: {cfg.nar_extractor}  "

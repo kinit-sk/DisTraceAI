@@ -60,7 +60,7 @@ from rich.progress import (
 )
 
 from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE
-from core.models import make_embedder, make_generator, encode_with_backoff
+from core.models import close_generator, make_embedder, make_generator, encode_with_backoff
 
 logger  = logging.getLogger(__name__)
 console = Console(record=True)
@@ -342,7 +342,6 @@ def main(cfg=None) -> None:
     )
     llm = make_generator(cfg.subnar_generator, cfg.subnar_quantization)
 
-    html_out = Path("evaluation") / "eval_sub_narratives.html"
 
     for detector_slug in detector_slugs:
         console.print(
@@ -444,8 +443,11 @@ def main(cfg=None) -> None:
         except Exception:
             pass
 
-    del llm
+        # One structured HTML report per detector.
+        from evaluation.report_paths import report_path
+        html_out = report_path("sub-narratives", dataset="polynarrative",
+                               detector=detector_slug)
+        console.save_html(str(html_out), theme=MONOKAI, clear=False)
+        console.print(f"[dim]HTML report saved to {html_out}[/dim]")
 
-    html_out.parent.mkdir(parents=True, exist_ok=True)
-    console.save_html(str(html_out), theme=MONOKAI, clear=False)
-    console.print(f"[dim]HTML report saved to {html_out}[/dim]")
+    close_generator(llm)

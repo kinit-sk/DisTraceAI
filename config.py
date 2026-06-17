@@ -119,9 +119,12 @@ class Config:
         "dense (embedding cosine, repr selected by nar_dense_repr), "
         "bm25-rag (BM25+dense RRF hybrid, no LLM, strongest non-LLM baseline), "
         "specfi-cs (reproduced original static SpecFi-CS, NodeRAG over article texts), "
+        "specfi-ccs (SpecFi-CCS, NodeRAG over per-article canonized claims), "
         "cspecfi (our continuous variant, no NodeRAG, conditioned on sub-narrative claims), "
-        "context-1 (agentic multi-turn search harness).",
-        choices=["dense", "bm25-rag", "specfi-cs", "cspecfi", "context-1"],
+        "context-1 (agentic multi-turn search harness), "
+        "all (Evaluation only: benchmark every method and print a summary table).",
+        choices=["dense", "bm25-rag", "specfi-cs", "specfi-ccs", "cspecfi",
+                 "context-1", "all"],
     )
 
     nar_dense_repr: str = _f(
@@ -222,6 +225,15 @@ class Config:
         choices=["dev", "test"],
     )
 
+    nar_eval_domain: str = _f(
+        "all",
+        "Narrative eval domain",
+        "Restrict the narrative eval to one PolyNarrative domain: CC (climate "
+        "change), URW (Ukraine-Russia war), or all (both). Filters both the "
+        "query split and the train corpus to the chosen domain.",
+        choices=["all", "CC", "URW"],
+    )
+
     # ------------------------------------------------------------------ #
     # Claim veracity estimation (step 3)
     # ------------------------------------------------------------------ #
@@ -305,7 +317,7 @@ class Config:
         "dense",
         "Campaign retrieval method",
         "Retrieval backend for campaign extraction: same choices as nar_extractor.",
-        choices=["dense", "bm25-rag", "specfi-cs", "cspecfi", "context-1"],
+        choices=["dense", "bm25-rag", "specfi-cs", "specfi-ccs", "cspecfi", "context-1"],
     )
 
     camp_dense_repr: str = _f(

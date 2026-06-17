@@ -247,7 +247,8 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    html_out = Path("evaluation") / "eval_campaigns.html"
-    html_out.parent.mkdir(parents=True, exist_ok=True)
+    from evaluation.report_paths import report_path
+    html_out = report_path("campaigns", dataset="fake-cti",
+                           method=getattr(cfg, "camp_extractor", None))
     console.save_html(str(html_out), theme=MONOKAI, clear=False)
     console.print(f"[dim]Results → {csv_path}  HTML → {html_out}[/dim]")

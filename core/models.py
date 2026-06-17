@@ -389,6 +389,108 @@ def _visible_gpus() -> list[int]:
         return []
 
 
+def _gguf_size_bytes(model_key: str, quant: str) -> int:
+    """Best-effort on-disk size of the resolved GGUF (a weights-footprint proxy).
+
+    Searches the local HF cache (models/) for a file matching the resolved
+    filename, tolerating the catalogue's '*{quant}*.gguf' glob patterns.
+    Returns 0 when nothing matches (caller falls back to a conservative default).
+    """
+    import fnmatch
+    try:
+        _, filename = resolve_generator(model_key, quant)
+    except Exception:
+        return 0
+    best = 0
+    for p in Path("models").rglob("*.gguf"):
+        if fnmatch.fnmatch(p.name, filename) or (quant in p.name and quant in filename):
+            best = max(best, p.stat().st_size)
+    return best
+
+
+def _free_vram_per_gpu(gpus: list[int]) -> dict[int, int]:
+    """Return {gpu_index: free_bytes} measured AFTER current allocations.
+
+    Uses torch.cuda.mem_get_info so the figure reflects the embedder + any
+    already-resident generator instance. Empty dict when CUDA is unavailable.
+    """
+    out: dict[int, int] = {}
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return {}
+        for g in (gpus or range(torch.cuda.device_count())):
+            try:
+                free, _total = torch.cuda.mem_get_info(g)
+                out[int(g)] = int(free)
+            except Exception:
+                pass
+    except Exception:
+        return {}
+    return out
+
+
+def plan_noderag_workers(model_key: str, quant: str, *,
+                         gpus: list[int] | None = None,
+                         ctx: int = 16384,
+                         ceiling: int = 8) -> list[int]:
+    """Decide how many extra NodeRAG worker contexts to spawn and on which GPUs.
+
+    Strategy (auto, no manual tuning - overridable via DISTRACE_NODERAG_WORKERS):
+      1. Estimate one worker's footprint = GGUF size x 1.15 (weights + overhead)
+         + a KV-cache margin scaled by ctx. Falls back to a conservative 6 GiB
+         when the GGUF size cannot be read.
+      2. Measure free VRAM per visible GPU (after the embedder + the first
+         generator are already resident).
+      3. Pack floor(free / per_worker) workers onto each GPU, returning a flat
+         list of GPU indices (one entry per worker to spawn) up to `ceiling`.
+
+    Returns a list of GPU indices, e.g. [0, 0, 1, 1] = four workers, two per GPU.
+    An empty list means "no extra workers" (single-context / CPU fallback).
+    """
+    override = os.environ.get("DISTRACE_NODERAG_WORKERS")
+    gpus = gpus if gpus is not None else _visible_gpus()
+
+    free = _free_vram_per_gpu(gpus)
+    if not free:
+        return []   # no CUDA visibility - single context only
+
+    gguf = _gguf_size_bytes(model_key, quant)
+    weights = int(gguf * 1.15) if gguf else 6 * 1024**3
+    kv_margin = int((ctx / 16384) * 1.5 * 1024**3)   # ~1.5 GiB at 16k ctx
+    per_worker = max(weights + kv_margin, 1)
+
+    if override is not None:
+        try:
+            want = max(0, int(override))
+        except ValueError:
+            want = 0
+        usable = [g for g in (gpus or sorted(free)) if free.get(g, 0) > per_worker]
+        if not usable:
+            return []
+        return [usable[i % len(usable)] for i in range(min(want, ceiling))]
+
+    # Auto: floor(free / per_worker) per GPU (the floor leaves a safety reserve),
+    # then INTERLEAVE across GPUs so the ceiling is distributed evenly rather
+    # than packing the first GPU to capacity and starving the rest.
+    capacity = {g: int(free.get(g, 0) // per_worker) for g in (gpus or sorted(free))}
+    plan: list[int] = []
+    order = [g for g in (gpus or sorted(free)) if capacity.get(g, 0) > 0]
+    round_no = 0
+    while order and len(plan) < ceiling:
+        progressed = False
+        for g in order:
+            if round_no < capacity[g]:
+                plan.append(g)
+                progressed = True
+                if len(plan) >= ceiling:
+                    break
+        round_no += 1
+        if not progressed:
+            break
+    return plan[:ceiling]
+
+
 class LlamaPool:
     """A pool of independent in-process llama.cpp models for parallel decoding
     when an external server is not permitted (e.g. locked-down HPC).
@@ -424,6 +526,43 @@ class LlamaPool:
             self._free.put(gen)
         logger.info("[gen] LlamaPool ready: %d workers across GPUs %s", self.n_workers,
                     gpus or "default")
+
+    @classmethod
+    def from_placement(cls, model_key: str, quant: str, placement: list[int],
+                       **kw) -> "LlamaPool":
+        """Build a pool from an explicit per-worker GPU placement list.
+
+        ``placement`` is a list of GPU indices, one entry per worker to spawn
+        (e.g. [0, 0, 1] = two workers on GPU 0, one on GPU 1). Loading is
+        INCREMENTAL and OOM-TOLERANT: if a worker fails to load (e.g. the VRAM
+        estimate was slightly optimistic, or another process grabbed memory),
+        loading stops and the pool keeps whatever workers succeeded. This makes
+        the auto-sizing estimate only need to be roughly right.
+        """
+        import queue
+        self = cls.__new__(cls)
+        self.n_workers = 0
+        self._free = queue.Queue()
+        self.instances = []
+        for i, gpu in enumerate(placement):
+            inst_kw = dict(kw)
+            inst_kw["main_gpu"] = gpu
+            try:
+                logger.info("[gen] LlamaPool: loading worker %d/%d on cuda:%d",
+                            i + 1, len(placement), gpu)
+                gen = LlamaGenerator(model_key, quant, **inst_kw)
+            except Exception as exc:
+                logger.warning("[gen] LlamaPool: worker %d failed to load (%s); "
+                               "stopping at %d workers", i + 1, exc, self.n_workers)
+                break
+            self.instances.append(gen)
+            self._free.put(gen)
+            self.n_workers += 1
+        if self.n_workers == 0:
+            raise RuntimeError("[gen] LlamaPool.from_placement: no workers loaded")
+        logger.info("[gen] LlamaPool ready: %d workers (placement %s)",
+                    self.n_workers, placement[:self.n_workers])
+        return self
 
     def __call__(self, system: str, user: str, **kw) -> str:
         gen = self._free.get()          # blocks until a worker is free

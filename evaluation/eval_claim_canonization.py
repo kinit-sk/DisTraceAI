@@ -155,7 +155,6 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
     results_dir   = project_root / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
     csv_out       = results_dir / "eval_claim_canonization.csv"
-    html_out      = project_root / "evaluation" / "eval_claim_canonization.html"
 
     def _print(msg):
         _console.print(msg)
@@ -358,7 +357,8 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
     _print(summary_tbl)
 
     # ── HTML export ───────────────────────────────────────────────────────────
-    html_out.parent.mkdir(parents=True, exist_ok=True)
+    from evaluation.report_paths import report_path
+    html_out = report_path("claim-canonization", extra="benchmark")
     _console.save_html(str(html_out), theme=MONOKAI, clear=False)
     _print(f"[dim]HTML report saved to {html_out}[/dim]")
 

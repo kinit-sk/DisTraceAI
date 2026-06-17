@@ -207,9 +207,10 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    EVAL_HTML_OUT.parent.mkdir(parents=True, exist_ok=True)
-    console.save_html(str(EVAL_HTML_OUT), theme=MONOKAI, clear=False)
-    console.print(f"[dim]HTML report saved to {EVAL_HTML_OUT}[/dim]")
+    from evaluation.report_paths import report_path
+    html_out = report_path("claim-detection", detector=detector.slug)
+    console.save_html(str(html_out), theme=MONOKAI, clear=False)
+    console.print(f"[dim]HTML report saved to {html_out}[/dim]")
 
 
 if __name__ == "__main__":

@@ -313,7 +313,9 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    html_out = Path("evaluation") / "eval_claim_veracity.html"
-    html_out.parent.mkdir(parents=True, exist_ok=True)
+    from evaluation.report_paths import report_path
+    html_out = report_path(
+        "claim-veracity",
+        extra=f"{cfg.ver_generator}__{cfg.ver_quantization}")
     console.save_html(str(html_out), theme=MONOKAI, clear=False)
     console.print(f"[dim]Results → {csv_path}  HTML → {html_out}[/dim]")
