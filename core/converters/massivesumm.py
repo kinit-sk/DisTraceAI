@@ -21,7 +21,6 @@ import json
 import logging
 from pathlib import Path
 
-from core.ids import article_id
 from core.structures import Article
 from core.knowledge_base import KnowledgeBase
 
@@ -77,7 +76,7 @@ def convert(src: Path, out_root: Path, *,
             continue
 
         n_lang = 0
-        for raw in _iter_articles(lang_dir):
+        for _idx, raw in enumerate(_iter_articles(lang_dir)):
             text = str(raw.get("text", raw.get("body", ""))).strip()
             if not text:
                 continue
@@ -86,7 +85,10 @@ def convert(src: Path, out_root: Path, *,
             date  = str(raw.get("date", raw.get("published_date", "")))[:10] or None
             domain = str(raw.get("domain", raw.get("source", "")))
 
-            aid = article_id(url)
+            # Use the JSONL record's native id field for a human-readable,
+            # stable article name. Fall back to a positional counter if absent.
+            raw_id = raw.get("id") or raw.get("article_id") or str(_idx)
+            aid = f"article_{raw_id}"
             kb.save_article(Article(
                 id=aid,
                 url=url,
@@ -96,7 +98,7 @@ def convert(src: Path, out_root: Path, *,
                 source_language=lang.upper(),
                 published_at=date,
                 author=str(raw.get("author", "Unknown")),
-            ))
+            ), dataset="massivesumm")
             n_lang += 1
 
         logger.info("[massivesumm] %s: %d articles converted", lang, n_lang)

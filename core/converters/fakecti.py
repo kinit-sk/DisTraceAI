@@ -32,7 +32,6 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
-from core.ids import article_id
 from core.structures import Article
 from core.knowledge_base import KnowledgeBase
 
@@ -119,6 +118,7 @@ def convert(src: Path, out_root: Path, *,
         if not date:
             continue
         records.append({
+            "csv_id": str(row["ID"]),
             "url": url, "campaign": str(row["CAMPAIGN"]).strip(),
             "title": str(row["TITLE"]).strip(), "text": text,
             "date": date, "domain": source_domain(url, str(row.get("SOURCE", ""))),
@@ -140,7 +140,7 @@ def convert(src: Path, out_root: Path, *,
     by_campaign: dict[str, list[str]] = defaultdict(list)
     seen: set[str] = set()
     for r in records:
-        aid = article_id(r["url"])
+        aid = f"article_{r['csv_id']}"
         if aid in seen:                      # de-dup identical archived URLs
             continue
         seen.add(aid)
@@ -148,7 +148,8 @@ def convert(src: Path, out_root: Path, *,
             id=aid, url=r["url"], source_domain=r["domain"],
             title=(r["title"] or r["text"][:80]),
             content=r["text"], source_language=SOURCE_LANGUAGE,
-            published_at=r["date"], author="Unknown"))
+            published_at=r["date"], author="Unknown"),
+            dataset="fake-cti")
         ground_truth[aid] = r["campaign"]
         by_campaign[r["campaign"]].append(aid)
 

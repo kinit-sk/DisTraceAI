@@ -158,12 +158,36 @@ def _polynarrative_articles(data_root: Path):
 # ---------------------------------------------------------------------------
 
 def _fakecti_articles(csv_path: Path):
-    """Yield (article_name, text, source_path, meta) for each FakeCTI row."""
+    """Yield (article_name, text, source_path, meta) for usable FakeCTI rows.
+
+    FakeCTI ships ~12k rows, but most are unusable for this pipeline: non-WEB
+    media types, rows with no extractable date, and campaigns too small to
+    exhibit coordination (the corpus is ~94% one campaign). Processing the whole
+    file wastes hours of CW detection / canonization on rows the campaign step
+    will later discard. We therefore apply the SAME scope filter the FakeCTI
+    converter uses — TYPE==WEB, non-empty text, an extractable date, and
+    campaign size >= FAKECTI_MIN_CAMPAIGN — so every downstream step (which read
+    from the KB, not the CSV) inherits the filtered set automatically.
+
+    Filter knobs match the converter and are env-overridable:
+      FAKECTI_TYPE          (default "WEB"; "ALL" disables the type filter)
+      FAKECTI_MIN_CAMPAIGN  (default 5)
+    """
     if not csv_path.exists():
         logger.warning("[cw_generate] FakeCTI CSV not found: %s", csv_path)
         return
 
+    # Reuse the converter's date/domain logic so the scope is identical and
+    # there is a single source of truth for "usable FakeCTI row".
+    import os
+    from collections import defaultdict
+    from core.converters.fakecti import extract_date, source_domain
+
+    type_filter = os.getenv("FAKECTI_TYPE", "WEB").upper()
+    min_campaign = int(os.getenv("FAKECTI_MIN_CAMPAIGN", "5"))
+
     df = pd.read_csv(csv_path)
+    df.columns = [c.strip().upper() for c in df.columns]
     if "TEXT" not in df.columns:
         logger.error("[cw_generate] FakeCTI CSV has no 'TEXT' column — found: %s",
                      list(df.columns))
@@ -172,24 +196,68 @@ def _fakecti_articles(csv_path: Path):
         df["ID"] = df.index + 1
 
     df["TEXT"] = df["TEXT"].fillna("").astype(str)
-    df = df[df["TEXT"].str.strip() != ""].reset_index(drop=True)
+    for col in ("URL", "TITLE", "SOURCE", "CAMPAIGN", "TYPE"):
+        if col not in df.columns:
+            df[col] = ""
+        df[col] = df[col].fillna("").astype(str)
 
-    # Columns beyond TEXT/ID become free-form metadata so the per-article record
-    # keeps whatever the dataset provides.
+    # 1) media-type scope.
+    df["TYPE"] = df["TYPE"].str.strip().str.upper()
+    if type_filter and type_filter != "ALL":
+        df = df[df["TYPE"] == type_filter]
+
+    # 2) build candidate records with non-empty text + an extractable date.
     extra_cols = [c for c in df.columns if c not in ("TEXT", "ID")]
-
+    candidates = []
     for _, row in df.iterrows():
+        text = str(row["TEXT"]).strip()
+        url  = str(row["URL"]).strip()
+        if not text or not url:
+            continue
+        date = extract_date(url)
+        if not date:
+            continue
+        campaign = str(row["CAMPAIGN"]).strip()
+        if not campaign:
+            continue
+        candidates.append((row, text, url, date, campaign, extra_cols))
+
+    # 3) drop campaigns too small to exhibit coordination.
+    per_campaign: dict[str, int] = defaultdict(int)
+    for _row, _text, _url, _date, campaign, _ex in candidates:
+        per_campaign[campaign] += 1
+    kept = {c for c, n in per_campaign.items() if n >= min_campaign}
+
+    n_total = len(df)
+    n_kept = 0
+    for row, text, url, date, campaign, ex in candidates:
+        if campaign not in kept:
+            continue
+        n_kept += 1
         article_id   = str(row["ID"])
-        text         = row["TEXT"]
         article_name = f"article_{article_id}"
-        source_path  = str(Path("data/FakeCTI/FakeCTI.csv"))
+        source_path  = str(csv_path)
         first_line   = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
+        # Fold the real article metadata into the stored metadata dict (the only
+        # free-form field ArticleClaims persists) so the campaign step's N1-N4
+        # signals can read genuine date/domain/language structure later.
+        extra_meta = {c: (None if pd.isna(row[c]) else row[c]) for c in ex}
+        extra_meta.update({
+            "published_at": date,
+            "source_domain": source_domain(url, str(row.get("SOURCE", ""))),
+            "source_language": "EN",
+            "campaign": campaign,
+        })
         meta = {
-            "title":  first_line[:200],
+            "title":  (str(row["TITLE"]).strip() or first_line)[:200],
             "author": None,
-            "metadata": {c: (None if pd.isna(row[c]) else row[c]) for c in extra_cols},
+            "metadata": extra_meta,
         }
         yield article_name, text, source_path, meta
+
+    logger.info("[cw_generate] FakeCTI scope: %d usable rows kept from %d "
+                "(TYPE=%s, dated, campaign>=%d, %d campaigns)",
+                n_kept, n_total, type_filter, min_campaign, len(kept))
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +279,7 @@ def _process_dataset(dataset_slug: str,
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
         BarColumn(),
-        TextColumn("{task.completed}/{task.total} articles"),
+        TextColumn("{task.completed}/{task.total} batches"),
         TimeElapsedColumn(),
         console=console,
     ) as progress:

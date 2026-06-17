@@ -102,8 +102,8 @@ def encode_with_backoff(embedder, texts: Sequence[str],
 # GGUF catalogue: model key -> (HF repo, filename template). The default
 # generator is Gemma E4B (README §7); Context-1 is the agentic retriever/verifier.
 _CATALOGUE: dict[str, tuple[str, str]] = {
-    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-E2B-it-{quant}.gguf"),
-    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-E4B-it-{quant}.gguf"),
+    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-e2b-it-{quant}.gguf"),
+    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-e4b-it-{quant}.gguf"),
     "gemma4-12b":     ("unsloth/gemma-4-12b-it-GGUF", "gemma-4-12b-it-{quant}.gguf"),
     "gemma4-26b-a4b": ("unsloth/gemma-4-26B-A4B-it-GGUF", "gemma-4-26B-A4B-it-{quant}.gguf"),
     "gemma4-31b":     ("unsloth/gemma-4-31B-it-GGUF", "gemma-4-31B-it-{quant}.gguf"),
