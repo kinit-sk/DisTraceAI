@@ -483,6 +483,8 @@ class Config:
         return getattr(self, name)
 
     def set(self, name: str, raw) -> None:
+        if self.is_locked(name):
+            return   # locked by a CLI argument for this run; ignore edits
         cur = getattr(self, name)
         if isinstance(cur, bool):
             val = raw if isinstance(raw, bool) else str(raw).strip().lower() in ("1", "true", "on", "yes")
@@ -496,6 +498,8 @@ class Config:
 
     def cycle(self, name: str, direction: int) -> None:
         """Toggle a bool, or advance a choice list (wraps). No-op for free fields."""
+        if self.is_locked(name):
+            return   # locked by a CLI argument for this run; ignore edits
         cur = getattr(self, name)
         if isinstance(cur, bool):
             setattr(self, name, not cur)

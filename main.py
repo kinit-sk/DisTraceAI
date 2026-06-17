@@ -8,13 +8,19 @@ Main menu
 4. Sub-narratives extraction
 5. Narrative extraction
 6. Campaigns extraction
-7. Full pipeline - Dataset compilation
 
-Items 1–6 expose two sub-menu actions:
+Steps 1-5 expose two sub-menu actions:
   • Evaluation  — run the evaluation module for that step
   • Generate    — run the generation / extraction module for that step
 
-Item 7 runs the full end-to-end pipeline.
+Campaigns extraction (6) has a four-item sub-menu instead:
+  • Verify hierarchy  — verify central claims of the existing hierarchy
+  • Deep verify       — verify central + underlying claims
+  • Evaluation        — clustering metrics against FakeCTI ground truth
+  • Generate Dataset  — run the full pipeline on MassiveSumm and export CSVs
+
+The full end-to-end dataset compilation lives under Campaigns -> Generate
+Dataset (also available non-interactively via --generate-dataset).
 """
 from __future__ import annotations
 
@@ -286,14 +292,23 @@ def _step_submenu(step: str, cfg: Config) -> None:
             return
 
         if choice == 0:
-            review_needed = bool(eval_params) or f"{step}-eval" in ui.RELEVANT
+            # Show the pre-launch review when the action has a registered
+            # parameter screen (RELEVANT key) or any params to display. An
+            # empty RELEVANT list (e.g. canonization benchmark) still shows the
+            # screen — it renders just the Launch row + description.
+            review_needed = (f"{step}-eval" in ui.RELEVANT
+                             or eval_key in ui.RELEVANT
+                             or bool(eval_params))
             if review_needed and not ui.prelaunch_review(cfg, eval_key):
                 continue
             run_eval(step, cfg)
             input("\n[done] press Enter to continue…")
 
         elif choice == 1:
-            if gen_params and not ui.prelaunch_review(cfg, gen_key):
+            review_needed = (f"{step}-generate" in ui.RELEVANT
+                             or gen_key in ui.RELEVANT
+                             or bool(gen_params))
+            if review_needed and not ui.prelaunch_review(cfg, gen_key):
                 continue
             run_generate(step, cfg)
             input("\n[done] press Enter to continue…")

@@ -180,29 +180,43 @@ def readkey() -> str:
 
 
 def arrow_menu(title: str, items: list[str], subtitle: str = "") -> int:
-    """Highlighted arrow-key menu; returns the chosen index, or -1 on Esc."""
+    """Highlighted arrow-key menu; returns the chosen index, or -1 on Esc.
+
+    Also accepts number keys (1-9) as direct shortcuts. Only redraws on a key
+    that actually changes state, so stray/unknown keys don't cause flicker.
+    """
     idx = 0
+    needs_redraw = True
     while True:
-        console.clear()
-        head = (f"[bold cyan]{title}[/bold cyan]"
-                + (f"\n[dim]{subtitle}[/dim]" if subtitle else ""))
-        console.print(Panel(head, border_style="blue"))
-        console.print()
-        for i, item in enumerate(items):
-            if i == idx:
-                console.print(f"  [bold white on blue] › {item} [/bold white on blue]")
-            else:
-                console.print(f"  [dim]  {item}[/dim]")
-        console.print("\n[dim]↑ ↓ navigate  ·  Enter select  ·  Esc back[/dim]")
+        if needs_redraw:
+            console.clear()
+            head = (f"[bold cyan]{title}[/bold cyan]"
+                    + (f"\n[dim]{subtitle}[/dim]" if subtitle else ""))
+            console.print(Panel(head, border_style="blue"))
+            console.print()
+            for i, item in enumerate(items):
+                num = f"[dim]{i + 1}.[/dim] " if i < 9 else "   "
+                if i == idx:
+                    console.print(f"  [bold white on blue] › {item} [/bold white on blue]")
+                else:
+                    console.print(f"  {num}[dim]{item}[/dim]")
+            console.print("\n[dim]↑ ↓ navigate  ·  1-9 jump  ·  Enter select  ·  Esc back[/dim]")
+            needs_redraw = False
+
         key = readkey()
         if key == "up":
-            idx = (idx - 1) % len(items)
+            idx = (idx - 1) % len(items); needs_redraw = True
         elif key == "down":
-            idx = (idx + 1) % len(items)
+            idx = (idx + 1) % len(items); needs_redraw = True
         elif key == "enter":
             return idx
         elif key == "esc":
             return -1
+        elif key.isdigit() and key != "0":
+            n = int(key) - 1
+            if n < len(items):
+                return n
+        # any other key: no-op, no redraw (avoids flicker)
 
 
 # ---------------------------------------------------------------------------
@@ -233,7 +247,14 @@ def _cat_color(key: str) -> str:
 
 
 def _edit_value(cfg, key: str) -> str:
-    """Cooked-mode prompt for a free (non-choice) field."""
+    """Cooked-mode prompt for a free (non-choice) field.
+
+    Returns a PLAIN-text status message (no Rich markup): the caller wraps the
+    message in a single colour, and a nested [red]…[/red] inside that wrapper
+    would render incorrectly.
+    """
+    if cfg.is_locked(key):
+        return "Locked by a CLI argument for this run — not editable."
     console.print(f"\n[bold]{cfg.label(key)}[/bold] — current: {cfg.get(key)}")
     try:
         raw = input("  new value (blank to keep): ").strip()
@@ -245,13 +266,7 @@ def _edit_value(cfg, key: str) -> str:
         cfg.set(key, raw)
         return f"✓ {cfg.label(key)} updated."
     except (ValueError, TypeError):
-        return f"[red]Invalid value for {cfg.label(key)}.[/red]"
-
-
-# ---------------------------------------------------------------------------
-# Description table (shown above settings in Eval / Generate / Launch screens)
-# ---------------------------------------------------------------------------
-
+        return f"Invalid value for {cfg.label(key)} — keeping previous."
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +326,7 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
         hint = ("↑ ↓ navigate  ·  ← →  cycle  ·  Enter  "
                 + ("launch / " if allow_launch else "") + "select / edit  ·  "
                 + ("R reset  ·  " if not allow_launch else "") + "Esc "
-                + ("cancel" if allow_launch else "save & back"))
+                + ("cancel (keeps edits)" if allow_launch else "save & back"))
         console.print(Panel(
             f"[bold cyan]{title}[/bold cyan]\n[dim]{hint}[/dim]",
             border_style="blue"))
@@ -441,7 +456,20 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
             elif key == "enter":
                 message = _edit_value(cfg, cur)
             elif key == "r" and not allow_launch:
-                cfg.reset(); message = "✓ Settings reset to defaults."
+                if _confirm("Reset ALL settings to defaults?"):
+                    cfg.reset()
+                    message = "✓ Settings reset to defaults."
+                else:
+                    message = "Reset cancelled."
+
+
+def _confirm(question: str) -> bool:
+    """Inline y/N confirmation for destructive actions. Defaults to No."""
+    try:
+        ans = input(f"\n  {question} [y/N]: ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    return ans in ("y", "yes")
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +509,8 @@ def prelaunch_review(cfg, action: str) -> bool:
 
     The Launch row's right panel shows prior-run stats (eval scores and/or KB
     counts), or 'Not computed yet' if no prior run exists for this step.
-    Dynamic method-specific params expand inline when nar_extractor changes.
+    Dynamic method-specific params expand inline when a selector field
+    (nar_extractor / camp_extractor) changes.
     """
     base_keys = RELEVANT.get(action, cfg.field_names())
     base_keys = [k for k in base_keys if k in cfg.field_names()]

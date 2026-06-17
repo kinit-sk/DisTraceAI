@@ -30,7 +30,7 @@ from rich.progress import (
 )
 
 from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
-from core.models import make_generator
+from core.models import make_generator, close_generator
 
 logger  = logging.getLogger(__name__)
 console = Console()
@@ -202,5 +202,5 @@ def canonize(
             if ds_summary:
                 summary.setdefault(dataset_slug, {})[detector_slug] = ds_summary
 
-    del llm
+    close_generator(llm)
     return summary

@@ -102,8 +102,8 @@ def encode_with_backoff(embedder, texts: Sequence[str],
 # GGUF catalogue: model key -> (HF repo, filename template). The default
 # generator is Gemma E4B (README §7); Context-1 is the agentic retriever/verifier.
 _CATALOGUE: dict[str, tuple[str, str]] = {
-    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-E2B-it-{quant}.gguf"),
-    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-E4B-it-{quant}.gguf"),
+    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-e2b-it-{quant}.gguf"),
+    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-e4b-it-{quant}.gguf"),
     "gemma4-12b":     ("unsloth/gemma-4-12b-it-GGUF", "gemma-4-12b-it-{quant}.gguf"),
     "gemma4-26b-a4b": ("unsloth/gemma-4-26B-A4B-it-GGUF", "gemma-4-26B-A4B-it-{quant}.gguf"),
     "gemma4-31b":     ("unsloth/gemma-4-31B-it-GGUF", "gemma-4-31B-it-{quant}.gguf"),
@@ -151,6 +151,18 @@ class LlamaGenerator:
         last_exc: Exception | None = None
         cache_dir = Path("models")
         cache_dir.mkdir(exist_ok=True)
+
+        # Only these errors are sensitive to the GPU layer count; stepping down
+        # n_gpu_layers can fix them. A genuine "failed to load model from file"
+        # (missing/corrupt GGUF) fails identically at every layer count, so on a
+        # FIRST attempt it must NOT trigger the ladder. But once a VRAM failure
+        # has occurred, a subsequent "failed to load model from file" is usually
+        # fallout from the half-built llama.cpp state, so we keep retrying lower.
+        vram_markers = ("out of memory", "cuda", "failed to create llama_context",
+                        "ggml_backend", "cublas", "device memory")
+        file_markers = ("failed to load model", "failed to load model from file")
+        seen_vram = False
+
         for n_gpu in (-1, 32, 16, 0):   # back off GPU offload under VRAM pressure
             try:
                 self.llm = Llama.from_pretrained(
@@ -162,14 +174,32 @@ class LlamaGenerator:
                     logger.warning("[gen] loaded with n_gpu_layers=%d (VRAM pressure)", n_gpu)
                 return
             except Exception as exc:
+                last_exc = exc
                 msg = str(exc).lower()
-                if any(k in msg for k in ("failed to load model", "out of memory", "cuda",
-                                          "failed to create llama_context")):
-                    logger.warning("[gen] n_gpu_layers=%d failed (%s); retrying lower", n_gpu, exc)
-                    last_exc = exc
+                # Free the half-constructed model now so its (buggy) __del__ runs
+                # inside this handler and releases VRAM before the next attempt,
+                # instead of firing at an arbitrary later GC.
+                self.llm = None
+                import gc
+                gc.collect()
+                is_vram = any(k in msg for k in vram_markers)
+                is_file = any(k in msg for k in file_markers)
+                if is_vram:
+                    seen_vram = True
+                # Retry lower on a VRAM error, or on a file error that is
+                # plausibly fallout from a prior VRAM failure this run.
+                if is_vram or (is_file and seen_vram):
+                    logger.warning("[gen] n_gpu_layers=%d failed (%s); retrying with "
+                                   "fewer layers", n_gpu, exc)
                     continue
-                raise
-        raise RuntimeError(f"[gen] could not load {filename} at any GPU layer count: {last_exc}")
+                # A first-attempt file error (or any other error) is not
+                # layer-count-sensitive — fail fast with context.
+                raise RuntimeError(
+                    f"[gen] failed to load {filename} from {repo} "
+                    f"(n_gpu_layers={n_gpu}): {exc}") from exc
+        raise RuntimeError(
+            f"[gen] could not load {filename} from {repo} at any GPU layer "
+            f"count (last error: {last_exc})")
 
     def __call__(self, system: str, user: str, *, temperature: float | None = None,
                  max_tokens: int = 256, thinking: bool = False) -> str:
@@ -182,6 +212,38 @@ class LlamaGenerator:
             max_tokens=max_tokens, top_p=0.8, top_k=20, min_p=0.0,
             presence_penalty=1.5, repeat_penalty=1.0)
         return resp["choices"][0]["message"]["content"].strip()
+
+    def close(self) -> None:
+        """Release the model and free GPU VRAM deterministically.
+
+        `del generator` only drops the Python reference and leaves freeing to a
+        later GC (which also triggers llama-cpp-python's buggy __del__). In a
+        multi-step run (e.g. gen_dataset) the next step's model would otherwise
+        load while this one still occupies VRAM. Call this between steps.
+        """
+        llm = getattr(self, "llm", None)
+        if llm is not None:
+            close = getattr(llm, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except Exception as exc:                # pragma: no cover - runtime
+                    logger.debug("[gen] llm.close() raised (ignored): %s", exc)
+            self.llm = None
+        import gc
+        gc.collect()
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except Exception:
+            pass
+
+    def __enter__(self) -> "LlamaGenerator":
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self.close()
 
 
 class ServerGenerator:
@@ -216,6 +278,10 @@ class ServerGenerator:
         r = requests.post(f"{self.base_url}/chat/completions", json=payload, timeout=self.timeout)
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
+
+    def close(self) -> None:
+        """No-op: the server owns the model; nothing to free in-process."""
+        return None
 
 
 def generator_is_concurrent(generate) -> bool:
@@ -365,6 +431,31 @@ class LlamaPool:
             return gen(system, user, **kw)
         finally:
             self._free.put(gen)
+
+    def close(self) -> None:
+        """Close every worker, freeing all pooled models' VRAM."""
+        for gen in self.instances:
+            close = getattr(gen, "close", None)
+            if callable(close):
+                close()
+        self.instances = []
+
+
+def close_generator(generate) -> None:
+    """Safely close any generator (LlamaGenerator/LlamaPool/ServerGenerator/None).
+
+    Replaces bare `del llm`, which only drops the reference and defers VRAM
+    release (and the buggy llama-cpp __del__) to an arbitrary later GC. Use this
+    between pipeline steps so each model's VRAM is freed before the next loads.
+    """
+    if generate is None:
+        return
+    close = getattr(generate, "close", None)
+    if callable(close):
+        try:
+            close()
+        except Exception as exc:                        # pragma: no cover - runtime
+            logger.debug("[gen] close_generator raised (ignored): %s", exc)
 
 
 # ---- CW detector (HF sequence-classification) -----------------------------
