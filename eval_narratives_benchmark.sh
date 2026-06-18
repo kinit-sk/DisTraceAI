@@ -30,8 +30,6 @@
 # torn down afterwards). Pool workers are GPU-only — if VRAM is tight the pool
 # simply uses fewer workers rather than silently falling back to CPU. To cap
 # the pool manually (e.g. when sharing a node) set DISTRACE_NODERAG_WORKERS=N.
-# On a single-GPU node the 4B embedder shares GPU 0 with the LLM; on a
-# multi-GPU node export DISTRACE_EMBEDDER_DEVICE=cuda:1 to free GPU 0 fully.
 # ---------------------------------------------------------------------------
 
 module load GCC/13.2.0
@@ -50,10 +48,6 @@ QUANT=${QUANT:-Q4_K_M}
 HYPOTHETICALS=${HYPOTHETICALS:-10}               # matches the paper's n=10
 SPLIT=${SPLIT:-test}                             # dev | test
 DOMAIN=${DOMAIN:-all}                            # all | CC | URW
-
-# On a multi-GPU node, give the LLM all of GPU 0 and pin the embedder to GPU 1.
-# Comment out on a single-GPU node.
-# export DISTRACE_EMBEDDER_DEVICE=cuda:1
 
 echo "[benchmark] detector=$DETECTOR domain=$DOMAIN split=$SPLIT"
 echo "[benchmark] embedder=$EMBEDDER generator=$GENERATOR ($QUANT) hypotheticals=$HYPOTHETICALS"

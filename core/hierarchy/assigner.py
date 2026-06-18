@@ -245,14 +245,6 @@ class RetrievalAssigner:
         self._unassigned[sn.id] = sn
         return self._try_form_new_narrative(sn)
 
-    def assign_all(self, sub_narratives: list[SubNarrative]) -> list[Narrative]:
-        assigned = []
-        for sn in sub_narratives:
-            nar = self.assign(sn)
-            if nar is not None:
-                assigned.append(nar)
-        return assigned
-
     def remove_narrative(self, nar_id: str) -> None:
         """Delete a narrative everywhere: in-memory cache, corpus, and KB."""
         self.narratives.pop(nar_id, None)

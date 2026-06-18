@@ -109,9 +109,12 @@ RELEVANT: dict[str, list[str]] = {
     "claim-detection":         ["detector"],
     "claim-canonization":      ["canon_detector", "canon_generator", "canon_quantization"],
     "claim-canonization-eval": [],
-    "sub-narratives":          ["subnar_detector", "subnar_embedder", "subnar_generator",
+    "sub-narratives-eval":     ["subnar_detector", "subnar_embedder", "subnar_generator",
                                 "subnar_quantization", "subnar_min_similarity",
                                 "subnar_min_claims", "subnar_hypotheticals"],
+    "sub-narratives-generate": ["subnar_detector", "subnar_embedder", "subnar_generator",
+                                "subnar_quantization", "subnar_min_similarity",
+                                "subnar_min_claims"],
     "narratives-eval":         _NAR_COMMON + ["nar_eval_split", "nar_eval_domain"],
     "narratives-generate":     _NAR_COMMON + _NAR_GENERATE_EXTRA,
     # Veracity
@@ -522,11 +525,6 @@ LAUNCH_DESC: dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Top-level screens
 # ---------------------------------------------------------------------------
-
-def settings_menu(cfg) -> None:
-    edit_settings(cfg, cfg.field_names(), "Settings",
-                  allow_launch=False, save_on_exit=True)
-
 
 def prelaunch_review(cfg, action: str) -> bool:
     """Pre-launch parameter review for an action.

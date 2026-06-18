@@ -66,7 +66,7 @@ case "$MODE" in
         ;;
     desktop)
         echo "[setup] Desktop (GPU) install"
-        conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
+        # Assumes a working CUDA toolkit + nvcc on PATH (or conda-installed).
         export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
         export CUDACXX="${CUDA_HOME}/bin/nvcc"
         install_llama_cpp_cuda

@@ -15,15 +15,10 @@ def get_device() -> str:
 
 
 def get_embedder_device() -> str:
-    """Pin the embedder to its own GPU when more than one is available, so the 4B
-    embedder never competes with the LLM for VRAM. Override via
-    DISTRACE_EMBEDDER_DEVICE."""
+    """Return the device for the embedder. Override via DISTRACE_EMBEDDER_DEVICE."""
     override = os.environ.get("DISTRACE_EMBEDDER_DEVICE")
     if override:
         return override
-    import torch
-    if torch.cuda.is_available() and torch.cuda.device_count() > 1:
-        return f"cuda:{torch.cuda.device_count() - 1}"
     return get_device()
 
 
@@ -92,18 +87,30 @@ def encode_with_backoff(embedder, texts: Sequence[str],
                 break
             bs = max(min_batch_size, bs // 2)
             logger.warning("[models] CUDA OOM during encode; retry at batch_size=%d", bs)
-    logger.warning("[models] GPU encode failed at min batch; falling back to CPU "
-                   "(set DISTRACE_EMBEDDER_DEVICE=cuda:1 on a 2-GPU node to avoid this)")
+    logger.warning("[models] GPU encode failed at min batch; falling back to CPU")
+    # Before encode(device="cpu"), explicitly move the model off the GPU.
+    # SentenceTransformers' encode() calls self.to(device) internally, which
+    # raises "CUDA error: invalid argument" when the model's CUDA context is in
+    # an error state after OOM. Moving to CPU first clears that state.
+    try:
+        embedder.to("cpu")
+        import gc; gc.collect()
+        try:
+            import torch as _t; _t.cuda.empty_cache()
+        except Exception:
+            pass
+    except Exception as move_exc:
+        logger.debug("[models] embedder.to(cpu) raised (ignored): %s", move_exc)
     return embedder.encode(list(texts), batch_size=min(16, initial_batch_size),
-                           convert_to_numpy=True, show_progress_bar=show_progress, device="cpu")
+                           convert_to_numpy=True, show_progress_bar=show_progress)
 
 
 # ---- generator (llama.cpp) ------------------------------------------------
 # GGUF catalogue: model key -> (HF repo, filename template). The default
 # generator is Gemma E4B (README §7); Context-1 is the agentic retriever/verifier.
 _CATALOGUE: dict[str, tuple[str, str]] = {
-    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-e2b-it-{quant}.gguf"),
-    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-e4b-it-{quant}.gguf"),
+    "gemma4-e2b":     ("unsloth/gemma-4-E2B-it-GGUF", "gemma-4-E2B-it-{quant}.gguf"),
+    "gemma4-e4b":     ("unsloth/gemma-4-E4B-it-GGUF", "gemma-4-E4B-it-{quant}.gguf"),
     "gemma4-12b":     ("unsloth/gemma-4-12b-it-GGUF", "gemma-4-12b-it-{quant}.gguf"),
     "gemma4-26b-a4b": ("unsloth/gemma-4-26B-A4B-it-GGUF", "gemma-4-26B-A4B-it-{quant}.gguf"),
     "gemma4-31b":     ("unsloth/gemma-4-31B-it-GGUF", "gemma-4-31B-it-{quant}.gguf"),
@@ -152,9 +159,9 @@ def _warn_if_cpu_only(llm, n_gpu: int, main_gpu: int) -> None:
             "--no-cache-dir llama-cpp-python")
     elif n_gpu == 0:
         logger.warning(
-            "[gen] generator loaded with n_gpu_layers=0 (CPU only) on cuda:%d "
-            "after VRAM back-off - expect slow generation. Free VRAM or lower "
-            "the worker count (DISTRACE_NODERAG_WORKERS).", main_gpu)
+            "[gen] generator loaded with n_gpu_layers=0 (CPU only) after VRAM "
+            "back-off - expect slow generation. Free VRAM or lower "
+            "the worker count (DISTRACE_NODERAG_WORKERS).")
 
 
 class LlamaGenerator:
@@ -340,7 +347,7 @@ def parallel_map(fn, items, max_workers: int = 1, description: str | None = None
     server-backed generator. `max_workers<=1` runs sequentially with no thread
     overhead. Progress is shown via `core.progress.track` when `description` set.
     """
-    from core.progress import track
+    from rich.progress import track
     items = list(items)
     if max_workers <= 1 or len(items) <= 1:
         return [fn(x) for x in (track(items, description) if description else items)]
@@ -421,13 +428,10 @@ def make_generator(model_key: str, quant: str, *, server_url: str | None = None,
 
 
 def _visible_gpus() -> list[int]:
-    override = os.environ.get("DISTRACE_GENERATOR_GPUS")
-    if override:
-        return [int(x) for x in override.replace(",", " ").split()]
+    """Always returns [0] (single GPU) or [] when CUDA is unavailable."""
     try:
         import torch
-        n = torch.cuda.device_count()
-        return list(range(n)) if n else []
+        return [0] if torch.cuda.is_available() else []
     except Exception:
         return []
 
@@ -452,48 +456,56 @@ def _gguf_size_bytes(model_key: str, quant: str) -> int:
 
 
 def _free_vram_per_gpu(gpus: list[int]) -> dict[int, int]:
-    """Return {gpu_index: free_bytes} measured AFTER current allocations.
+    """Return {0: free_bytes} for GPU 0, measured AFTER current allocations.
 
     Uses torch.cuda.mem_get_info so the figure reflects the embedder + any
     already-resident generator instance. Empty dict when CUDA is unavailable.
+    The gpus argument is accepted for API compatibility but ignored — always
+    queries GPU 0 only (single-GPU assumption).
     """
-    out: dict[int, int] = {}
     try:
         import torch
         if not torch.cuda.is_available():
             return {}
-        for g in (gpus or range(torch.cuda.device_count())):
-            try:
-                free, _total = torch.cuda.mem_get_info(g)
-                out[int(g)] = int(free)
-            except Exception:
-                pass
+        free, _total = torch.cuda.mem_get_info(0)
+        return {0: int(free)}
     except Exception:
         return {}
-    return out
 
 
 def plan_noderag_workers(model_key: str, quant: str, *,
                          gpus: list[int] | None = None,
                          ctx: int = 16384,
                          ceiling: int = 8) -> list[int]:
-    """Decide how many extra NodeRAG worker contexts to spawn and on which GPUs.
+    """Decide how many extra NodeRAG worker contexts to spawn on GPU 0.
 
     Strategy (auto, no manual tuning - overridable via DISTRACE_NODERAG_WORKERS):
       1. Estimate one worker's footprint = GGUF size x 1.15 (weights + overhead)
-         + a KV-cache margin scaled by ctx. Falls back to a conservative 6 GiB
-         when the GGUF size cannot be read.
-      2. Measure free VRAM per visible GPU (after the embedder + the first
-         generator are already resident).
-      3. Pack floor(free / per_worker) workers onto each GPU, returning a flat
-         list of GPU indices (one entry per worker to spawn) up to `ceiling`.
+         + a KV-cache margin scaled by ctx + ~1 GiB CUDA-context overhead. Falls
+         back to a conservative 6 GiB when the GGUF size cannot be read.
+      2. Measure free VRAM on GPU 0 (after the embedder + the first generator
+         are already resident).
+      3. Return floor((free - reserve) / per_worker) workers, all on GPU 0,
+         capped at `ceiling`.
 
-    Returns a list of GPU indices, e.g. [0, 0, 1, 1] = four workers, two per GPU.
+    Returns a list of GPU indices (all 0), e.g. [0, 0, 0] = three workers.
     An empty list means "no extra workers" (single-context / CPU fallback).
+
+    DISTRACE_NODERAG_WORKERS=N forces exactly N workers (capped at `ceiling`),
+    bypassing the VRAM estimate entirely — the override exists precisely for
+    when the user knows their VRAM better than the heuristic. N=0 disables the
+    pool. LlamaPool.from_placement loads incrementally and tolerates an
+    over-estimate, so an aggressive override degrades gracefully.
     """
     override = os.environ.get("DISTRACE_NODERAG_WORKERS")
-    gpus = gpus if gpus is not None else _visible_gpus()
+    if override is not None:
+        try:
+            want = max(0, int(override))
+        except ValueError:
+            want = 0
+        return [0] * min(want, ceiling)
 
+    gpus = gpus if gpus is not None else _visible_gpus()
     free = _free_vram_per_gpu(gpus)
     if not free:
         return []   # no CUDA visibility - single context only
@@ -503,43 +515,16 @@ def plan_noderag_workers(model_key: str, quant: str, *,
     kv_margin = int((ctx / 16384) * 1.5 * 1024**3)   # ~1.5 GiB at 16k ctx
     # Each llama.cpp context also reserves a CUDA context + compute buffers that
     # the GGUF size does not account for (~1 GiB). Counting it keeps the planner
-    # from over-packing a GPU and forcing later workers off it.
+    # from over-packing the GPU and forcing later workers into an OOM.
     overhead = 1 * 1024**3
     per_worker = max(weights + kv_margin + overhead, 1)
-    # Keep one worker's worth of headroom free per GPU so fragmentation / other
+    # Keep one worker's worth of headroom free so fragmentation / other
     # processes don't push the last worker into an OOM.
     reserve = per_worker
 
-    if override is not None:
-        try:
-            want = max(0, int(override))
-        except ValueError:
-            want = 0
-        usable = [g for g in (gpus or sorted(free)) if free.get(g, 0) > per_worker]
-        if not usable:
-            return []
-        return [usable[i % len(usable)] for i in range(min(want, ceiling))]
-
-    # Auto: floor((free - reserve) / per_worker) per GPU (the reserve leaves a
-    # safety margin), then INTERLEAVE across GPUs so the ceiling is distributed
-    # evenly rather than packing the first GPU to capacity and starving the rest.
-    capacity = {g: max(0, int((free.get(g, 0) - reserve) // per_worker))
-                for g in (gpus or sorted(free))}
-    plan: list[int] = []
-    order = [g for g in (gpus or sorted(free)) if capacity.get(g, 0) > 0]
-    round_no = 0
-    while order and len(plan) < ceiling:
-        progressed = False
-        for g in order:
-            if round_no < capacity[g]:
-                plan.append(g)
-                progressed = True
-                if len(plan) >= ceiling:
-                    break
-        round_no += 1
-        if not progressed:
-            break
-    return plan[:ceiling]
+    # floor((free_gpu0 - reserve) / per_worker) workers, all on GPU 0.
+    n = max(0, int((free.get(0, 0) - reserve) // per_worker))
+    return [0] * min(n, ceiling)
 
 
 class LlamaPool:
@@ -559,24 +544,20 @@ class LlamaPool:
 
     concurrent = True
 
-    def __init__(self, model_key: str, quant: str, n_workers: int, *,
-                 gpus: list[int] | None = None, **kw) -> None:
+    def __init__(self, model_key: str, quant: str, n_workers: int, **kw) -> None:
         import queue
         self.n_workers = max(1, int(n_workers))
-        gpus = gpus if gpus is not None else _visible_gpus()
         self._free: "queue.Queue" = queue.Queue()
         self.instances: list = []
         for i in range(self.n_workers):
             inst_kw = dict(kw)
-            if gpus:
-                inst_kw["main_gpu"] = gpus[i % len(gpus)]
-            logger.info("[gen] LlamaPool: loading worker %d/%d%s", i + 1, self.n_workers,
-                        f" on cuda:{inst_kw['main_gpu']}" if gpus else "")
+            inst_kw.setdefault("main_gpu", 0)
+            logger.info("[gen] LlamaPool: loading worker %d/%d on cuda:0",
+                        i + 1, self.n_workers)
             gen = LlamaGenerator(model_key, quant, **inst_kw)
             self.instances.append(gen)
             self._free.put(gen)
-        logger.info("[gen] LlamaPool ready: %d workers across GPUs %s", self.n_workers,
-                    gpus or "default")
+        logger.info("[gen] LlamaPool ready: %d workers on cuda:0", self.n_workers)
 
     @classmethod
     def from_placement(cls, model_key: str, quant: str, placement: list[int],
@@ -584,7 +565,7 @@ class LlamaPool:
         """Build a pool from an explicit per-worker GPU placement list.
 
         ``placement`` is a list of GPU indices, one entry per worker to spawn
-        (e.g. [0, 0, 1] = two workers on GPU 0, one on GPU 1). Loading is
+        (e.g. [0, 0, 0] = three workers on GPU 0). Loading is
         INCREMENTAL and OOM-TOLERANT: if a worker fails to load (e.g. the VRAM
         estimate was slightly optimistic, or another process grabbed memory),
         loading stops and the pool keeps whatever workers succeeded. This makes
@@ -647,10 +628,3 @@ def close_generator(generate) -> None:
             close()
         except Exception as exc:                        # pragma: no cover - runtime
             logger.debug("[gen] close_generator raised (ignored): %s", exc)
-
-
-# ---- CW detector (HF sequence-classification) -----------------------------
-def make_cw_detector(model_path: str):
-    """Load the fine-tuned check-worthiness classifier (mdb-multicw / xlm-multicw)."""
-    from core.claims.cw_detector import CheckWorthinessDetector
-    return CheckWorthinessDetector(model_path)

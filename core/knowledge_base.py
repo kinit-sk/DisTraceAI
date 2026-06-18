@@ -84,23 +84,16 @@ class KnowledgeBase:
 
     def load_article(self, article_id: str,
                      dataset: str | None = None) -> "Article | None":
-        # Try dataset-specific path, then fall back to scanning all datasets
+        # Try dataset-specific path first, then scan known datasets.
         if dataset:
             path = self._articles_dir(dataset) / f"{article_id}.json"
             if path.exists():
                 return Article.from_dict(self._read(path))
             return None
-        # Scan known datasets
         for ds in ("polynarrative", "fake-cti", "massivesumm"):
             path = self._articles_dir(ds) / f"{article_id}.json"
             if path.exists():
                 return Article.from_dict(self._read(path))
-        # Legacy filename pattern (polynarrative old format: domain_id.json)
-        for p in self._articles_dir(None).glob(f"*_{article_id}.json"):
-            try:
-                return Article.from_dict(self._read(p))
-            except Exception:
-                pass
         return None
 
     def articles(self, dataset: str | None = None) -> "list[Article]":

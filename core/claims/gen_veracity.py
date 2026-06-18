@@ -356,8 +356,37 @@ class _CompositeEvidenceTools:
 # Build evidence tools from config + MultiClaim data
 # ---------------------------------------------------------------------------
 
-def _load_multiclaim(path: Path, text_col: str, label_col: str) -> list[dict]:
-    """Load and filter MultiClaim CSV to True/False/Disputed entries."""
+def _parse_ratings_cell(val):
+    """Extract first rating from a MultiClaim ratings cell (Python-repr list).
+
+    fact_checks.csv stores ratings as Python-repr lists like
+    ["true"], ["false", "mostly true"], or ["not enough experts"].
+    """
+    import ast as _ast
+    val = str(val).strip()
+    if not val or val in ("nan", "[]", ""):
+        return ""
+    try:
+        parsed = _ast.literal_eval(val)
+        if isinstance(parsed, (list, tuple)) and parsed:
+            return str(parsed[0]).strip().lower()
+    except Exception:
+        pass
+    # Fallback: strip brackets, take the first comma-delimited token.
+    token = val.strip("[]").split(",")[0].strip()
+    token = token.strip("'")
+    token = token.strip('"')
+    return token.lower()
+
+
+def _load_multiclaim(path, text_col, label_col):
+    """Load and filter MultiClaim CSV to True/False/Disputed entries.
+
+    Handles two layouts:
+      * A pre-joined CSV with explicit text and label columns.
+      * fact_checks.csv (published dataset): claim text column + ratings column
+        containing Python-repr lists such as ["true"] or ["not enough experts"].
+    """
     if not path.exists():
         logger.warning("[ver] MultiClaim not found at %s", path)
         return []
@@ -367,17 +396,23 @@ def _load_multiclaim(path: Path, text_col: str, label_col: str) -> list[dict]:
         df.columns = [c.strip().lower() for c in df.columns]
         tc = text_col.lower()
         lc = label_col.lower()
+
+        if tc not in df.columns:
+            for alt in ("claim", "claim_en", "text", "statement"):
+                if alt in df.columns:
+                    tc = alt; break
+
+        # ratings is the native column in fact_checks.csv.
+        if lc not in df.columns:
+            for alt in ("label", "verdict", "ratings", "rating"):
+                if alt in df.columns:
+                    lc = alt; break
+
         if tc not in df.columns or lc not in df.columns:
-            available = list(df.columns)
             logger.warning("[ver] MultiClaim missing columns %r/%r; have %s",
-                           tc, lc, available)
-            # Try common alternatives
-            for alt_t in ("claim", "text", "statement"):
-                if alt_t in df.columns:
-                    tc = alt_t; break
-            for alt_l in ("label", "verdict", "rating"):
-                if alt_l in df.columns:
-                    lc = alt_l; break
+                           tc, lc, list(df.columns))
+            return []
+
         _label_map = {
             "true": "True", "mostly true": "True", "correct": "True",
             "false": "False", "mostly false": "False", "incorrect": "False",
@@ -385,20 +420,35 @@ def _load_multiclaim(path: Path, text_col: str, label_col: str) -> list[dict]:
             "disputed": "Disputed", "half-true": "Disputed",
             "mixed": "Disputed", "unverified": "Disputed",
         }
-        df["_label"] = df[lc].astype(str).str.strip().str.lower().map(_label_map)
-        df["_text"]  = df[tc].astype(str).str.strip()
+
+        if lc == "ratings":
+            df["_label"] = df[lc].apply(_parse_ratings_cell).map(_label_map)
+        else:
+            df["_label"] = df[lc].astype(str).str.strip().str.lower().map(_label_map)
+
+        df["_text"] = df[tc].astype(str).str.strip()
         df = df.dropna(subset=["_label"])
         df = df[df["_text"] != ""]
-        id_col = "id" if "id" in df.columns else None
+
+        if "fact_check_id" in df.columns:
+            id_col = "fact_check_id"
+        elif "id" in df.columns:
+            id_col = "id"
+        else:
+            id_col = None
+
+        # Use to_dict("records") — fully vectorised, ~100x faster than iterrows
+        # on large CSVs (e.g. 435k-row MultiClaim fact_checks.csv).
+        if id_col:
+            df["_id"] = df[id_col].astype(str)
+        else:
+            df["_id"] = df.index.astype(str)
         records = [
-            {
-                "id":    str(row[id_col]) if id_col else str(idx),
-                "text":  row["_text"],
-                "label": row["_label"],
-            }
-            for idx, row in df.iterrows()
+            {"id": r["_id"], "text": r["_text"], "label": r["_label"]}
+            for r in df[["_id", "_text", "_label"]].to_dict("records")
         ]
-        logger.info("[ver] MultiClaim: %d usable records loaded", len(records))
+        logger.info("[ver] MultiClaim: %d usable records loaded from %s "
+                    "(text=%s, label=%s)", len(records), path.name, tc, lc)
         return records
     except Exception as exc:
         logger.error("[ver] failed to load MultiClaim: %s", exc)

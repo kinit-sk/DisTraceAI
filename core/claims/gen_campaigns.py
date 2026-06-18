@@ -162,11 +162,7 @@ def compute_coordination(campaign: Campaign, kb: KnowledgeBase,
             ac = kb.load_article_claims(dataset, det_slug, sn.article_name)
             if ac is None:
                 continue
-            art = None
-            try:
-                art = kb.load_article(sn.article_name)
-            except Exception:
-                pass
+            art = kb.load_article(sn.article_name, dataset=dataset)
 
             if art and art.published_at:
                 all_dates.append(art.published_at)

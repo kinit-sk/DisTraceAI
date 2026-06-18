@@ -297,10 +297,13 @@ class Config:
     )
 
     ver_multiclaim_label_col: str = _f(
-        "label",
+        "ratings",
         "MultiClaim label column",
         "Column name in the MultiClaim CSV that contains the verdict label "
-        "(filtered to True/False/Disputed).",
+        "(filtered to True/False/Disputed). When the configured column is not "
+        "found, the loader tries label, verdict, ratings, rating in order. "
+        "The published fact_checks.csv uses a ratings column with Python-repr "
+        "lists (e.g. ['true']) which the loader parses automatically.",
     )
 
     # ------------------------------------------------------------------ #
