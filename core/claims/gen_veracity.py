@@ -103,7 +103,7 @@ class _MultiClaimTools:
                  kb: KnowledgeBase | None = None,
                  embedder_name: str = "") -> None:
         """
-        records      : [{"id": str, "text": str, "label": str}, ...]
+        records      : [{"id": str, "text": str, "ratings": str}, ...]
         embedder     : SentenceTransformer-compatible model
         exclude_ids  : claim IDs to skip during search (leave-one-out)
         kb           : KnowledgeBase instance for reading/writing the cache
@@ -111,7 +111,7 @@ class _MultiClaimTools:
         """
         self._records     = records
         self._exclude     = exclude_ids or set()
-        self._id_to_text  = {r["id"]: f"{r['text']} [{r['label']}]"
+        self._id_to_text  = {r["id"]: f"{r['text']} [{r['ratings']}]"
                              for r in records}
         self._embedder      = embedder
         self._embedder_name = embedder_name
@@ -155,7 +155,7 @@ class _MultiClaimTools:
         # Cache miss — build the index, then persist
         logger.info("[ver] Building MultiClaim embedding index "
                     "(%d records)…", len(self._records))
-        texts      = [f"{r['text']} [{r['label']}]" for r in self._records]
+        texts      = [f"{r['text']} [{r['ratings']}]" for r in self._records]
         self._ids  = [r["id"] for r in self._records]
 
         # Encode in one batched call with a Rich progress bar
@@ -470,7 +470,7 @@ def build_evidence_tools(cfg, embedder, *,
     sources = []
 
     if "multiclaim" in enabled:
-        multiclaim_path = Path("data") / "MultiClaim" / "multiclaim.csv"
+        multiclaim_path = Path("data") / "MultiClaim" / "fact_checks.csv"
         if not multiclaim_path.exists():
             for p in Path("data/MultiClaim").glob("*.csv") if Path("data/MultiClaim").exists() else []:
                 multiclaim_path = p

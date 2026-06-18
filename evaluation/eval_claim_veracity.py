@@ -46,7 +46,7 @@ logger  = logging.getLogger(__name__)
 console = Console(record=True)
 
 _LABELS = ["True", "False", "Disputed"]
-_MULTICLAIM_PATH = Path("data/MultiClaim/multiclaim.csv")
+_MULTICLAIM_PATH = Path("data/MultiClaim/fact_checks.csv")
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ def main(cfg=None) -> None:
     if not records:
         console.print(
             "[red]MultiClaim data not found or empty.[/red] "
-            "Place multiclaim.csv under data/MultiClaim/.")
+            "Place fact_checks.csv under data/MultiClaim/.")
         return
 
     console.print(
