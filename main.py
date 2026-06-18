@@ -39,8 +39,8 @@ logging.basicConfig(level=logging.WARNING,
 STEPS = [
     "claim-detection",
     "claim-canonization",
-    "claim-veracity",
     "sub-narratives",
+    "claim-veracity",
     "narratives",
     "campaigns",
 ]
@@ -48,8 +48,8 @@ STEPS = [
 STEP_LABELS = {
     "claim-detection":    "Claim detection",
     "claim-canonization": "Claim canonization",
-    "claim-veracity":     "Claim veracity estimation",
     "sub-narratives":     "Sub-narratives extraction",
+    "claim-veracity":     "Claim veracity estimation",
     "narratives":         "Narrative extraction",
     "campaigns":          "Campaigns extraction",
 }
@@ -58,10 +58,10 @@ STEP_LABELS = {
 STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
     "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
-    "claim-veracity":     [],
     "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
                            "subnar_quantization", "subnar_min_similarity",
                            "subnar_min_claims"],
+    "claim-veracity":     [],
     "narratives":         ["nar_detector", "nar_extractor", "nar_dense_repr",
                            "nar_embedder", "nar_generator", "nar_quantization",
                            "nar_assign_threshold", "nar_min_new_size",
@@ -87,8 +87,8 @@ STEP_EVAL_PARAMS: dict[str, list[str]] = {
 EVAL_MODULES: dict[str, str] = {
     "claim-detection":    "evaluation.eval_claim_detection",
     "claim-canonization": "evaluation.eval_claim_canonization",
-    "claim-veracity":     "evaluation.eval_claim_veracity",
     "sub-narratives":     "evaluation.eval_sub_narratives",
+    "claim-veracity":     "evaluation.eval_claim_veracity",
     "narratives":         "evaluation.eval_narratives",
     "campaigns":          "evaluation.eval_campaigns",
 }
