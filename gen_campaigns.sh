@@ -22,7 +22,7 @@ DISTRACE=$HOME/distrace
 python $DISTRACE/main.py \
   --generate claim-veracity \
   --ver-generator gemma4-e2b \
-  --ver-quantization Q4_K_M \
+  --ver-precision awq4 \
   --ver-sources multiclaim,wikipedia,web
 
 # Campaign extraction
@@ -32,7 +32,7 @@ python $DISTRACE/main.py \
   --camp-extractor dense \
   --camp-embedder Qwen/Qwen3-Embedding-4B \
   --camp-generator qwen3.5-2b \
-  --camp-quantization Q4_K_M \
+  --camp-precision awq4 \
   --camp-assign-threshold 0.50 \
   --camp-min-new-size 2 \
   --camp-new-threshold 0.70 \

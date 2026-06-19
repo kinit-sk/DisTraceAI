@@ -152,7 +152,7 @@ def _process_dataset(
 def canonize(
     detector_path: str,
     generator_key: str,
-    quantization: str,
+    precision: str,
     kb: KnowledgeBase | None = None,
 ) -> dict:
     """Decontextualize and translate CW claims produced by *detector_path*.
@@ -168,8 +168,8 @@ def canonize(
         One of the six supported model keys:
         ``qwen3.5-2b`` / ``qwen3.5-4b`` / ``qwen3.5-9b`` /
         ``gemma4-e2b`` / ``gemma4-e4b`` / ``gemma4-12b``.
-    quantization:
-        GGUF quantization: ``Q4_K_M`` / ``Q6_K`` / ``Q8_0``.
+    precision:
+        Model precision: ``awq4`` (4-bit) / ``bf16`` (16-bit).
     kb:
         Knowledge-base instance.  Defaults to ``KnowledgeBase("knowledge")``.
 
@@ -190,9 +190,9 @@ def canonize(
 
     console.print(
         f"\n[bold]Loading[/bold] [cyan]{generator_key}[/cyan] "
-        f"([dim]{quantization}[/dim])…"
+        f"([dim]{precision}[/dim])…"
     )
-    llm = make_generator(generator_key, quantization)
+    llm = make_generator(generator_key, precision)
 
     summary: dict = {}
     for dataset_slug in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:

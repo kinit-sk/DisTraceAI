@@ -524,7 +524,7 @@ def _build_noderag_on_articles(article_texts, embedder, llm, index_path,
         (inp / f"{name}.txt").write_text(text, encoding="utf-8")
 
     graph = NodeRagGraph(index_path, generate=llm, embedder=embedder,
-                         build_model_key=model_key, build_quant=quant,
+                         build_model_key=model_key, build_precision=quant,
                          build_context_size=ctx)
     graph.ensure_loaded()   # builds once if HNSW.bin absent, reuses if present
     return graph
@@ -574,7 +574,7 @@ def _run_specfi_cs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
     from core.models import make_generator, close_generator
     from core.hierarchy.backends.specfi_c import SpecFiCBackend
 
-    llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
+    llm = make_generator(cfg.nar_generator, cfg.nar_precision)
 
     # Build NodeRAG over article texts, not sub-narrative claims.
     article_texts = _build_article_texts(kb, detector_slug, annotations,
@@ -591,7 +591,7 @@ def _run_specfi_cs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
         str(Path("knowledge") / "noderag" / "specfi_cs" / f"{detector_slug}{dom_seg}"))
     graph = _build_noderag_on_articles(article_texts, embedder, llm, index_path,
                                        model_key=cfg.nar_generator,
-                                       quant=cfg.nar_quantization,
+                                       quant=cfg.nar_precision,
                                        ctx=getattr(cfg, "nar_context1_token_budget", 16384))
 
     backend = SpecFiCBackend(embedder, llm, graph,
@@ -618,7 +618,7 @@ def _run_specfi_ccs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
     from core.models import make_generator, close_generator
     from core.hierarchy.backends.specfi_c import SpecFiCBackend
 
-    llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
+    llm = make_generator(cfg.nar_generator, cfg.nar_precision)
 
     canonized = _build_article_canonized(kb, detector_slug, annotations,
                                           want_split="train", domain=domain)
@@ -634,7 +634,7 @@ def _run_specfi_ccs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
         str(Path("knowledge") / "noderag" / "specfi_ccs" / f"{detector_slug}{dom_seg}"))
     graph = _build_noderag_on_articles(canonized, embedder, llm, index_path,
                                        model_key=cfg.nar_generator,
-                                       quant=cfg.nar_quantization,
+                                       quant=cfg.nar_precision,
                                        ctx=getattr(cfg, "nar_context1_token_budget", 16384))
 
     backend = SpecFiCBackend(embedder, llm, graph,
@@ -659,7 +659,7 @@ def _run_cspecfi(query_items, corpus_items, embedder, cfg):
     from core.models import make_generator, close_generator
     from core.hierarchy.backends.specfi_c import SpecFiCBackend
 
-    llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
+    llm = make_generator(cfg.nar_generator, cfg.nar_precision)
     # cSpecFi: noderag=None signals the backend to skip _conditioning()
     # and receive claims directly via rank(..., claims=[...]).
     backend = SpecFiCBackend(embedder, llm, noderag=None,
@@ -677,7 +677,7 @@ def _run_context1(query_items, corpus_items, embedder, cfg):
     from core.models import make_generator, close_generator
     from core.hierarchy.backends.context1 import Context1Backend
 
-    llm = make_generator(cfg.nar_generator, cfg.nar_quantization)
+    llm = make_generator(cfg.nar_generator, cfg.nar_precision)
     from core.hierarchy.corpus import FactCheckCorpus
     fc = FactCheckCorpus(embedder)
     for it in corpus_items:

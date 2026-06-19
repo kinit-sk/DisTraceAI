@@ -57,13 +57,13 @@ STEP_LABELS = {
 # Config fields shown in the pre-launch review for each step
 STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
-    "claim-canonization": ["canon_detector", "canon_generator", "canon_quantization"],
+    "claim-canonization": ["canon_detector", "canon_generator", "canon_precision"],
     "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
-                           "subnar_quantization", "subnar_min_similarity",
+                           "subnar_precision", "subnar_min_similarity",
                            "subnar_min_claims"],
     "claim-veracity":     [],
     "narratives":         ["nar_detector", "nar_extractor", "nar_dense_repr",
-                           "nar_embedder", "nar_generator", "nar_quantization",
+                           "nar_embedder", "nar_generator", "nar_precision",
                            "nar_assign_threshold", "nar_min_new_size",
                            "nar_new_threshold", "nar_recluster_cadence",
                            "nar_specfi_hypotheticals", "nar_context1_max_turns",
@@ -75,10 +75,10 @@ STEP_PARAMS: dict[str, list[str]] = {
 # Steps not listed here reuse STEP_PARAMS for both actions.
 STEP_EVAL_PARAMS: dict[str, list[str]] = {
     "sub-narratives": ["subnar_detector", "subnar_embedder", "subnar_generator",
-                       "subnar_quantization", "subnar_min_similarity",
+                       "subnar_precision", "subnar_min_similarity",
                        "subnar_min_claims", "subnar_hypotheticals"],
     "narratives":     ["nar_detector", "nar_extractor", "nar_dense_repr",
-                       "nar_embedder", "nar_generator", "nar_quantization",
+                       "nar_embedder", "nar_generator", "nar_precision",
                        "nar_specfi_hypotheticals", "nar_context1_max_turns",
                        "nar_context1_token_budget", "nar_eval_split"],
 }
@@ -130,8 +130,8 @@ def run_generate(step: str, cfg: Config) -> None:
     elif step == "claim-canonization":
         from core.claims.gen_canonize import canonize
         console.print(f"\n[bold cyan]Claim canonization — Generate[/bold cyan]")
-        console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}  Quant: {cfg.canon_quantization}[/dim]\n")
-        summary = canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_quantization, kb)
+        console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}  Precision: {cfg.canon_precision}[/dim]\n")
+        summary = canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_precision, kb)
         console.print("\n[bold]Summary:[/bold]")
         for dataset, counts in summary.items():
             console.print(f"  {dataset}: {counts}")
@@ -141,14 +141,14 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print(f"\n[bold cyan]Sub-narratives — Generate[/bold cyan]")
         console.print(
             f"[dim]Detector: {cfg.subnar_detector}  Embedder: {cfg.subnar_embedder}  "
-            f"Generator: {cfg.subnar_generator}  Quant: {cfg.subnar_quantization}  "
+            f"Generator: {cfg.subnar_generator}  Precision: {cfg.subnar_precision}  "
             f"MinSim: {cfg.subnar_min_similarity}  MinClaims: {cfg.subnar_min_claims}[/dim]\n"
         )
         summary = generate_sub_narratives(
             detector_path=cfg.subnar_detector,
             embedder_name=cfg.subnar_embedder,
             generator_key=cfg.subnar_generator,
-            quantization=cfg.subnar_quantization,
+            precision=cfg.subnar_precision,
             kb=kb,
             min_similarity=cfg.subnar_min_similarity,
             min_claims=cfg.subnar_min_claims,
@@ -171,7 +171,7 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print(
             f"[dim]Detector: {cfg.nar_detector}  Method: {cfg.nar_extractor}  "
             f"Embedder: {cfg.nar_embedder}  Generator: {cfg.nar_generator}  "
-            f"Quant: {cfg.nar_quantization}  AssignThr: {cfg.nar_assign_threshold}  "
+            f"Precision: {cfg.nar_precision}  AssignThr: {cfg.nar_assign_threshold}  "
             f"MinNew: {cfg.nar_min_new_size}  NewThr: {cfg.nar_new_threshold}  "
             f"Cadence: {cfg.nar_recluster_cadence}[/dim]\n")
         summary = generate_narratives(
@@ -179,7 +179,7 @@ def run_generate(step: str, cfg: Config) -> None:
             extractor=cfg.nar_extractor,
             embedder_name=cfg.nar_embedder,
             generator_key=cfg.nar_generator,
-            quantization=cfg.nar_quantization,
+            precision=cfg.nar_precision,
             kb=kb,
             cfg=cfg,
         )
@@ -193,7 +193,7 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print(f"\n[bold cyan]Claim veracity — Verify hierarchy[/bold cyan]")
         console.print(
             f"[dim]Sources: {cfg.ver_sources}  Generator: {cfg.ver_generator} "
-            f"({cfg.ver_quantization})[/dim]\n")
+            f"({cfg.ver_precision})[/dim]\n")
         summary = verify_hierarchy(kb, cfg, deep=False)
         save_generate_stats(step, summary)
     elif step == "campaigns":
@@ -211,7 +211,7 @@ def run_generate(step: str, cfg: Config) -> None:
                 extractor=cfg.camp_extractor,
                 embedder_name=cfg.camp_embedder,
                 generator_key=cfg.camp_generator,
-                quantization=cfg.camp_quantization,
+                precision=cfg.camp_precision,
                 kb=kb, cfg=cfg,
             )
             if result:

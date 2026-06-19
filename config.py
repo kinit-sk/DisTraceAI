@@ -44,11 +44,11 @@ class Config:
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
-    canon_quantization: str = _f(
-        "Q4_K_M",
-        "Canonization quantization",
-        "GGUF quantization level for the canonization generator model.",
-        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    canon_precision: str = _f(
+        "awq4",
+        "Canonization precision",
+        "Model precision for the canonization generator (awq4=4-bit, bf16=16-bit).",
+        choices=["awq4", "bf16"],
     )
 
     subnar_detector: str = _f(
@@ -74,11 +74,11 @@ class Config:
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
-    subnar_quantization: str = _f(
-        "Q4_K_M",
-        "Sub-narrative quantization",
-        "GGUF quantization level for the sub-narrative generator model.",
-        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    subnar_precision: str = _f(
+        "awq4",
+        "Sub-narrative precision",
+        "Model precision for the sub-narrative generator (awq4=4-bit, bf16=16-bit).",
+        choices=["awq4", "bf16"],
     )
 
     subnar_min_similarity: float = _f(
@@ -154,11 +154,11 @@ class Config:
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
-    nar_quantization: str = _f(
-        "Q4_K_M",
-        "Narrative quantization",
-        "GGUF quantization level for the narrative generator model.",
-        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    nar_precision: str = _f(
+        "awq4",
+        "Narrative precision",
+        "Model precision for the narrative generator (awq4=4-bit, bf16=16-bit).",
+        choices=["awq4", "bf16"],
     )
 
     nar_assign_threshold: float = _f(
@@ -263,11 +263,11 @@ class Config:
         choices=["gemma4-12b", "gemma4-e4b", "qwen3.5-9b"],
     )
 
-    ver_quantization: str = _f(
-        "Q4_K_M",
-        "Veracity quantization",
-        "GGUF quantization for both the verdict generator and paraphrase generator.",
-        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    ver_precision: str = _f(
+        "awq4",
+        "Veracity precision",
+        "Model precision for the verdict + paraphrase generators (awq4=4-bit, bf16=16-bit).",
+        choices=["awq4", "bf16"],
     )
 
     ver_max_turns: int = _f(
@@ -347,11 +347,11 @@ class Config:
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
-    camp_quantization: str = _f(
-        "Q4_K_M",
-        "Campaign quantization",
-        "GGUF quantization level for the campaign generator.",
-        choices=["Q4_K_M", "Q6_K", "Q8_0"],
+    camp_precision: str = _f(
+        "awq4",
+        "Campaign precision",
+        "Model precision for the campaign generator (awq4=4-bit, bf16=16-bit).",
+        choices=["awq4", "bf16"],
     )
 
     camp_assign_threshold: float = _f(

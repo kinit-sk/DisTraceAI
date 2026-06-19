@@ -1,99 +1,56 @@
-#!/bin/bash
-# DisTraceAI dependency installer.
+#!/usr/bin/env bash
+# DisTraceAI installer — single inference env ("distrace").
 #
-# Usage:
-#   ./setup.sh hpc        # HPC cluster: module-based toolchain, CUDA llama.cpp
-#   ./setup.sh desktop    # Local workstation with an NVIDIA GPU
-#   ./setup.sh cpu        # CPU-only install (no CUDA)
+# Installs everything needed to RUN the full pipeline (generation, embeddings,
+# retrieval, AND the check-worthiness detectors). The detectors run fine under
+# transformers v5 alongside vLLM, so a single environment is sufficient.
 #
-# Each mode builds the same conda env ("distrace"), installs the Python
-# requirements, and installs llama-cpp-python with the right backend.
+# No CUDA compiler / no compilation: vLLM ships a prebuilt CUDA 13.0 wheel
+# (matches the H200's Driver 580 / CUDA 13.0). Runs on the restricted HPC.
+#
+# Companion: ./setup_quantize.sh builds the AWQ weights once (needs nvcc; e.g. H200).
+#
+# Usage:  ./setup.sh
 set -euo pipefail
 
-MODE="${1:-}"
-case "$MODE" in
-    hpc|desktop|cpu) ;;
-    *)
-        echo "Usage: $0 {hpc|desktop|cpu}" >&2
-        exit 1
-        ;;
-esac
+VLLM_VER="0.22.1"   # supports Qwen3.5 + Gemma 4; ships torch 2.11 / CUDA 13.0 / transformers v5
 
-# Pinned versions shared across all modes.
-TORCH_VER="2.5.1"
-TORCHVISION_VER="0.20.1"
-TORCHAUDIO_VER="2.5.1"
-NUMPY_VER="1.26.4"
-TRANSFORMERS_VER="4.57.6"
+module load GCC/13.2.0 2>/dev/null || true
 
-# --- conda env (shared) ----------------------------------------------------
-conda create -n distrace python=3.11 -y
+# --- create + ACTIVATE the env, then HARD-VERIFY activation --------------------
+# Running `bash setup.sh` in a non-interactive shell can leave `conda activate`
+# a no-op (conda's shell function isn't loaded), which would silently install
+# everything into the base/system Python. We source the hook explicitly and then
+# ABORT if the distrace env is not actually active, so pip never targets base.
+conda create -n distrace python=3.12 -y
 eval "$(conda shell.bash hook)"
 conda activate distrace
 
-# --- per-mode toolchain + llama-cpp-python backend -------------------------
-install_llama_cpp_cuda () {
-    # Build llama-cpp-python with CUDA offload enabled.
-    export CMAKE_ARGS="-DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON"
-    export FORCE_CMAKE=1
-    cd cd modules/
-    git clone --recurse-submodules https://github.com/abetlen/llama-cpp-python.git
-    cd llama-cpp-python/
-    pip install --no-cache-dir --force-reinstall .
-    cd ../..
-}
+if [[ "${CONDA_DEFAULT_ENV:-}" != "distrace" ]]; then
+  echo "ERROR: failed to activate the 'distrace' conda env (got '${CONDA_DEFAULT_ENV:-none}')." >&2
+  echo "       Run 'conda init bash', restart your shell, then:" >&2
+  echo "         conda activate distrace && ./setup.sh" >&2
+  echo "       Aborting BEFORE any pip install so the base env is not polluted." >&2
+  exit 1
+fi
+# Belt-and-braces: confirm the active python lives inside the env prefix.
+PYBIN="$(python -c 'import sys; print(sys.executable)')"
+if [[ "$PYBIN" != "$CONDA_PREFIX"/* ]]; then
+  echo "ERROR: active python ($PYBIN) is not inside \$CONDA_PREFIX ($CONDA_PREFIX)." >&2
+  echo "       Aborting to avoid polluting the base interpreter." >&2
+  exit 1
+fi
+echo "[setup] env active: $CONDA_DEFAULT_ENV  ($PYBIN)"
 
-install_llama_cpp_cpu () {
-    # CPU-only build (OpenBLAS); no CUDA toolchain required.
-    export CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
-    export FORCE_CMAKE=1
-    pip install --no-cache-dir --force-reinstall llama-cpp-python
-}
+# --- inference stack -----------------------------------------------------------
+# vLLM brings matched torch 2.11 + CUDA 13.0 wheel + transformers>=5.
+pip install "vllm==${VLLM_VER}"
 
-case "$MODE" in
-    hpc)
-        echo "[setup] HPC cluster install"
-        module purge
-        module load GCC/13.2.0
-        module load CUDA/12.4.0
-        module load CMake/3.27.6
-        export CC=$(which gcc)
-        export CXX=$(which g++)
-        export CUDA_HOME="${CUDA_ROOT:-$CUDA_HOME}"
-        export CUDACXX="$CUDA_HOME/bin/nvcc"
-        export CUDAHOSTCXX="$CXX"
-        install_llama_cpp_cuda
-        ;;
-    desktop)
-        echo "[setup] Desktop (GPU) install"
-        # Assumes a working CUDA toolkit + nvcc on PATH (or conda-installed).
-        export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
-        export CUDACXX="${CUDA_HOME}/bin/nvcc"
-        install_llama_cpp_cuda
-        ;;
-    cpu)
-        echo "[setup] CPU-only install"
-        install_llama_cpp_cpu
-        ;;
-esac
-
-# --- Python requirements (shared) ------------------------------------------
+# --- remaining runtime requirements --------------------------------------------
 pip install -r requirements.txt
 
-# --- torch (backend depends on mode) ---------------------------------------
-if [ "$MODE" = "cpu" ]; then
-    pip install --upgrade \
-        "torch==${TORCH_VER}" "torchvision==${TORCHVISION_VER}" "torchaudio==${TORCHAUDIO_VER}" \
-        --index-url https://download.pytorch.org/whl/cpu
-else
-    pip install --upgrade \
-        "torch==${TORCH_VER}" "torchvision==${TORCHVISION_VER}" "torchaudio==${TORCHAUDIO_VER}" \
-        --index-url https://download.pytorch.org/whl/cu121
-fi
+# --- NodeRAG (stock routing + compat patch; driven by in-process vLLM clients) -
+bash modules/noderag/install_noderag_local.sh
 
-# --- post-install pins (shared) --------------------------------------------
-pip install "numpy==${NUMPY_VER}"
-pip install "transformers==${TRANSFORMERS_VER}"
-pip install SentencePiece
-
-echo "[setup] done (mode: ${MODE})"
+echo "[setup] distrace env ready."
+echo "[setup] Next (one-time, on a node with nvcc): ./setup_quantize.sh"

@@ -1,21 +1,30 @@
-# core
-numpy
-scikit-learn
-sentence-transformers
-torch
-transformers==4.57.6
-rank-bm25
+# DisTraceAI runtime requirements (single "distrace" env).
+# vLLM 0.22 brings its own matched torch (2.11) + CUDA 13.0 runtime and pulls
+# transformers>=5, so we do NOT pin torch here. transformers is left unpinned so
+# vLLM resolves a v5 that supports Qwen3.5 / Gemma 4; the check-worthiness
+# detectors (mDeBERTa / XLM-R) load fine under that same transformers v5, so a
+# single environment serves the whole pipeline.
+
+# inference: one library for LLM generation + embeddings.
+vllm==0.22.1
+
 # retrieval
 NodeRAG==0.1.0
 chromadb
-# pipeline
+
+# core / pipeline
+numpy
+pandas
+scikit-learn
+rank-bm25
 feedparser
 trafilatura
 fasttext-langdetect
 bertopic
-llama-cpp-python
+
 # eval / utils
 rich
+pyyaml
 
 # dev / testing
 pytest

@@ -14,7 +14,7 @@ Differences from the reference harness, all deliberate:
     ``grep(pattern, seen)``, ``get(cluster_id)``) rather than a corpus with a
     ``Chunk`` API — so the same loop works over any id/text source.
   * The LLM is a DisTraceAI generator: a callable ``generate(system, user, *,
-    temperature, max_tokens)`` (LlamaGenerator / ServerGenerator / LlamaPool),
+    temperature, max_tokens)`` (VLLMGenerator),
     NOT an object with a ``.query()`` method.
   * Token accounting is approximate (≈ 4 chars/token over the document text),
     since cluster documents have no precomputed ``token_count``.

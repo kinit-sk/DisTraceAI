@@ -19,6 +19,6 @@ python $HOME/distrace/main.py \
   --subnar-detector both \
   --subnar-embedder Qwen/Qwen3-Embedding-0.6B \
   --subnar-generator qwen3.5-2b \
-  --subnar-quantization Q4_K_M \
+  --subnar-precision awq4 \
   --subnar-min-similarity 0.45 \
   --subnar-min-claims 2

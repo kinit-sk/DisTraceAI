@@ -58,7 +58,7 @@ python $DISTRACE/main.py \
   --nar-extractor specfi-cs \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-quantization Q4_K_M \
+  --nar-precision awq4 \
   --nar-specfi-hypotheticals 10 \
   --nar-eval-split test
 
@@ -69,7 +69,7 @@ python $DISTRACE/main.py \
   --nar-extractor cspecfi \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-quantization Q4_K_M \
+  --nar-precision awq4 \
   --nar-specfi-hypotheticals 10 \
   --nar-eval-split test
 
@@ -80,7 +80,7 @@ python $DISTRACE/main.py \
   --nar-extractor context-1 \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-quantization Q4_K_M \
+  --nar-precision awq4 \
   --nar-context1-context-size 32768 \
   --nar-context1-max-turns 8 \
   --nar-context1-token-budget 8192 \

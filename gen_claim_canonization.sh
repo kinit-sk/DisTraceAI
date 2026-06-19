@@ -18,4 +18,4 @@ python $HOME/distrace/main.py \
   --generate claim-canonization \
   --canon-detector both \
   --canon-generator qwen3.5-2b \
-  --canon-quantization Q4_K_M
+  --canon-precision awq4

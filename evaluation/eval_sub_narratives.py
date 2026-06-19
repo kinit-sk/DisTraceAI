@@ -338,9 +338,9 @@ def main(cfg=None) -> None:
 
     console.print(
         f"[bold]Loading generator[/bold] [cyan]{cfg.subnar_generator}[/cyan] "
-        f"([dim]{cfg.subnar_quantization}[/dim])…"
+        f"([dim]{cfg.subnar_precision}[/dim])…"
     )
-    llm = make_generator(cfg.subnar_generator, cfg.subnar_quantization)
+    llm = make_generator(cfg.subnar_generator, cfg.subnar_precision)
 
 
     for detector_slug in detector_slugs:

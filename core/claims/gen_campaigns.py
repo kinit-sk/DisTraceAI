@@ -388,7 +388,7 @@ def generate(
     extractor: str,
     embedder_name: str,
     generator_key: str,
-    quantization: str,
+    precision: str,
     kb: KnowledgeBase | None = None,
     *,
     cfg=None,
@@ -409,7 +409,7 @@ def generate(
     if extractor != "dense":
         console.print(
             f"[bold]Loading generator[/bold] [cyan]{generator_key}[/cyan]…")
-        llm = make_generator(generator_key, quantization)
+        llm = make_generator(generator_key, precision)
 
     console.print(
         f"[bold]Loading embedder[/bold] [cyan]{embedder_name}[/cyan]…")
@@ -480,7 +480,7 @@ def generate(
                 graph = NodeRagGraph(
                     index_path, generate=llm, embedder=embedder,
                     build_model_key=cfg.camp_generator,
-                    build_quant=cfg.camp_quantization,
+                    build_precision=cfg.camp_precision,
                     build_context_size=getattr(cfg, "camp_context1_token_budget", 16384))
                 backend = SpecFiCBackend(embedder, llm, graph, mode=mode,
                                          k=cfg.camp_specfi_hypotheticals)

@@ -5,7 +5,7 @@
 # Samples 2 ground-truth check-worthy claims (label=1) per language from the
 # MultiCW dataset test set (up to 20 languages × 2 = up to 40 claims) and
 # runs each of the six benchmark LLMs through the canonization prompt at three
-# quantization levels (Q4_K_M, Q6_K, Q8_0).
+# precisions (default awq4, bf16; configurable via DISTRACE_BENCH_PRECISIONS).
 #
 # For each model × quantization combination we record:
 #
@@ -30,7 +30,7 @@ import time as _time
 from pathlib import Path
 
 from rich.terminal_theme import MONOKAI
-from core.models import make_generator
+from core.models import make_generator, close_generator
 
 # ── English-detection heuristic ─────────────────────────────────────────────
 _LATIN_CHARS   = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -56,7 +56,15 @@ def _is_english(text: str, threshold: float = 0.75) -> bool:
 # Benchmark configuration
 # ---------------------------------------------------------------------------
 
-BENCH_QUANTIZATIONS: list[str] = ["Q4_K_M", "Q6_K", "Q8_0"]
+import os as _os
+# Precision axis (configurable). Default [awq4, bf16] — both run on the full
+# hardware range (RTX 3090 / A100 / H200) with no device detection.
+# Override the set via DISTRACE_BENCH_PRECISIONS="awq4" (or "bf16").
+BENCH_PRECISIONS: list[str] = [
+    p.strip() for p in
+    _os.environ.get("DISTRACE_BENCH_PRECISIONS", "awq4,bf16").split(",")
+    if p.strip()
+]
 
 BENCH_MODEL_KEYS: list[str] = [
     "qwen3.5-2b",
@@ -125,7 +133,7 @@ def _canonize(llm, claim: str) -> tuple[str, float]:
 # ---------------------------------------------------------------------------
 
 def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
-    """Benchmark 6 LLMs × 3 quantizations on multilingual claim canonization.
+    """Benchmark the model catalogue across the configured precision axis on multilingual claim canonization.
 
     Dataset
     -------
@@ -198,22 +206,22 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
     # ── Run benchmark: quant → model → claims ────────────────────────────────
     # all_results[quant][model_key] = list[dict]
     all_results: dict[str, dict[str, list[dict]]] = {
-        q: {} for q in BENCH_QUANTIZATIONS
+        p: {} for p in BENCH_PRECISIONS
     }
 
-    for quant in BENCH_QUANTIZATIONS:
-        _print(Rule(f"[bold blue]Quantization: {quant}[/bold blue]", style="blue"))
+    for precision in BENCH_PRECISIONS:
+        _print(Rule(f"[bold blue]Precision: {precision}[/bold blue]", style="blue"))
 
         for model_key in BENCH_MODEL_KEYS:
             display_name = _BENCH_DISPLAY[model_key]
             _print(Rule(f"[bold cyan]{display_name}[/bold cyan]", style="cyan"))
-            _print(f"[dim]Loading {display_name} ({quant})…[/dim]")
+            _print(f"[dim]Loading {display_name} ({precision})…[/dim]")
 
             try:
-                llm = make_generator(model_key, quant)
+                llm = make_generator(model_key, precision)
             except Exception as exc:
-                _print(f"[red]Failed to load {display_name} @ {quant}: {exc}[/red]")
-                all_results[quant][model_key] = []
+                _print(f"[red]Failed to load {display_name} @ {precision}: {exc}[/red]")
+                all_results[precision][model_key] = []
                 continue
 
             rows: list[dict] = []
@@ -228,7 +236,7 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
                     transient=True,
                 ) as prog:
                     t = prog.add_task(
-                        f"Canonizing [{display_name} / {quant}]…",
+                        f"Canonizing [{display_name} / {precision}]…",
                         total=n_claims,
                     )
                     for _, row in sampled.iterrows():
@@ -237,7 +245,7 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
                         output, elapsed = _canonize(llm, claim)
                         en_ok   = _is_english(output)
                         rows.append({
-                            "quant":        quant,
+                            "precision":    precision,
                             "model_key":    model_key,
                             "display_name": display_name,
                             "language":     lang,
@@ -247,11 +255,11 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
                             "latency_s":    round(elapsed, 3),
                         })
                         prog.advance(t, 1)
-                    prog.update(t, description=f"[green]✔ {display_name}/{quant} done[/green]")
+                    prog.update(t, description=f"[green]✔ {display_name}/{precision} done[/green]")
             finally:
-                del llm
+                close_generator(llm)
 
-            all_results[quant][model_key] = rows
+            all_results[precision][model_key] = rows
 
             if rows:
                 en_rate = sum(r["english_ok"] for r in rows) / len(rows)
@@ -263,17 +271,17 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
                 )
 
     # ── Per-quantization output tables ────────────────────────────────────────
-    for quant in BENCH_QUANTIZATIONS:
+    for precision in BENCH_PRECISIONS:
         _print("")
-        _print(Rule(f"[bold]Canonized Claims — {quant}[/bold]"))
+        _print(Rule(f"[bold]Canonized Claims — {precision}[/bold]"))
         _print(
             f"[dim]Original claim + model outputs for each of the {n_claims} claims "
-            f"at quantization {quant}. Review for meaning preservation.[/dim]\n"
+            f"at precision {precision}. Review for meaning preservation.[/dim]\n"
         )
 
         # Build per-claim map: (lang, original) → {model_key: output}
         claim_map: dict = {}
-        for model_key, model_rows in all_results[quant].items():
+        for model_key, model_rows in all_results[precision].items():
             for r in model_rows:
                 ck = (r["language"], r["original"])
                 if ck not in claim_map:
@@ -286,7 +294,7 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
             border_style = "dim",
             box          = _box.SIMPLE_HEAVY,
             show_lines   = True,
-            title        = f"Quantization: {quant}",
+            title        = f"Precision: {precision}",
         )
         tbl.add_column("Lang",     style="cyan",  width=5,  no_wrap=True)
         tbl.add_column("Original", style="white", width=38, overflow="fold")
@@ -313,13 +321,13 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
     _print("")
     _print(Rule("[bold]Overall Benchmark Statistics[/bold]"))
     summary_tbl = Table(
-        title        = "Claim Canonization Benchmark — 6 models × 3 quantizations",
+        title        = f"Claim Canonization Benchmark — {len(BENCH_MODEL_KEYS)} models × {len(BENCH_PRECISIONS)} precisions",
         border_style = "blue",
         box          = _box.ROUNDED,
     )
     summary_tbl.add_column("Model",          style="cyan",   min_width=18)
     summary_tbl.add_column("Params",         style="dim",    justify="right")
-    summary_tbl.add_column("Quant",          style="yellow", justify="right")
+    summary_tbl.add_column("Precision",      style="yellow", justify="right")
     summary_tbl.add_column("English rate",   style="green",  justify="right")
     summary_tbl.add_column("Median lat (s)", style="yellow", justify="right")
     summary_tbl.add_column("Mean lat (s)",   style="yellow", justify="right")
@@ -329,14 +337,14 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
         display_name = _BENCH_DISPLAY[model_key]
         param_count  = _BENCH_PARAMS[model_key]
         first_row    = True
-        for quant in BENCH_QUANTIZATIONS:
-            rows = all_results[quant].get(model_key, [])
+        for precision in BENCH_PRECISIONS:
+            rows = all_results[precision].get(model_key, [])
             model_label = display_name if first_row else ""
             param_label = param_count  if first_row else ""
             first_row   = False
             if not rows:
                 summary_tbl.add_row(
-                    model_label, param_label, quant,
+                    model_label, param_label, precision,
                     "[red]FAILED[/red]", "—", "—", "0",
                 )
                 continue
@@ -345,7 +353,7 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
             summary_tbl.add_row(
                 model_label,
                 param_label,
-                quant,
+                precision,
                 f"{en_rate:.1%}",
                 f"{statistics.median(lats):.2f}",
                 f"{statistics.mean(lats):.2f}",
@@ -383,7 +391,7 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
     try:
         from core.ui.stats import save_eval_stats
         for model_key in BENCH_MODEL_KEYS:
-            for quant in BENCH_QUANTIZATIONS:
+            for precision in BENCH_PRECISIONS:
                 rows_mq = all_results[quant].get(model_key, [])
                 if not rows_mq:
                     continue

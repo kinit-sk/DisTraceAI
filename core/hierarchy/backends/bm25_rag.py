@@ -7,7 +7,6 @@ threshold can be compared against directly. No LLM, no generation.
 """
 from __future__ import annotations
 
-import numpy as np
 
 from core.hierarchy.backends.base import RetrievalBackend
 

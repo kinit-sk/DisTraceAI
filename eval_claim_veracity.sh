@@ -23,7 +23,7 @@ python $HOME/distrace/main.py \
   --ver-sources multiclaim,wikipedia,web \
   --ver-generator gemma4-e2b \
   --ver-paraphrase-generator gemma4-12b \
-  --ver-quantization Q4_K_M \
+  --ver-precision awq4 \
   --ver-n-paraphrases 3 \
   --ver-max-turns 6 \
   --ver-token-budget 4096

@@ -88,7 +88,7 @@ def _build_backend(method, embedder, llm, cfg, *, dataset, detector, index_root)
         # the continuous rebuild (_rebuild_graph_from_narratives) can drive it.
         graph = NodeRagGraph(
             index_path, generate=llm, embedder=embedder,
-            build_model_key=cfg.nar_generator, build_quant=cfg.nar_quantization,
+            build_model_key=cfg.nar_generator, build_precision=cfg.nar_precision,
             build_context_size=getattr(cfg, "nar_context1_token_budget", 16384),
             build_repr=("canonized" if method == "specfi-ccs" else "text"),
         )
@@ -221,7 +221,7 @@ def generate(
     extractor: str,
     embedder_name: str,
     generator_key: str,
-    quantization: str,
+    precision: str,
     kb: KnowledgeBase | None = None,
     *,
     cfg=None,
@@ -250,8 +250,8 @@ def generate(
     if os.getenv("DISTRACE_NAR_NO_LLM") != "1":
         console.print(
             f"[bold]Loading generator[/bold] [cyan]{generator_key}[/cyan] "
-            f"([dim]{quantization}[/dim])…")
-        llm = make_generator(generator_key, quantization)
+            f"([dim]{precision}[/dim])…")
+        llm = make_generator(generator_key, precision)
     elif extractor != "dense":
         raise RuntimeError(
             f"nar_extractor={extractor!r} requires a generator, but "

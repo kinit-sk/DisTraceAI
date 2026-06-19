@@ -7,7 +7,7 @@ no API key.
 How: NodeRAG 0.1.0 normally builds an OpenAI/Gemini HTTP client from
 ``model_config``/``embedding_config`` (and tolerates a missing key by setting the
 client to None). We construct ``NodeConfig`` keyless, then swap in adapters:
-  • the LLM adapter calls our in-process ``generate`` (LlamaGenerator). Extraction
+  • the LLM adapter calls our in-process ``generate`` (VLLMGenerator). Extraction
     steps pass a pydantic ``response_format``; we honour it with llama.cpp's
     grammar-constrained JSON so even a small model emits schema-valid output
     (without this the graph comes out empty).
@@ -82,27 +82,26 @@ class _LocalLLMClient:
     NodeRAG extraction unit was serialised through one lock + one context — the
     dominant cost of a SpecFi-CS graph build (multiple hours).
 
-    When handed a generator that exposes multiple independent contexts (a
-    ``LlamaPool``), this client instead dispatches each unit to a FREE worker
+    When handed a generator that exposes multiple independent contexts
+    (a concurrent generator), this client dispatches several units at once
     drawn from a bounded semaphore sized to the pool. Distinct workers have
     distinct KV caches, so they decode in parallel and the A100 batches them.
-    A single-context generator (``LlamaGenerator``) transparently falls back to
+    A non-concurrent generator transparently falls back to
     the old serialised behaviour (pool size 1).
     """
 
     def __init__(self, generate, max_tokens: int | None = None) -> None:
         self._gen = generate
 
-        # Detect a worker pool: LlamaPool exposes `.instances` (each its own
-        # LlamaGenerator with an independent llama_cpp handle). A plain
-        # LlamaGenerator exposes `.llm` directly and is treated as a pool of 1.
-        self._workers = list(getattr(generate, "instances", []) or [])
-        if not self._workers:
-            self._workers = [generate]          # single-context fallback
-        self._n_workers = len(self._workers)
-
-        # Per-worker raw llama_cpp handles for grammar-constrained JSON.
-        self._raw = [getattr(w, "llm", None) for w in self._workers]
+        # vLLM serves many concurrent requests from ONE resident model via
+        # continuous batching, so there is no worker pool of model copies. We
+        # still admit several units at once (they overlap inside vLLM's batch);
+        # the concurrency width is a logical dispatch fan-out, not N contexts.
+        # Grammar-constrained JSON goes through generate_json() (vLLM guided
+        # decoding) rather than a raw low-level handle.
+        self._workers = [generate]
+        self._n_workers = max(1, int(os.getenv("DISTRACE_NODERAG_FANOUT", "8"))) \
+            if getattr(generate, "concurrent", False) else 1
 
         self._max_tokens = max_tokens or int(os.getenv("DISTRACE_NODERAG_MAXTOK", "4096"))
 
@@ -140,19 +139,16 @@ class _LocalLLMClient:
         yield self._run(input, 0)
 
     def _run(self, input, worker_idx: int = 0):
-        gen = self._workers[worker_idx]
-        raw = self._raw[worker_idx]
+        gen = self._workers[0]
         system = (input.get("system_prompt") or "You are a precise information-extraction assistant.")
         query = input["query"]
         rf = input.get("response_format")
-        if rf is not None and raw is not None:
+        has_json = rf is not None and hasattr(gen, "generate_json")
+        if has_json:
             schema = rf.model_json_schema()
-            out = raw.create_chat_completion(
-                messages=[{"role": "system", "content": system + " /no_think"},
-                          {"role": "user", "content": query}],
-                response_format={"type": "json_object", "schema": schema},
-                temperature=0.0, max_tokens=self._max_tokens)
-            return json.loads(out["choices"][0]["message"]["content"])
+            out = gen.generate_json(system, query, schema,
+                                    temperature=0.0, max_tokens=self._max_tokens)
+            return json.loads(out)
         text = gen(system, query, temperature=0.0, max_tokens=self._max_tokens)
         if isinstance(text, str):
             stripped = text.strip()
@@ -161,7 +157,7 @@ class _LocalLLMClient:
                     return json.loads(stripped)
                 except json.JSONDecodeError:
                     pass
-            if raw is not None and "elements" in query.lower():
+            if hasattr(gen, "generate_json") and "elements" in query.lower():
                 _fallback_schema = {
                     "type": "object",
                     "properties": {
@@ -170,12 +166,9 @@ class _LocalLLMClient:
                     "required": ["elements"],
                 }
                 try:
-                    out = raw.create_chat_completion(
-                        messages=[{"role": "system", "content": system + " /no_think"},
-                                  {"role": "user", "content": query}],
-                        response_format={"type": "json_object", "schema": _fallback_schema},
-                        temperature=0.0, max_tokens=self._max_tokens)
-                    return json.loads(out["choices"][0]["message"]["content"])
+                    out = gen.generate_json(system, query, _fallback_schema,
+                                            temperature=0.0, max_tokens=self._max_tokens)
+                    return json.loads(out)
                 except Exception as exc:
                     logger.warning("[noderag] grammar-constrained decompose fallback failed (%s); "
                                    "returning empty elements", exc)
@@ -289,7 +282,7 @@ class NodeRagGraph:
         Directory where NodeRAG will store (or has already stored) its index
         artefacts: ``input/``, ``cache/``, ``info/``, and ``Node_config.yaml``.
     generate:
-        Optional LlamaGenerator (or compatible callable).  When provided
+        Optional VLLMGenerator (or compatible callable).  When provided
         together with *embedder*, the index is built and queried using purely
         in-process models.  When omitted, NodeRAG falls back to its HTTP
         provider (requires OPENAI_API_KEY ± OPENAI_BASE_URL).
@@ -301,7 +294,7 @@ class NodeRagGraph:
 
     def __init__(self, index_path: str, *, generate=None, embedder=None,
                  build_model_key: str | None = None,
-                 build_quant: str | None = None,
+                 build_precision: str | None = None,
                  build_context_size: int = 16384,
                  build_repr: str = "text") -> None:
         self.index_path = index_path
@@ -311,7 +304,7 @@ class NodeRagGraph:
         # auto-sized worker pool (parallel graph construction) and tear it down
         # afterwards. When omitted, build() uses the single `generate` as-is.
         self._build_model_key = build_model_key
-        self._build_quant = build_quant
+        self._build_precision = build_precision
         self._build_context_size = build_context_size
         # What auto-populated input docs contain when input/ is empty:
         # "text" (CW claim sentences, SpecFi-CS) or "canonized" (SpecFi-CCS).
@@ -417,13 +410,7 @@ class NodeRagGraph:
                 # the generator's n_ctx (config.generator_context_size) exactly, so
                 # the eval LLM and the NodeRAG LLM are unified by construction.
                 llm_client = _LocalLLMClient(self._generate)   # in-process, serial
-                _gen_ctx = None
-                _raw = getattr(self._generate, "llm", None)
-                if _raw is not None:
-                    try:                       # llama_cpp.Llama exposes n_ctx()
-                        _gen_ctx = _raw.n_ctx()
-                    except Exception:
-                        _gen_ctx = None
+                _gen_ctx = getattr(self._generate, "_context_size", None)
                 logger.info("[noderag] chat LLM = in-process eval generator (unified); "
                             "shared n_ctx=%s, max_tokens=%d",
                             _gen_ctx if _gen_ctx is not None else "generator default",
@@ -490,35 +477,13 @@ class NodeRagGraph:
         logger.info("[noderag] cleared stale build state under %s", self.index_path)
         from NodeRAG import NodeRag
 
-        # --- parallel build: spin up an auto-sized worker pool -------------
-        # The graph build is LLM-bound (one call per extraction unit). When we
-        # know the generator's model, fill the remaining VRAM with a pool of
-        # independent contexts so NodeRAG's async extraction units decode in
-        # parallel instead of serialising through one context. The pool is torn
-        # down right after the build so the query/HyDE phase runs lean.
-        build_pool = None
+        # --- build concurrency --------------------------------------------
+        # vLLM's continuous batching already decodes many NodeRAG extraction
+        # units concurrently from ONE resident model, so the historical pool of
+        # extra model copies (filling spare VRAM) is no longer needed — the
+        # _NodeLLMClient fan-out dispatches units at the single generator and
+        # vLLM batches them. No build pool to set up or tear down.
         original_generate = self._generate
-        if self._local and self._build_model_key and self._build_quant:
-            try:
-                from core.models import plan_noderag_workers, LlamaPool, close_generator
-                placement = plan_noderag_workers(
-                    self._build_model_key, self._build_quant,
-                    ctx=self._build_context_size)
-                if len(placement) > 1:
-                    logger.info("[noderag] parallel build: spinning up %d worker "
-                                "contexts (placement=%s)", len(placement), placement)
-                    build_pool = LlamaPool.from_placement(
-                        self._build_model_key, self._build_quant, placement,
-                        context_size=self._build_context_size)
-                    self._generate = build_pool   # _node_config picks this up
-                else:
-                    logger.info("[noderag] parallel build: VRAM fits %d extra worker(s); "
-                                "building single-context", len(placement))
-            except Exception as exc:
-                logger.warning("[noderag] could not size a build pool (%s); "
-                               "falling back to single context", exc)
-                build_pool = None
-                self._generate = original_generate
 
         try:
             config = self._node_config()
@@ -531,13 +496,9 @@ class NodeRagGraph:
             ng.run()
             logger.info("[noderag] build complete")
         finally:
-            # Tear the build pool down and restore the single generator so the
-            # query phase (HyDE + community retrieval) runs with minimal VRAM.
-            if build_pool is not None:
-                from core.models import close_generator
-                close_generator(build_pool)
-                self._generate = original_generate
-                logger.info("[noderag] build pool torn down; restored single generator")
+            # No build pool to tear down (vLLM batches from one resident model);
+            # restore the original generator reference defensively.
+            self._generate = original_generate
 
     def ensure_loaded(self) -> None:
         """Ensure the NodeSearch handle is ready, building the index if needed.
@@ -595,8 +556,8 @@ class NodeRagGraph:
 #
 # What this test does:
 #   1. Verifies the HLE parser on a synthetic NodeRAG response (no models needed).
-#   2. Loads gemma-4-e2b-it (Q4_K_M) and nomic-embed-text-v1.5 (f16) via
-#      llama-cpp-python (downloaded from HuggingFace on first run, cached after).
+#   2. Loads gemma4-e2b (awq4) + an embedder via vLLM (downloaded from
+#      HuggingFace on first run, cached after).
 #   3. Writes three short thematic documents to ./test_noderag_index/input/.
 #   4. Builds a full NodeRAG knowledge-graph index at ./test_noderag_index/
 #      (skipped automatically if HNSW.bin already exists from a prior run).
@@ -609,9 +570,7 @@ class NodeRagGraph:
 #       rm -rf ./test_noderag_index
 #
 # Requirements:
-#   pip install llama-cpp-python   (CUDA build recommended — see install script)
-#   pip install NodeRAG==0.1.0     (with the DisTraceAI llama.cpp patch applied)
-#   pip install huggingface-hub    (for Llama.from_pretrained)
+#   ./setup.sh                     (installs vllm + NodeRAG with the compat patch)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -651,99 +610,19 @@ if __name__ == "__main__":
 
     print("    ✓ Parser OK")
 
-    # ── 2. Load models via llama-cpp-python ──────────────────────────────────
-    print("\n[2/5] Loading gemma-4-e2b-it (Q4_K_M) …")
-    print("    (first run downloads the GGUF from HuggingFace; cached afterwards)")
+    # ── 2. Load models via vLLM (the real pipeline path) ─────────────────────
+    print("\n[2/5] Loading gemma4-e2b (awq4) + embedder via vLLM …")
+    print("    (first run downloads weights from HuggingFace; cached afterwards)")
 
     try:
-        from llama_cpp import Llama
-    except ImportError:
-        print("ERROR: llama-cpp-python is not installed.", file=sys.stderr)
-        print("       Run:  pip install llama-cpp-python  (or the CUDA variant)", file=sys.stderr)
+        from core.models import make_generator, make_embedder
+    except ImportError as exc:
+        print(f"ERROR: could not import vLLM-backed model layer: {exc}", file=sys.stderr)
+        print("       Run ./setup.sh first (installs vllm).", file=sys.stderr)
         sys.exit(1)
 
-    # Download / load the chat model.  n_gpu_layers=-1 offloads all layers to
-    # GPU when CUDA is available; on CPU-only machines this still works but is slow.
-    from pathlib import Path
-    from llama_cpp import Llama
-
-    MODEL_PATH = Path(
-        "~/.cache/huggingface/hub/models--unsloth--gemma-4-E2B-it-GGUF"
-    ).expanduser()
-
-    # find the actual GGUF file
-    gguf_file = next(MODEL_PATH.rglob("*Q4_K_M*.gguf"))
-
-    _llm = Llama(
-        model_path=str(gguf_file),
-        n_ctx=4096,
-        n_gpu_layers=-1,
-        verbose=False,
-    )
-    print("    ✓ Chat model loaded")
-
-    print("\n[3/5] Loading nomic-embed-text-v1.5-f16 …")
-
-    # Load the embedding model in a separate Llama instance with embedding=True.
-    # The f16 GGUF preserves full precision for retrieval quality; dim=768.
-    _embed_llm = Llama.from_pretrained(
-        repo_id="nomic-ai/nomic-embed-text-v1.5-GGUF",
-        filename="*f16*.gguf",
-        n_ctx=2048,
-        n_gpu_layers=-1,
-        embedding=True,
-        verbose=False,
-    )
-    print("    ✓ Embedding model loaded (dim=768)")
-
-    # ── Thin wrapper objects matching the adapter interfaces ─────────────────
-    # _LocalLLMClient expects a callable with signature:
-    #     generate(system: str, query: str, *, temperature, max_tokens) -> str
-    class _DirectGenerator:
-        """Minimal generate()-compatible wrapper around a raw Llama instance."""
-
-        def __init__(self, llm: Llama) -> None:
-            # Expose the raw llm so _LocalLLMClient can reach create_chat_completion
-            # directly for schema-constrained JSON requests.
-            self.llm = llm
-
-        def __call__(self, system: str, query: str, *,
-                     temperature: float = 0.0, max_tokens: int = 1024) -> str:
-            resp = self.llm.create_chat_completion(
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": query},
-                ],
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            return resp["choices"][0]["message"]["content"].strip()
-
-    # _LocalEmbeddingClient expects an object with an encode() method that
-    # accepts a list of strings and returns a 2-D array (n × dim).
-    class _DirectEmbedder:
-        """Minimal embedder-compatible wrapper around a llama.cpp embedding model."""
-
-        def __init__(self, llm: Llama) -> None:
-            self._llm = llm
-
-        def encode(self, texts: list[str], *, convert_to_numpy=True,
-                   show_progress_bar=False):
-            import numpy as np
-            # llama.cpp's create_embedding only accepts a single string at a time;
-            # passing a list causes llama_decode to return -1. Iterate per text.
-            embeddings = []
-            for text in texts:
-                resp = self._llm.create_embedding(text)
-                embeddings.append(resp["data"][0]["embedding"])
-            return np.array(embeddings, dtype="float32")
-
-        def get_sentence_embedding_dimension(self) -> int:
-            # nomic-embed-text-v1.5 always outputs 768-dimensional vectors.
-            return 768
-
-    _generator = _DirectGenerator(_llm)
-    _embedder  = _DirectEmbedder(_embed_llm)
+    _generator = make_generator("gemma4-e2b", "awq4")
+    _embedder  = make_embedder("nomic-ai/nomic-embed-text-v1.5")
 
     # ── 3. Write test documents ──────────────────────────────────────────────
     print("\n[4/5] Writing test documents …")

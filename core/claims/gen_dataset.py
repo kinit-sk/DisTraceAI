@@ -51,7 +51,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
 
     console.print("[bold]Step 2/5:[/bold] Canonization…")
     from core.claims.gen_canonize import canonize
-    canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_quantization, kb)
+    canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_precision, kb)
 
     console.print("[bold]Step 3/5:[/bold] Sub-narrative extraction…")
     from core.claims.gen_sub_narratives import generate as gen_sn
@@ -59,7 +59,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         detector_path=cfg.subnar_detector,
         embedder_name=cfg.subnar_embedder,
         generator_key=cfg.subnar_generator,
-        quantization=cfg.subnar_quantization,
+        precision=cfg.subnar_precision,
         kb=kb,
         min_similarity=cfg.subnar_min_similarity,
         min_claims=cfg.subnar_min_claims,
@@ -72,7 +72,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         extractor=cfg.nar_extractor,
         embedder_name=cfg.nar_embedder,
         generator_key=cfg.nar_generator,
-        quantization=cfg.nar_quantization,
+        precision=cfg.nar_precision,
         kb=kb,
         cfg=cfg,
     )
@@ -85,7 +85,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         extractor=cfg.camp_extractor,
         embedder_name=cfg.camp_embedder,
         generator_key=cfg.camp_generator,
-        quantization=cfg.camp_quantization,
+        precision=cfg.camp_precision,
         kb=kb,
         cfg=cfg,
     )

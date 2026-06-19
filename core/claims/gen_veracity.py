@@ -29,7 +29,6 @@ Verdict scale: True=1.0, Disputed=0.5, False=0.0.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import re
 from pathlib import Path
@@ -608,7 +607,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
         f"— FakeCTI[/bold cyan]")
     console.print(
         f"[dim]Sources: {cfg.ver_sources}  "
-        f"Generator: {cfg.ver_generator} ({cfg.ver_quantization})[/dim]\n")
+        f"Generator: {cfg.ver_generator} ({cfg.ver_precision})[/dim]\n")
 
     # camp_embedder is intentionally reused here: sharing the embedding model
     # with the campaign step means the MultiClaim .npz cache is shared too.
@@ -617,8 +616,8 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
 
     console.print(
         f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] "
-        f"([dim]{cfg.ver_quantization}[/dim])…")
-    llm = make_generator(cfg.ver_generator, cfg.ver_quantization)
+        f"([dim]{cfg.ver_precision}[/dim])…")
+    llm = make_generator(cfg.ver_generator, cfg.ver_precision)
 
     tools = build_evidence_tools(cfg, embedder,
                                  kb=kb,

@@ -44,13 +44,13 @@ DISTRACE=$HOME/distrace
 DETECTOR=${DETECTOR:-both}                       # both | models/xlm-multicw | models/mdb-multicw
 EMBEDDER=${EMBEDDER:-Qwen/Qwen3-Embedding-4B}    # SpecFi-paper default
 GENERATOR=${GENERATOR:-qwen3.5-2b}               # HyDE / NodeRAG generator
-QUANT=${QUANT:-Q4_K_M}
+PRECISION=${PRECISION:-awq4}
 HYPOTHETICALS=${HYPOTHETICALS:-10}               # matches the paper's n=10
 SPLIT=${SPLIT:-test}                             # dev | test
 DOMAIN=${DOMAIN:-all}                            # all | CC | URW
 
 echo "[benchmark] detector=$DETECTOR domain=$DOMAIN split=$SPLIT"
-echo "[benchmark] embedder=$EMBEDDER generator=$GENERATOR ($QUANT) hypotheticals=$HYPOTHETICALS"
+echo "[benchmark] embedder=$EMBEDDER generator=$GENERATOR ($PRECISION) hypotheticals=$HYPOTHETICALS"
 
 python "$DISTRACE/main.py" \
   --eval narratives \
@@ -58,7 +58,7 @@ python "$DISTRACE/main.py" \
   --nar-detector "$DETECTOR" \
   --nar-embedder "$EMBEDDER" \
   --nar-generator "$GENERATOR" \
-  --nar-quantization "$QUANT" \
+  --nar-precision "$PRECISION" \
   --nar-specfi-hypotheticals "$HYPOTHETICALS" \
   --nar-context1-context-size 32768 \
   --nar-context1-max-turns 8 \

@@ -73,7 +73,7 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
     Returns list of {source_id, paraphrase, gold_label, generator, quant}.
     """
     cached = kb.load_paraphrase_test(cfg.ver_paraphrase_generator,
-                                     cfg.ver_quantization)
+                                     cfg.ver_precision)
     if cached:
         console.print(
             f"[dim]Loaded {len(cached)} cached paraphrase test entries.[/dim]")
@@ -86,9 +86,9 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
         f"~{len(records) * cfg.ver_n_paraphrases} queries)…")
     console.print(
         f"[dim]Generator: {cfg.ver_paraphrase_generator} "
-        f"({cfg.ver_quantization})[/dim]\n")
+        f"({cfg.ver_precision})[/dim]\n")
 
-    llm = make_generator(cfg.ver_paraphrase_generator, cfg.ver_quantization)
+    llm = make_generator(cfg.ver_paraphrase_generator, cfg.ver_precision)
     test_records = []
     with Progress(SpinnerColumn(),
                   TextColumn("[progress.description]{task.description}"),
@@ -104,13 +104,13 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
                         "paraphrase":  para,
                         "gold_label":  rec["label"],
                         "generator":   cfg.ver_paraphrase_generator,
-                        "quant":       cfg.ver_quantization,
+                        "quant":       cfg.ver_precision,
                     })
             prog.advance(task)
     del llm
 
     kb.save_paraphrase_test(test_records,
-                            cfg.ver_paraphrase_generator, cfg.ver_quantization)
+                            cfg.ver_paraphrase_generator, cfg.ver_precision)
     console.print(
         f"[dim]{len(test_records)} paraphrase queries cached to "
         f"knowledge/veracity/multiclaim_test_paraphrases.json[/dim]")
@@ -182,7 +182,7 @@ def main(cfg=None) -> None:
     embedder = make_embedder(cfg.camp_embedder)
     console.print(
         f"[bold]Loading verdict generator[/bold] [cyan]{cfg.ver_generator}[/cyan]…")
-    llm = make_generator(cfg.ver_generator, cfg.ver_quantization)
+    llm = make_generator(cfg.ver_generator, cfg.ver_precision)
 
     # Pre-build the MultiClaim embedding index ONCE (cached to disk) so the
     # leave-one-out loop does not re-encode the corpus for every query.
@@ -303,9 +303,9 @@ def main(cfg=None) -> None:
         from core.ui.stats import save_eval_stats
         save_eval_stats(
             "claim-veracity",
-            param_key=f"{cfg.ver_generator}__{cfg.ver_quantization}",
+            param_key=f"{cfg.ver_generator}__{cfg.ver_precision}",
             params={"generator": cfg.ver_generator,
-                    "quant": cfg.ver_quantization,
+                    "quant": cfg.ver_precision,
                     "sources": cfg.ver_sources},
             scores={"accuracy": accuracy, "macro_f1": metrics["macro_f1"],
                     "n": n_all},
@@ -316,6 +316,6 @@ def main(cfg=None) -> None:
     from evaluation.report_paths import report_path
     html_out = report_path(
         "claim-veracity",
-        extra=f"{cfg.ver_generator}__{cfg.ver_quantization}")
+        extra=f"{cfg.ver_generator}__{cfg.ver_precision}")
     console.save_html(str(html_out), theme=MONOKAI, clear=False)
     console.print(f"[dim]Results → {csv_path}  HTML → {html_out}[/dim]")

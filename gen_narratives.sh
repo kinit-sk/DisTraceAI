@@ -28,7 +28,7 @@ python $HOME/distrace/main.py \
   --nar-extractor cspecfi \
   --nar-embedder Qwen/Qwen3-Embedding-0.6B \
   --nar-generator qwen3.5-2b \
-  --nar-quantization Q4_K_M \
+  --nar-precision awq4 \
   --nar-assign-threshold 0.55 \
   --nar-min-new-size 3 \
   --nar-new-threshold 0.75 \
