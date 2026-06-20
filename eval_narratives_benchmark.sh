@@ -37,6 +37,10 @@ module load CUDA/12.4.0
 
 eval "$(conda shell.bash hook)"
 conda activate distrace
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}   # libcuda.so for FlashInfer
+export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm; non-FP8 models)
+export VLLM_USE_FLASHINFER_SAMPLER=0   # use PyTorch-native sampler; avoids FlashInfer nvcc/ninja JIT build failure
+export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
 DISTRACE=$HOME/distrace
 
@@ -44,13 +48,12 @@ DISTRACE=$HOME/distrace
 DETECTOR=${DETECTOR:-both}                       # both | models/xlm-multicw | models/mdb-multicw
 EMBEDDER=${EMBEDDER:-Qwen/Qwen3-Embedding-4B}    # SpecFi-paper default
 GENERATOR=${GENERATOR:-qwen3.5-2b}               # HyDE / NodeRAG generator
-PRECISION=${PRECISION:-awq4}
 HYPOTHETICALS=${HYPOTHETICALS:-10}               # matches the paper's n=10
 SPLIT=${SPLIT:-test}                             # dev | test
 DOMAIN=${DOMAIN:-all}                            # all | CC | URW
 
 echo "[benchmark] detector=$DETECTOR domain=$DOMAIN split=$SPLIT"
-echo "[benchmark] embedder=$EMBEDDER generator=$GENERATOR ($PRECISION) hypotheticals=$HYPOTHETICALS"
+echo "[benchmark] embedder=$EMBEDDER generator=$GENERATOR (bf16) hypotheticals=$HYPOTHETICALS"
 
 python "$DISTRACE/main.py" \
   --eval narratives \
@@ -58,7 +61,6 @@ python "$DISTRACE/main.py" \
   --nar-detector "$DETECTOR" \
   --nar-embedder "$EMBEDDER" \
   --nar-generator "$GENERATOR" \
-  --nar-precision "$PRECISION" \
   --nar-specfi-hypotheticals "$HYPOTHETICALS" \
   --nar-context1-context-size 32768 \
   --nar-context1-max-turns 8 \

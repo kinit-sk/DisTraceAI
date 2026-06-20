@@ -7,107 +7,104 @@ from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
+# --- vLLM 0.22 DeepGEMM warmup workaround ----------------------------------
+# On Hopper GPUs (H200, sm_90) vLLM 0.22's kernel_warmup calls deep_gemm_warmup
+# unconditionally; if the optional `deep_gemm` package isn't installed it raises
+# "DeepGEMM backend is not available or outdated" during engine init — even for
+# bf16 / AWQ models that have no FP8 layers (vLLM issue #41849). Skipping the
+# warmup avoids the crash and costs nothing for our non-FP8 models. Set before
+# vLLM is imported anywhere. Respect an existing user override.
+os.environ.setdefault("VLLM_DEEP_GEMM_WARMUP", "skip")
+os.environ.setdefault("VLLM_USE_DEEP_GEMM", "0")
 
-# ---- precision axis -------------------------------------------------------
-# The pipeline's model precision is a configurable axis replacing the old GGUF
-# quantization levels. Values:
-#   awq4 - AWQ 4-bit (W4A16). Runs on Ampere (RTX 3090, A100) AND Hopper (H200).
-#          The portable default: one artifact runs on every target GPU.
-#   bf16 - 16-bit. Runs everywhere with enough VRAM; the quality reference point.
-# Both run on the full hardware range (3090 / A100 / H200) with no device
-# detection, which is why they are the only two precisions supported.
-_PRECISIONS = ("awq4", "bf16")
+# --- FlashInfer sampler JIT-build workaround -------------------------------
+# vLLM's sampler prefers FlashInfer's top-k/top-p kernel, which FlashInfer
+# JIT-COMPILES on first use via nvcc/ninja. On a freshly-built env the nvcc
+# toolchain (conda cuda-toolkit + conda gcc, targeting sm_90a on the H200) can
+# fail that compile ("ninja: build stopped: subcommand failed" →
+# CalledProcessError in flashinfer/jit), which aborts engine startup at the
+# dummy sampler warmup. We don't need the FlashInfer sampler — it's only a
+# speed optimization, irrelevant for our small eval workloads — so force vLLM's
+# PyTorch-native top-k/top-p sampler instead. No nvcc, no JIT, no build step.
+# Override with DISTRACE_USE_FLASHINFER_SAMPLER=1 if you have a working toolchain
+# and want the kernel back.
+if os.environ.get("DISTRACE_USE_FLASHINFER_SAMPLER", "0") == "1":
+    os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "1")
+else:
+    os.environ.setdefault("VLLM_USE_FLASHINFER_SAMPLER", "0")
 
-# Map a precision token to the vLLM `quantization=` argument and torch dtype.
-# awq4 -> quantization="awq_marlin" (the fast Marlin kernel, Ampere+Hopper),
-#         weights loaded from a pre-quantized AWQ checkpoint on disk.
-# bf16 -> no quantization, dtype bfloat16, loaded from the full-precision repo.
-_PRECISION_VLLM = {
-    "awq4": {"quantization": "awq_marlin", "dtype": "float16"},
-    "bf16": {"quantization": None,         "dtype": "bfloat16"},
-}
+# transformers 5.12 + kernels 0.15 incompatibility: transformers' hub_kernels
+# integration builds LayerRepository(...) with no version/revision, which the
+# installed `kernels` rejects at import ("Either a revision or a version must be
+# specified"). We don't use hub kernels (vLLM has its own), so disable the
+# mapping before transformers is imported anywhere (the detectors import it).
+os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
+
+# --- silence vLLM / NodeRAG "Processed prompts" tqdm bars -------------------
+# vLLM (and NodeRAG's internal pipeline) print a per-call tqdm progress bar
+# ("Processed prompts: ...") that floods the console on top of our own Rich
+# progress bars. Per-call use_tqdm=False covers OUR call sites but not NodeRAG's
+# internal calls. Since this project uses Rich for ALL of its own progress
+# output and never uses tqdm directly, we disable tqdm globally by making
+# `disable=True` its default — killing only the library-internal bars while
+# leaving our Rich bars untouched. Set DISTRACE_SHOW_TQDM=1 to keep them.
+if os.environ.get("DISTRACE_SHOW_TQDM", "0") != "1":
+    try:
+        import functools as _functools
+        import tqdm as _tqdm_mod
+        from tqdm import tqdm as _tqdm_cls
+
+        class _SilentTqdm(_tqdm_cls):  # type: ignore[misc]
+            def __init__(self, *a, **kw):
+                kw.setdefault("disable", True)
+                super().__init__(*a, **kw)
+
+        _tqdm_mod.tqdm = _SilentTqdm
+        # tqdm.auto re-exports its own reference; patch it too if importable.
+        try:
+            import tqdm.auto as _tqdm_auto
+            _tqdm_auto.tqdm = _SilentTqdm
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+# --- HuggingFace Hub download robustness -----------------------------------
+# Unauthenticated Hub requests are rate-limited and frequently drop mid-download
+# ("Server disconnected without sending a response"), which surfaces as an
+# OSError "Can't load the configuration of <repo>" when vLLM resolves a model
+# that isn't cached locally yet. Give the Hub HTTP client a longer timeout, and
+# enable hf_transfer (faster/more robust large-file downloads) ONLY if it's
+# installed — setting the flag without the package would itself error. Set
+# HF_TOKEN in your shell to lift the rate limits entirely (recommended).
+os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+try:
+    import importlib.util as _ilu
+    if _ilu.find_spec("hf_transfer") is not None:
+        os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+except Exception:
+    pass
 
 
-def normalize_precision(precision: str) -> str:
-    """Validate/normalize a precision token (tolerates legacy GGUF names by
-    mapping them onto the nearest precision: Q4* -> awq4, Q6/Q8 -> bf16)."""
-    p = (precision or "").strip().lower()
-    if p in _PRECISIONS:
-        return p
-    legacy = {"q4_k_m": "awq4", "q6_k": "bf16", "q8_0": "bf16"}
-    if p in legacy:
-        logger.warning("[models] legacy quant %r mapped to precision %r",
-                       precision, legacy[p])
-        return legacy[p]
-    raise ValueError(f"Unknown precision {precision!r}. Valid: {_PRECISIONS}")
+# ---- inference precision --------------------------------------------------
+# The pipeline runs all generators in bf16 (16-bit). This runs on every target
+# GPU (RTX 3090 / A100 / H200) with no quantization step, no device detection,
+# and no precision configuration — the simplest path. Models are loaded straight
+# from their full-precision HuggingFace repos.
 
 
-def _resolve_model_path(model: str) -> str:
-    """Return a string vLLM/HF will load correctly.
-
-    A LOCAL directory that exists on disk (e.g. our AWQ weights under
-    ``models/awq/...``) must be handed to HF as a filesystem path. HF's
-    ``validate_repo_id`` rejects a slashed string that is not a ``namespace/name``
-    repo id, so a relative local path like ``models/awq/qwen3.5-2b-awq`` raises
-    ``HFValidationError``. Converting an existing local dir to its absolute path
-    makes HF treat it as a directory; a genuine HF repo id (no local dir of that
-    name) is returned unchanged.
-    """
-    p = Path(model)
-    if p.exists():
-        return str(p.resolve())
-    return model
-
-
-# ---- generator catalogue (vLLM) ------------------------------------------
-# model key -> {precision: HF repo or local path}. AWQ checkpoints live under
-# models/ (built once by quantize.py); bf16 points at the upstream repo and is
-# fetched into the same models/ HF cache. Context-1 is the agentic retriever /
-# veracity verifier (a 20B gpt-oss MoE) — its low-bit checkpoint is QAT-distilled
-# upstream, so we do NOT self-AWQ it; use a 4-bit community/official checkpoint
-# or run bf16 on a big GPU.
-_MODELS_DIR = Path("models")
-
-_CATALOGUE: dict[str, dict[str, str]] = {
-    "qwen3.5-2b": {
-        "awq4": "models/awq/qwen3.5-2b-awq",
-        "bf16": "Qwen/Qwen3.5-2B",
-    },
-    "qwen3.5-4b": {
-        "awq4": "models/awq/qwen3.5-4b-awq",
-        "bf16": "Qwen/Qwen3.5-4B",
-    },
-    "qwen3.5-9b": {
-        "awq4": "models/awq/qwen3.5-9b-awq",
-        "bf16": "Qwen/Qwen3.5-9B",
-    },
-    "gemma4-e2b": {
-        "awq4": "models/awq/gemma4-e2b-awq",
-        "bf16": "google/gemma-4-E2B-it",
-    },
-    "gemma4-e4b": {
-        "awq4": "models/awq/gemma4-e4b-awq",
-        "bf16": "google/gemma-4-E4B-it",
-    },
-    "gemma4-12b": {
-        # Google ships an official QAT W4A16 checkpoint for the 12B
-        # (google/gemma-4-12B-it-qat-w4a16-ct) — quantization-aware-trained, so
-        # higher quality than self-AWQ. Prefer it over building our own for 12B.
-        "awq4": "models/awq/gemma4-12b-awq",
-        "bf16": "google/gemma-4-12B-it",
-    },
-    # Context-1: 20B gpt-oss MoE agentic search/verify model. Served via vLLM
-    # (as Chroma do). The official MXFP4 checkpoint is "coming soon" but NOT yet
-    # released, and the only community 4-bit (foadmk/context-1-MLX-MXFP4) is MLX
-    # (Apple Silicon), which vLLM cannot load. So until Chroma ship MXFP4, run
-    # BF16 on a large GPU (~40 GB; trivial on the H200). Do not self-quantize —
-    # Context-1's low-bit form is QAT-distilled upstream and uses a nonstandard
-    # interleaved expert weight layout. Point awq4 here at the official MXFP4
-    # checkpoint once it lands.
-    "context-1": {
-        "awq4": "chromadb/context-1",   # TODO: official MXFP4 when released
-        "bf16": "chromadb/context-1",
-    },
+# ---- generator catalogue (vLLM, bf16) ------------------------------------
+# model key -> HuggingFace repo id. All generators run bf16, loaded straight
+# from their upstream repos. Context-1 is the agentic retriever / veracity
+# verifier (a 20B gpt-oss MoE) — run bf16 on a large GPU (~40 GB; fine on H200).
+_CATALOGUE: dict[str, str] = {
+    "qwen3.5-2b": "Qwen/Qwen3.5-2B",
+    "qwen3.5-4b": "Qwen/Qwen3.5-4B",
+    "qwen3.5-9b": "Qwen/Qwen3.5-9B",
+    "gemma4-e2b": "google/gemma-4-E2B-it",
+    "gemma4-e4b": "google/gemma-4-E4B-it",
+    "gemma4-12b": "google/gemma-4-12B-it",
+    "context-1":  "chromadb/context-1",
 }
 
 # Per-model context window (max_model_len). Context-1 needs headroom for the
@@ -115,17 +112,53 @@ _CATALOGUE: dict[str, dict[str, str]] = {
 _DEFAULT_CTX = {"context-1": 32768}
 
 
-def resolve_generator(model_key: str, precision: str) -> tuple[str, dict]:
-    """Map (model key | 'vendor/key' alias, precision) -> (model_path_or_repo,
-    vllm_kwargs) where vllm_kwargs carries quantization+dtype for that precision."""
-    precision = normalize_precision(precision)
+def resolve_generator(model_key: str) -> str:
+    """Map a model key (or 'vendor/key' alias) to its HuggingFace repo id."""
     key = model_key if model_key in _CATALOGUE else model_key.split("/")[-1]
     if key not in _CATALOGUE:
         raise ValueError(f"Unknown generator {model_key!r}. Available: {sorted(_CATALOGUE)}")
-    by_prec = _CATALOGUE[key]
-    if precision not in by_prec:
-        raise ValueError(f"{key!r} has no {precision!r} variant (have {sorted(by_prec)})")
-    return by_prec[precision], dict(_PRECISION_VLLM[precision])
+    return _CATALOGUE[key]
+
+
+def _construct_llm_with_retry(LLM, llm_kwargs: dict, *, attempts: int = 3):
+    """Build a vLLM ``LLM`` engine, retrying on transient HuggingFace Hub
+    download failures.
+
+    When a model isn't cached locally, vLLM resolves it from the Hub during
+    construction. Unauthenticated/rate-limited requests can drop mid-download and
+    surface as an OSError ("Can't load the configuration of <repo>") caused by an
+    httpx RemoteProtocolError. These are transient, so we retry with backoff. Set
+    HF_TOKEN to avoid the rate limits in the first place. Non-transient errors
+    (bad repo id, OOM, unsupported architecture) are re-raised immediately.
+    """
+    import time
+    model = llm_kwargs.get("model", "<unknown>")
+    last_exc = None
+    for i in range(1, attempts + 1):
+        try:
+            return LLM(**llm_kwargs)
+        except OSError as exc:
+            msg = str(exc)
+            transient = ("Can't load the configuration" in msg
+                         or "Server disconnected" in msg
+                         or "RemoteProtocolError" in msg
+                         or "Connection" in msg
+                         or "timed out" in msg.lower())
+            if not transient or i == attempts:
+                if transient:
+                    raise OSError(
+                        f"Failed to download '{model}' from HuggingFace after "
+                        f"{attempts} attempts (transient network error). Set HF_TOKEN "
+                        f"to lift rate limits, check connectivity, or pre-download the "
+                        f"model, then retry.\nOriginal error: {msg}") from exc
+                raise
+            wait = 5 * i
+            logger.warning("[models] transient Hub error loading %s (attempt %d/%d): "
+                           "%s — retrying in %ds", model, i, attempts, msg, wait)
+            time.sleep(wait)
+            last_exc = exc
+    if last_exc:
+        raise last_exc
 
 
 # ---- embedder (vLLM pooling runner) --------------------------------------
@@ -153,10 +186,11 @@ def make_embedder(model_name: str, *, max_seq_length: int = 512):
         gpu_util = 0.30
     logger.info("[models] embedder %s via vLLM (runner=pooling, max_len=%s)",
                 model_name, max_seq_length)
-    engine = LLM(model=_resolve_model_path(model_name), runner="pooling",
-                 max_model_len=max_seq_length,
-                 gpu_memory_utilization=gpu_util,
-                 enforce_eager=True, trust_remote_code=True)
+    engine = _construct_llm_with_retry(LLM, dict(
+        model=model_name, runner="pooling",
+        max_model_len=max_seq_length,
+        gpu_memory_utilization=gpu_util,
+        enforce_eager=True, trust_remote_code=True))
     return _VLLMEmbedder(engine, model_name)
 
 
@@ -173,10 +207,9 @@ class _VLLMEmbedder:
         texts = list(texts)
         if not texts:
             return np.empty((0, 0), dtype=np.float32)
-        outputs = self.engine.embed(texts)
+        outputs = self.engine.embed(texts, use_tqdm=False)
         vecs = [o.outputs.embedding for o in outputs]
-        arr = np.asarray(vecs, dtype=np.float32)
-        return arr if convert_to_numpy else arr
+        return np.asarray(vecs, dtype=np.float32)
 
     def close(self) -> None:
         _teardown_vllm(getattr(self, "engine", None))
@@ -226,41 +259,44 @@ class VLLMGenerator:
     """Callable vLLM generator implementing the `generate(system, user, **kw)`
     contract used across the pipeline.
 
-    A single resident model serves many concurrent requests via vLLM's
-    continuous batching — so `concurrent=True` and `parallel_map` can fan logical
-    requests at it for real overlap, with no worker-pool of model copies. Per-call
-    temperature/max_tokens are honoured; `/no_think` is appended unless thinking.
+    Backed by one resident vLLM engine. Calls are made serially (the offline
+    `LLM` engine is driven one .chat() at a time); throughput comes from vLLM's
+    paged-attention batching within each call. temperature/max_tokens are
+    honoured; `/no_think` is appended unless thinking.
     """
 
-    concurrent = True   # vLLM batches concurrent calls against one model
-
-    def __init__(self, model_key: str, precision: str, *,
+    def __init__(self, model_key: str, *,
                  context_size: int | None = None, temperature: float = 0.0,
                  gpu_memory_utilization: float | None = None) -> None:
         from vllm import LLM
-        model_path, vkw = resolve_generator(model_key, precision)
-        self.model_key, self.precision = model_key, normalize_precision(precision)
+        model_repo = resolve_generator(model_key)
+        self.model_key = model_key
         self.temperature = temperature
         key = model_key if model_key in _CATALOGUE else model_key.split("/")[-1]
         context_size = context_size or _DEFAULT_CTX.get(key, 16384)
         self._context_size = context_size
         if gpu_memory_utilization is None:
+            # vLLM's gpu_memory_utilization is a fraction of TOTAL VRAM and must
+            # leave room for anything already resident. In several steps (sub-
+            # narratives, narratives, veracity) an embedder is loaded BEFORE the
+            # generator and stays resident, taking ~0.30 (DISTRACE_EMBED_GPU_UTIL).
+            # So the generator default is 0.60, keeping embedder+generator at ~0.90
+            # of the card with headroom. On a single-model step this is a little
+            # conservative; raise it with DISTRACE_GEN_GPU_UTIL=0.9 if no embedder
+            # shares the GPU, or lower it on tight-VRAM cards.
             try:
                 gpu_memory_utilization = float(
-                    os.environ.get("DISTRACE_GEN_GPU_UTIL", "0.90"))
+                    os.environ.get("DISTRACE_GEN_GPU_UTIL", "0.60"))
             except ValueError:
-                gpu_memory_utilization = 0.90
+                gpu_memory_utilization = 0.60
 
-        llm_kwargs = dict(model=_resolve_model_path(model_path), dtype=vkw["dtype"],
+        llm_kwargs = dict(model=model_repo, dtype="bfloat16",
                           max_model_len=context_size,
                           gpu_memory_utilization=gpu_memory_utilization,
                           trust_remote_code=True)
-        if vkw["quantization"] is not None:
-            llm_kwargs["quantization"] = vkw["quantization"]
-        logger.info("[gen] loading %s [%s] via vLLM (ctx=%d, util=%.2f, quant=%s)",
-                    model_path, self.precision, context_size, gpu_memory_utilization,
-                    vkw["quantization"])
-        self.llm = LLM(**llm_kwargs)
+        logger.info("[gen] loading %s [bf16] via vLLM (ctx=%d, util=%.2f)",
+                    model_repo, context_size, gpu_memory_utilization)
+        self.llm = _construct_llm_with_retry(LLM, llm_kwargs)
 
     def __call__(self, system: str, user: str, *, temperature: float | None = None,
                  max_tokens: int = 256, thinking: bool = False) -> str:
@@ -319,40 +355,9 @@ class VLLMGenerator:
         self.close()
 
 
-def make_generator(model_key: str, precision: str, **kw):
-    """Build a vLLM generator. (The old server_url/workers paths are gone: vLLM's
-    continuous batching gives parallel decoding from one resident model, so the
-    llama.cpp worker-pool / external-server workarounds are no longer needed.)"""
-    return VLLMGenerator(model_key, precision, **kw)
-
-
-def generator_is_concurrent(generate) -> bool:
-    """True if `generate` can be called concurrently for a real speed-up. vLLM
-    generators batch concurrent calls against one model -> always True."""
-    return bool(getattr(generate, "concurrent", False))
-
-
-def parallel_map(fn, items, max_workers: int = 1, description: str | None = None):
-    """Apply `fn` over `items`, up to `max_workers` at a time, results in order.
-
-    With a vLLM-backed generator `fn` releases the GIL during the engine call, so
-    >1 worker lets vLLM's continuous batching overlap the requests. `max_workers<=1`
-    runs sequentially. Progress via rich.track when `description` is set.
-    """
-    from rich.progress import track
-    items = list(items)
-    if max_workers <= 1 or len(items) <= 1:
-        return [fn(x) for x in (track(items, description) if description else items)]
-    import concurrent.futures as cf
-    results: list = [None] * len(items)
-    with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(fn, x): i for i, x in enumerate(items)}
-        completed = cf.as_completed(futures)
-        if description:
-            completed = track(completed, description, total=len(futures))
-        for fut in completed:
-            results[futures[fut]] = fut.result()
-    return results
+def make_generator(model_key: str, **kw):
+    """Build a bf16 vLLM generator for the given model key."""
+    return VLLMGenerator(model_key, **kw)
 
 
 def close_generator(generate) -> None:

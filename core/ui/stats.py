@@ -29,7 +29,7 @@ Parameter-combo keys
 step                 key fields
 ----                 ----------
 claim-detection      detector
-claim-canonization   model_key + quant  (eval); detector (generate)
+claim-canonization   model_key  (eval); detector (generate)
 sub-narratives       detector
 narratives           detector + method
 """

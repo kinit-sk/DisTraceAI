@@ -337,10 +337,9 @@ def main(cfg=None) -> None:
     embedder = make_embedder(cfg.subnar_embedder)
 
     console.print(
-        f"[bold]Loading generator[/bold] [cyan]{cfg.subnar_generator}[/cyan] "
-        f"([dim]{cfg.subnar_precision}[/dim])…"
+        f"[bold]Loading generator[/bold] [cyan]{cfg.subnar_generator}[/cyan] [dim](bf16)…[/dim]"
     )
-    llm = make_generator(cfg.subnar_generator, cfg.subnar_precision)
+    llm = make_generator(cfg.subnar_generator)
 
 
     for detector_slug in detector_slugs:

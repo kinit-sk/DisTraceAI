@@ -188,20 +188,19 @@ class KnowledgeBase:
         path = self._veracity_cache_dir() / f"{claim_hash}.json"
         return self._read(path) if path.exists() else None
 
-    def save_paraphrase_test(self, records: list, generator: str, quant: str) -> None:
+    def save_paraphrase_test(self, records: list, generator: str) -> None:
         d = self.root / "veracity"
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / "multiclaim_test_paraphrases.json",
-                    {"generator": generator, "quant": quant, "records": records})
+                    {"generator": generator, "records": records})
 
-    def load_paraphrase_test(self, generator: str,
-                             quant: str) -> list | None:
+    def load_paraphrase_test(self, generator: str) -> list | None:
         path = self.root / "veracity" / "multiclaim_test_paraphrases.json"
         if not path.exists():
             return None
         data = self._read(path)
-        if data.get("generator") != generator or data.get("quant") != quant:
-            return None   # stale cache — different generator or quant
+        if data.get("generator") != generator:
+            return None   # stale cache — different generator
         return data.get("records", [])
 
     def save_multiclaim_embs(self, ids: list[str], embs: "np.ndarray",

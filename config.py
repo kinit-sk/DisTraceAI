@@ -44,13 +44,6 @@ class Config:
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
-    canon_precision: str = _f(
-        "awq4",
-        "Canonization precision",
-        "Model precision for the canonization generator (awq4=4-bit, bf16=16-bit).",
-        choices=["awq4", "bf16"],
-    )
-
     subnar_detector: str = _f(
         "models/xlm-multicw",
         "Sub-narrative source detector",
@@ -72,13 +65,6 @@ class Config:
         "LLM used to synthesize the central claim for each sub-narrative cluster.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
-    )
-
-    subnar_precision: str = _f(
-        "awq4",
-        "Sub-narrative precision",
-        "Model precision for the sub-narrative generator (awq4=4-bit, bf16=16-bit).",
-        choices=["awq4", "bf16"],
     )
 
     subnar_min_similarity: float = _f(
@@ -152,13 +138,6 @@ class Config:
         "hypotheticals (specfi-cs / cspecfi / context-1).",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
-    )
-
-    nar_precision: str = _f(
-        "awq4",
-        "Narrative precision",
-        "Model precision for the narrative generator (awq4=4-bit, bf16=16-bit).",
-        choices=["awq4", "bf16"],
     )
 
     nar_assign_threshold: float = _f(
@@ -263,13 +242,6 @@ class Config:
         choices=["gemma4-12b", "gemma4-e4b", "qwen3.5-9b"],
     )
 
-    ver_precision: str = _f(
-        "awq4",
-        "Veracity precision",
-        "Model precision for the verdict + paraphrase generators (awq4=4-bit, bf16=16-bit).",
-        choices=["awq4", "bf16"],
-    )
-
     ver_max_turns: int = _f(
         6,
         "Veracity max turns",
@@ -345,13 +317,6 @@ class Config:
         "LLM for synthesizing campaign central claims.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
-    )
-
-    camp_precision: str = _f(
-        "awq4",
-        "Campaign precision",
-        "Model precision for the campaign generator (awq4=4-bit, bf16=16-bit).",
-        choices=["awq4", "bf16"],
     )
 
     camp_assign_threshold: float = _f(

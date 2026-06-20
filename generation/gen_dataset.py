@@ -25,7 +25,6 @@ import logging
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 
 from core.knowledge_base import KnowledgeBase
 
@@ -46,46 +45,43 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     already-processed articles (all steps are idempotent)."""
 
     console.print("[bold]Step 1/5:[/bold] Claim detection…")
-    from core.claims.gen_cw_detect import generate as gen_cw
+    from generation.gen_cw_detect import generate as gen_cw
     gen_cw(cfg.detector, kb)
 
     console.print("[bold]Step 2/5:[/bold] Canonization…")
-    from core.claims.gen_canonize import canonize
-    canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_precision, kb)
+    from generation.gen_canonize import canonize
+    canonize(cfg.canon_detector, cfg.canon_generator, kb)
 
     console.print("[bold]Step 3/5:[/bold] Sub-narrative extraction…")
-    from core.claims.gen_sub_narratives import generate as gen_sn
+    from generation.gen_sub_narratives import generate as gen_sn
     gen_sn(
         detector_path=cfg.subnar_detector,
         embedder_name=cfg.subnar_embedder,
         generator_key=cfg.subnar_generator,
-        precision=cfg.subnar_precision,
         kb=kb,
         min_similarity=cfg.subnar_min_similarity,
         min_claims=cfg.subnar_min_claims,
     )
 
     console.print("[bold]Step 4/5:[/bold] Narrative extraction…")
-    from core.claims.gen_narratives import generate as gen_nar
+    from generation.gen_narratives import generate as gen_nar
     gen_nar(
         detector_path=cfg.nar_detector,
         extractor=cfg.nar_extractor,
         embedder_name=cfg.nar_embedder,
         generator_key=cfg.nar_generator,
-        precision=cfg.nar_precision,
         kb=kb,
         cfg=cfg,
     )
 
     console.print("[bold]Step 5/5:[/bold] Campaign extraction…")
-    from core.claims.gen_campaigns import generate as gen_camp
+    from generation.gen_campaigns import generate as gen_camp
     gen_camp(
         dataset=_DATASET_SLUG,
         detector_path=cfg.camp_detector,
         extractor=cfg.camp_extractor,
         embedder_name=cfg.camp_embedder,
         generator_key=cfg.camp_generator,
-        precision=cfg.camp_precision,
         kb=kb,
         cfg=cfg,
     )

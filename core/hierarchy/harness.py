@@ -96,7 +96,8 @@ class AgenticSearchHarness:
 
     def __init__(self, tools, generate, system_prompt, *,
                  token_budget: int = 8192, top_k: int = 5, max_turns: int = 8,
-                 soft_threshold: float = 0.80, hard_cutoff: float = 0.95) -> None:
+                 soft_threshold: float = 0.80, hard_cutoff: float = 0.95,
+                 min_searches: int = 2) -> None:
         self.tools = tools
         self.generate = generate
         self.system_prompt = system_prompt
@@ -105,6 +106,13 @@ class AgenticSearchHarness:
         self.max_turns = max_turns
         self.soft_limit = int(token_budget * soft_threshold)
         self.hard_limit = int(token_budget * hard_cutoff)
+        # The agent must actually retrieve before it's allowed to finish: a
+        # premature `done` (or an unparseable first reply that the parser maps to
+        # a synthetic `done`) would otherwise collapse the whole multi-turn loop
+        # into a single inference. Until this many search_corpus calls have run,
+        # `done` is ignored and a parse failure falls back to a decomposed search
+        # on the query rather than terminating.
+        self.min_searches = max(1, min_searches)
 
     # ---- tool execution --------------------------------------------------
     def _do_search(self, query: str, state: _State) -> str:
@@ -193,6 +201,7 @@ class AgenticSearchHarness:
     def search(self, query: str) -> list[tuple[str, str]]:
         """Run the observe→reason→act loop; return gathered [(cluster_id, doc)]."""
         state = _State()
+        searches_done = 0
         observation = (
             f"Claim to find matching narrative clusters for:\n{query}\n\n"
             "Decompose this claim into sub-topics and start searching. "
@@ -211,6 +220,7 @@ class AgenticSearchHarness:
                 tool = call.get("tool", "done")
                 if tool == "search_corpus" and call.get("query"):
                     parts.append(self._do_search(call["query"], state))
+                    searches_done += 1
                 elif tool == "grep_corpus":
                     parts.append(self._do_grep(call.get("pattern", ""), state))
                 elif tool == "read_document":
@@ -218,16 +228,29 @@ class AgenticSearchHarness:
                 elif tool == "prune_chunks" and call.get("chunk_ids"):
                     parts.append(self._do_prune(call["chunk_ids"], state))
                 elif tool == "done":
-                    logger.info("[harness] done after %d turn(s): %s",
-                                turn + 1, call.get("reasoning", ""))
-                    done = True
-                    break
+                    # Don't let the agent finish before it has actually searched.
+                    # A first-turn `done` (often a parse fallback) would otherwise
+                    # turn this into single-shot inference. Force a real search
+                    # on the raw query instead and keep looping.
+                    if searches_done < self.min_searches:
+                        logger.info("[harness] premature done at turn %d "
+                                    "(%d/%d searches) — forcing a search",
+                                    turn + 1, searches_done, self.min_searches)
+                        parts.append(self._do_search(query, state))
+                        searches_done += 1
+                    else:
+                        logger.info("[harness] done after %d turn(s): %s",
+                                    turn + 1, call.get("reasoning", ""))
+                        done = True
+                        break
                 else:
                     parts.append(f"[harness] Unknown tool: {tool!r}")
             observation = "\n".join(parts) if parts else "[No tool output]"
             if done:
                 break
         gathered = state.gathered()
-        logger.info("[harness] complete — %d cluster(s) in %d turn(s), ~%d tokens",
-                    len(gathered), state.turn_count, state.tokens_used)
+        logger.info("[harness] complete — %d cluster(s) in %d turn(s), "
+                    "%d search(es), ~%d tokens",
+                    len(gathered), state.turn_count, searches_done,
+                    state.tokens_used)
         return gathered

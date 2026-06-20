@@ -12,6 +12,10 @@ module load GCC/13.2.0
 module load CUDA/12.4.0
 eval "$(conda shell.bash hook)"
 conda activate distrace
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}   # libcuda.so for FlashInfer
+export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm; non-FP8 models)
+export VLLM_USE_FLASHINFER_SAMPLER=0   # use PyTorch-native sampler; avoids FlashInfer nvcc/ninja JIT build failure
+export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
 # Campaign extraction: narratives → campaigns with coordination scoring.
 # Run Verify hierarchy first to populate veracity before this step.
@@ -22,7 +26,6 @@ DISTRACE=$HOME/distrace
 python $DISTRACE/main.py \
   --generate claim-veracity \
   --ver-generator gemma4-e2b \
-  --ver-precision awq4 \
   --ver-sources multiclaim,wikipedia,web
 
 # Campaign extraction
@@ -32,7 +35,6 @@ python $DISTRACE/main.py \
   --camp-extractor dense \
   --camp-embedder Qwen/Qwen3-Embedding-4B \
   --camp-generator qwen3.5-2b \
-  --camp-precision awq4 \
   --camp-assign-threshold 0.50 \
   --camp-min-new-size 2 \
   --camp-new-threshold 0.70 \

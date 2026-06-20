@@ -82,8 +82,8 @@ class _LocalLLMClient:
     NodeRAG extraction unit was serialised through one lock + one context — the
     dominant cost of a SpecFi-CS graph build (multiple hours).
 
-    When handed a generator that exposes multiple independent contexts
-    (a concurrent generator), this client dispatches several units at once
+    When handed a generator that exposes multiple independent contexts (a
+    a concurrent generator), this client dispatches several units at once
     drawn from a bounded semaphore sized to the pool. Distinct workers have
     distinct KV caches, so they decode in parallel and the A100 batches them.
     A non-concurrent generator transparently falls back to
@@ -93,15 +93,15 @@ class _LocalLLMClient:
     def __init__(self, generate, max_tokens: int | None = None) -> None:
         self._gen = generate
 
-        # vLLM serves many concurrent requests from ONE resident model via
-        # continuous batching, so there is no worker pool of model copies. We
-        # still admit several units at once (they overlap inside vLLM's batch);
-        # the concurrency width is a logical dispatch fan-out, not N contexts.
-        # Grammar-constrained JSON goes through generate_json() (vLLM guided
-        # decoding) rather than a raw low-level handle.
+        # The vLLM offline `LLM` engine is driven by ONE generator object. Its
+        # .chat()/.generate() must be called serially — unlike the vLLM *server*,
+        # the offline LLM is not safe under concurrent calls from multiple threads
+        # on the same engine. (The old llama.cpp path gave each worker its own
+        # context; vLLM has a single shared engine.) So dispatch is serialized:
+        # one in-flight unit at a time. Throughput still comes from vLLM's paged
+        # attention per call, not from overlapping .chat() calls at one engine.
         self._workers = [generate]
-        self._n_workers = max(1, int(os.getenv("DISTRACE_NODERAG_FANOUT", "8"))) \
-            if getattr(generate, "concurrent", False) else 1
+        self._n_workers = 1
 
         self._max_tokens = max_tokens or int(os.getenv("DISTRACE_NODERAG_MAXTOK", "4096"))
 
@@ -114,8 +114,9 @@ class _LocalLLMClient:
             self._free_idx.put_nowait(i)
 
     async def __call__(self, input, *, cache_path=None, meta_data=None):
-        # Admit up to n_workers callers; each grabs a free worker index, runs the
-        # blocking llama.cpp call in a thread, then returns the worker to the pool.
+        # Serialized dispatch (n_workers=1): one in-flight unit at a time, run in
+        # a thread so the async build loop isn't blocked. The single vLLM engine
+        # is driven one .chat() at a time.
         async with self._sema:
             idx = await self._free_idx.get()
             try:
@@ -145,35 +146,31 @@ class _LocalLLMClient:
         rf = input.get("response_format")
         has_json = rf is not None and hasattr(gen, "generate_json")
         if has_json:
+            # NodeRAG explicitly requested structured output (a pydantic response
+            # model) → return the parsed object. This is the path the extraction /
+            # decompose steps take (semantic units, entities, relationships).
             schema = rf.model_json_schema()
             out = gen.generate_json(system, query, schema,
                                     temperature=0.0, max_tokens=self._max_tokens)
             return json.loads(out)
+
         text = gen(system, query, temperature=0.0, max_tokens=self._max_tokens)
-        if isinstance(text, str):
-            stripped = text.strip()
-            if stripped.startswith("{") or stripped.startswith("["):
-                try:
-                    return json.loads(stripped)
-                except json.JSONDecodeError:
-                    pass
-            if hasattr(gen, "generate_json") and "elements" in query.lower():
-                _fallback_schema = {
-                    "type": "object",
-                    "properties": {
-                        "elements": {"type": "array", "items": {"type": "string"}}
-                    },
-                    "required": ["elements"],
-                }
-                try:
-                    out = gen.generate_json(system, query, _fallback_schema,
-                                            temperature=0.0, max_tokens=self._max_tokens)
-                    return json.loads(out)
-                except Exception as exc:
-                    logger.warning("[noderag] grammar-constrained decompose fallback failed (%s); "
-                                   "returning empty elements", exc)
-                    return {"elements": []}
-        return text
+
+        # No response_format → NodeRAG expects a free-text STRING here, full stop.
+        # Every NodeRAG build step that needs structured output passes a
+        # `response_format` (text_unit.py and graph_pipeline.py both send
+        # {'query':..., 'response_format':json_format} → the has_json path above).
+        # The ONLY caller that omits it is attribute_generation.py
+        #   response = await self.API_client({'query': query})
+        #   attribute = Attribute(response, node)   # raw_context MUST be a str
+        # whose return is hashed via genid([raw_context]) → "".join([...]). So we
+        # must return the model text verbatim and NEVER coerce it to a dict here.
+        # (A previous keyword heuristic that JSON-ified replies whenever the word
+        # "elements" appeared in the query matched ordinary corpus text — e.g. a
+        # neighbour relationship mentioning "elements" — and produced a dict
+        # raw_context, raising "TypeError: sequence item 0: expected str instance,
+        # dict found" mid-Attribute-pipeline. Removed.)
+        return text if isinstance(text, str) else str(text)
 
 
 def _check_server_reachable(base_url: str) -> None:
@@ -294,7 +291,6 @@ class NodeRagGraph:
 
     def __init__(self, index_path: str, *, generate=None, embedder=None,
                  build_model_key: str | None = None,
-                 build_precision: str | None = None,
                  build_context_size: int = 16384,
                  build_repr: str = "text") -> None:
         self.index_path = index_path
@@ -304,7 +300,6 @@ class NodeRagGraph:
         # auto-sized worker pool (parallel graph construction) and tear it down
         # afterwards. When omitted, build() uses the single `generate` as-is.
         self._build_model_key = build_model_key
-        self._build_precision = build_precision
         self._build_context_size = build_context_size
         # What auto-populated input docs contain when input/ is empty:
         # "text" (CW claim sentences, SpecFi-CS) or "canonized" (SpecFi-CCS).
@@ -511,10 +506,26 @@ class NodeRagGraph:
             return
         try:
             from NodeRAG import NodeSearch
-        except ImportError as exc:
-            raise RuntimeError(
-                f"SpecFi-C requires NodeRAG (pinned ==0.1.0) but it is not importable "
-                f"({exc}). Install it with `pip install NodeRAG==0.1.0`.") from exc
+        except ImportError:
+            # Fallback: the editable install may not be on this process's path
+            # (e.g. installed into a different shell/env). Try the known local
+            # clone directory that install_noderag_local.sh creates, then retry.
+            import sys
+            from pathlib import Path as _Path
+            _clone = (_Path(__file__).resolve().parents[2]
+                      / "modules" / "noderag" / "NodeRAG_local")
+            if _clone.is_dir() and str(_clone) not in sys.path:
+                sys.path.insert(0, str(_clone))
+            try:
+                from NodeRAG import NodeSearch
+            except ImportError as exc:
+                raise RuntimeError(
+                    f"SpecFi-C/CCS require NodeRAG but it is not importable ({exc}). "
+                    f"NodeRAG is a patched local clone, not a PyPI package — install it "
+                    f"with:\n    conda activate distrace\n"
+                    f"    bash modules/noderag/install_noderag_local.sh\n"
+                    f"Make sure you run that in the SAME env that runs the pipeline."
+                ) from exc
         try:
             if not self._is_built():
                 logger.info("[noderag] index not built — auto-building from %s/input", self.index_path)
@@ -556,7 +567,7 @@ class NodeRagGraph:
 #
 # What this test does:
 #   1. Verifies the HLE parser on a synthetic NodeRAG response (no models needed).
-#   2. Loads gemma4-e2b (awq4) + an embedder via vLLM (downloaded from
+#   2. Loads gemma4-e2b (bf16) + an embedder via vLLM (downloaded from
 #      HuggingFace on first run, cached after).
 #   3. Writes three short thematic documents to ./test_noderag_index/input/.
 #   4. Builds a full NodeRAG knowledge-graph index at ./test_noderag_index/
@@ -611,7 +622,7 @@ if __name__ == "__main__":
     print("    ✓ Parser OK")
 
     # ── 2. Load models via vLLM (the real pipeline path) ─────────────────────
-    print("\n[2/5] Loading gemma4-e2b (awq4) + embedder via vLLM …")
+    print("\n[2/5] Loading gemma4-e2b (bf16) + embedder via vLLM …")
     print("    (first run downloads weights from HuggingFace; cached afterwards)")
 
     try:
@@ -621,7 +632,7 @@ if __name__ == "__main__":
         print("       Run ./setup.sh first (installs vllm).", file=sys.stderr)
         sys.exit(1)
 
-    _generator = make_generator("gemma4-e2b", "awq4")
+    _generator = make_generator("gemma4-e2b")
     _embedder  = make_embedder("nomic-ai/nomic-embed-text-v1.5")
 
     # ── 3. Write test documents ──────────────────────────────────────────────

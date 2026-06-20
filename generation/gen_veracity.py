@@ -607,7 +607,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
         f"— FakeCTI[/bold cyan]")
     console.print(
         f"[dim]Sources: {cfg.ver_sources}  "
-        f"Generator: {cfg.ver_generator} ({cfg.ver_precision})[/dim]\n")
+        f"Generator: {cfg.ver_generator}[/dim]\n")
 
     # camp_embedder is intentionally reused here: sharing the embedding model
     # with the campaign step means the MultiClaim .npz cache is shared too.
@@ -615,9 +615,8 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
     embedder = make_embedder(cfg.camp_embedder)
 
     console.print(
-        f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] "
-        f"([dim]{cfg.ver_precision}[/dim])…")
-    llm = make_generator(cfg.ver_generator, cfg.ver_precision)
+        f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] [dim](bf16)…[/dim]")
+    llm = make_generator(cfg.ver_generator)
 
     tools = build_evidence_tools(cfg, embedder,
                                  kb=kb,

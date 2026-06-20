@@ -13,6 +13,10 @@ module load CUDA/12.4.0
 
 eval "$(conda shell.bash hook)"
 conda activate distrace
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}   # libcuda.so for FlashInfer
+export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm; non-FP8 models)
+export VLLM_USE_FLASHINFER_SAMPLER=0   # use PyTorch-native sampler; avoids FlashInfer nvcc/ninja JIT build failure
+export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
 # Narrative retrieval benchmark.
 # Metrics: Acc@1/3/5 + MAP, overall and per-language.
@@ -58,7 +62,6 @@ python $DISTRACE/main.py \
   --nar-extractor specfi-cs \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-precision awq4 \
   --nar-specfi-hypotheticals 10 \
   --nar-eval-split test
 
@@ -69,7 +72,6 @@ python $DISTRACE/main.py \
   --nar-extractor cspecfi \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-precision awq4 \
   --nar-specfi-hypotheticals 10 \
   --nar-eval-split test
 
@@ -80,7 +82,6 @@ python $DISTRACE/main.py \
   --nar-extractor context-1 \
   --nar-embedder Qwen/Qwen3-Embedding-4B \
   --nar-generator qwen3.5-2b \
-  --nar-precision awq4 \
   --nar-context1-context-size 32768 \
   --nar-context1-max-turns 8 \
   --nar-context1-token-budget 8192 \

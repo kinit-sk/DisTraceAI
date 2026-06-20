@@ -9,7 +9,10 @@
 vllm==0.22.1
 
 # retrieval
-NodeRAG==0.1.0
+# NodeRAG is NOT installed from PyPI — it's a patched local clone installed by
+# modules/noderag/install_noderag_local.sh (called from setup.sh). Listing it
+# here would either fail to resolve or install an UNPATCHED copy that conflicts
+# with the editable install, and a failed line aborts the rest of this file.
 chromadb
 
 # core / pipeline
@@ -21,6 +24,9 @@ feedparser
 trafilatura
 fasttext-langdetect
 bertopic
+
+# hub downloads (faster, more robust large-file transfers)
+hf_transfer
 
 # eval / utils
 rich

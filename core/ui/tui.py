@@ -56,10 +56,10 @@ _NAR_COMMON = [
 _NAR_METHOD_PARAMS: dict[str, list[str]] = {
     "dense":     ["nar_dense_repr"],
     "bm25-rag":  [],
-    "specfi-cs": ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "specfi-ccs": ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "cspecfi":   ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "context-1": ["nar_generator", "nar_precision",
+    "specfi-cs": ["nar_generator", "nar_specfi_hypotheticals"],
+    "specfi-ccs": ["nar_generator", "nar_specfi_hypotheticals"],
+    "cspecfi":   ["nar_generator", "nar_specfi_hypotheticals"],
+    "context-1": ["nar_generator", 
                   "nar_context1_context_size", "nar_context1_max_turns",
                   "nar_context1_token_budget"],
 }
@@ -84,10 +84,10 @@ _CAT_COLOR = {
 _CAMP_METHOD_PARAMS: dict[str, list[str]] = {
     "dense":     ["camp_dense_repr"],
     "bm25-rag":  [],
-    "specfi-cs": ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "specfi-ccs": ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "cspecfi":   ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "context-1": ["camp_generator", "camp_precision",
+    "specfi-cs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "specfi-ccs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "cspecfi":   ["camp_generator", "camp_specfi_hypotheticals"],
+    "context-1": ["camp_generator", 
                   "camp_context1_max_turns", "camp_context1_token_budget"],
 }
 
@@ -101,19 +101,19 @@ _CAMP_GENERATE_EXTRA = [
 ]
 
 _VER_COMMON = [
-    "ver_sources", "ver_generator", "ver_precision",
+    "ver_sources", "ver_generator", 
     "ver_max_turns", "ver_token_budget",
     "ver_multiclaim_text_col", "ver_multiclaim_label_col",
 ]
 RELEVANT: dict[str, list[str]] = {
     "claim-detection":         ["detector"],
-    "claim-canonization":      ["canon_detector", "canon_generator", "canon_precision"],
+    "claim-canonization":      ["canon_detector", "canon_generator"],
     "claim-canonization-eval": [],
     "sub-narratives-eval":     ["subnar_detector", "subnar_embedder", "subnar_generator",
-                                "subnar_precision", "subnar_min_similarity",
+                                "subnar_min_similarity",
                                 "subnar_min_claims", "subnar_hypotheticals"],
     "sub-narratives-generate": ["subnar_detector", "subnar_embedder", "subnar_generator",
-                                "subnar_precision", "subnar_min_similarity",
+                                "subnar_min_similarity",
                                 "subnar_min_claims"],
     "narratives-eval":         _NAR_COMMON + ["nar_eval_split", "nar_eval_domain"],
     "narratives-generate":     _NAR_COMMON + _NAR_GENERATE_EXTRA,
@@ -507,13 +507,11 @@ _CANON_BENCH_DESC = (
     "[bold]Launch — Canonization benchmark[/bold]\n"
     f"[dim]{'─' * 44}[/dim]\n"
     "Runs the full canonization benchmark: every one of the 6 models "
-    "is evaluated at the configured precisions (default awq4, bf16).\n\n"
+    "is evaluated in bf16.\n\n"
     "[bold]Models[/bold]\n"
     "Qwen3.5-2B, Qwen3.5-4B, Qwen3.5-9B,\n"
     "Gemma-4-E2B-IT, Gemma-4-E4B-IT, Gemma-4-12B-IT\n\n"
-    "[bold]Precisions[/bold]\n"
-    "awq4 (4-bit), bf16 (16-bit)\n\n"
-    "[dim]6 models × 2 precisions = 12 combinations (default).\n"
+    "[dim]6 models, bf16.\n"
     "Results → evaluation/eval_claim_canonization.html[/dim]"
 )
 

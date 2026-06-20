@@ -259,7 +259,6 @@ def generate(
     detector_path: str,
     embedder_name: str,
     generator_key: str,
-    precision: str,
     kb: KnowledgeBase | None = None,
     min_similarity: float = 0.45,
     min_claims: int = 2,
@@ -275,8 +274,6 @@ def generate(
         HuggingFace model name for the SentenceTransformer embedder.
     generator_key:
         Key from ``_CATALOGUE`` for the LLM used to synthesize central claims.
-    precision:
-        Model precision for the generator, e.g. ``"awq4"``.
     kb:
         Knowledge-base instance; defaults to ``KnowledgeBase("knowledge")``.
     min_similarity:
@@ -300,10 +297,9 @@ def generate(
     embedder = make_embedder(embedder_name)
 
     console.print(
-        f"[bold]Loading generator[/bold] [cyan]{generator_key}[/cyan] "
-        f"([dim]{precision}[/dim])…"
+        f"[bold]Loading generator[/bold] [cyan]{generator_key}[/cyan] [dim](bf16)…[/dim]"
     )
-    llm = make_generator(generator_key, precision)
+    llm = make_generator(generator_key)
 
     summary: dict = {}
     for dataset_slug in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:
