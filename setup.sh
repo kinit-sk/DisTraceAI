@@ -52,5 +52,14 @@ pip install -r requirements.txt
 # --- NodeRAG (stock routing + compat patch; driven by in-process vLLM clients) -
 bash modules/noderag/install_noderag_local.sh
 
+# --- transformers 5.12 + kernels 0.15 import crash workaround --------------
+# transformers' hub_kernels integration builds LayerRepository(...) at MODULE
+# IMPORT TIME without a version/revision, which `kernels` 0.15 rejects
+# ("Either a revision or a version must be specified") — crashing any
+# `import transformers`. The DISABLE_KERNEL_MAPPING env var does NOT help (the
+# bad call runs at import, before the flag is read). Hub kernels are an optional
+# speed feature we don't use (vLLM has its own), so remove the package.
+pip uninstall -y kernels 2>/dev/null || true
+
 echo "[setup] distrace env ready."
 echo "[setup] Next (one-time, on a node with nvcc): ./setup_quantize.sh"

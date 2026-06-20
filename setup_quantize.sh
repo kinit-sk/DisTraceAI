@@ -12,6 +12,7 @@
 #
 # Usage:
 #   conda activate distrace
+export DISABLE_KERNEL_MAPPING=1   # transformers 5.12 + kernels 0.15 import-time skew
 #   ./setup_quantize.sh            # install GPTQModel, then quantize all six
 #   ./setup_quantize.sh --deps     # install deps only (skip quantizing)
 set -euo pipefail
@@ -24,6 +25,7 @@ module load CUDA/12.4.0  2>/dev/null || true
 
 if [[ -z "${CONDA_PREFIX:-}" ]]; then
   echo "ERROR: no active conda env. Run 'conda activate distrace' first." >&2
+export DISABLE_KERNEL_MAPPING=1   # transformers 5.12 + kernels 0.15 import-time skew
   exit 1
 fi
 
@@ -32,6 +34,11 @@ fi
 GPTQMODEL_VER="5.8.0"     # adds Qwen3.5 + Gemma4 + AWQ-Marlin; verify availability
 echo "[quantize] installing GPTQModel==${GPTQMODEL_VER} + datasets (needs nvcc)…"
 INSTALL_KERNELS=1 pip install "gptqmodel==${GPTQMODEL_VER}" datasets
+
+# GPTQModel depends on `kernels`, which re-breaks `import transformers` (the
+# hub_kernels LayerRepository import-time crash). GPTQModel itself does not need
+# the hub `kernels` package to quantize, so remove it again after install.
+pip uninstall -y kernels 2>/dev/null || true
 
 if [[ "${1:-}" == "--deps" ]]; then
   echo "[quantize] deps installed; skipping quantization (--deps)."

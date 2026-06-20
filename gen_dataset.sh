@@ -12,6 +12,8 @@ module load GCC/13.2.0
 module load CUDA/12.4.0
 eval "$(conda shell.bash hook)"
 conda activate distrace
+export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm; non-FP8 models)
+export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
 # Full pipeline on MassiveSumm SK/CZ → three dataset CSVs.
 # Output: knowledge/dataset/{subnarratives,narratives,campaigns}.csv

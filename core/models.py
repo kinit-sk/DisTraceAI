@@ -7,6 +7,23 @@ from typing import Sequence
 
 logger = logging.getLogger(__name__)
 
+# --- vLLM 0.22 DeepGEMM warmup workaround ----------------------------------
+# On Hopper GPUs (H200, sm_90) vLLM 0.22's kernel_warmup calls deep_gemm_warmup
+# unconditionally; if the optional `deep_gemm` package isn't installed it raises
+# "DeepGEMM backend is not available or outdated" during engine init — even for
+# bf16 / AWQ models that have no FP8 layers (vLLM issue #41849). Skipping the
+# warmup avoids the crash and costs nothing for our non-FP8 models. Set before
+# vLLM is imported anywhere. Respect an existing user override.
+os.environ.setdefault("VLLM_DEEP_GEMM_WARMUP", "skip")
+os.environ.setdefault("VLLM_USE_DEEP_GEMM", "0")
+
+# transformers 5.12 + kernels 0.15 incompatibility: transformers' hub_kernels
+# integration builds LayerRepository(...) with no version/revision, which the
+# installed `kernels` rejects at import ("Either a revision or a version must be
+# specified"). We don't use hub kernels (vLLM has its own), so disable the
+# mapping before transformers is imported anywhere (the detectors import it).
+os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
+
 
 # ---- precision axis -------------------------------------------------------
 # The pipeline's model precision is a configurable axis replacing the old GGUF
@@ -45,17 +62,30 @@ def normalize_precision(precision: str) -> str:
 def _resolve_model_path(model: str) -> str:
     """Return a string vLLM/HF will load correctly.
 
-    A LOCAL directory that exists on disk (e.g. our AWQ weights under
-    ``models/awq/...``) must be handed to HF as a filesystem path. HF's
-    ``validate_repo_id`` rejects a slashed string that is not a ``namespace/name``
-    repo id, so a relative local path like ``models/awq/qwen3.5-2b-awq`` raises
-    ``HFValidationError``. Converting an existing local dir to its absolute path
-    makes HF treat it as a directory; a genuine HF repo id (no local dir of that
-    name) is returned unchanged.
+    A LOCAL directory (e.g. our AWQ weights under ``models/awq/...``) must be
+    handed to HF as a filesystem path. HF's ``validate_repo_id`` rejects a
+    slashed string that is not a ``namespace/name`` repo id, so a relative local
+    path raises ``HFValidationError``. We:
+      - return the absolute path for an existing local dir;
+      - if the string is clearly a local catalogue path (under ``models/``) but
+        the dir is MISSING, raise a clear, actionable error (the AWQ weights have
+        not been built yet) instead of letting HF raise a cryptic repo-id error;
+      - otherwise return the string unchanged (a genuine HF repo id).
     """
     p = Path(model)
     if p.exists():
         return str(p.resolve())
+    # Heuristic: our local AWQ catalogue paths start with "models/". A real HF
+    # repo id is "namespace/name" and never begins with our models dir.
+    looks_local = model.startswith("models/") or model.startswith("./") or model.startswith("/")
+    if looks_local:
+        raise FileNotFoundError(
+            f"Model weights not found at '{model}'. For an awq4 precision this "
+            f"means the AWQ weights have not been built yet. Build them once with:\n"
+            f"    conda activate distrace && ./setup_quantize.sh\n"
+            f"or run this step with --*-precision bf16 to load the full-precision "
+            f"model from HuggingFace instead."
+        )
     return model
 
 
@@ -175,8 +205,7 @@ class _VLLMEmbedder:
             return np.empty((0, 0), dtype=np.float32)
         outputs = self.engine.embed(texts)
         vecs = [o.outputs.embedding for o in outputs]
-        arr = np.asarray(vecs, dtype=np.float32)
-        return arr if convert_to_numpy else arr
+        return np.asarray(vecs, dtype=np.float32)
 
     def close(self) -> None:
         _teardown_vllm(getattr(self, "engine", None))
@@ -226,13 +255,11 @@ class VLLMGenerator:
     """Callable vLLM generator implementing the `generate(system, user, **kw)`
     contract used across the pipeline.
 
-    A single resident model serves many concurrent requests via vLLM's
-    continuous batching — so `concurrent=True` and `parallel_map` can fan logical
-    requests at it for real overlap, with no worker-pool of model copies. Per-call
-    temperature/max_tokens are honoured; `/no_think` is appended unless thinking.
+    Backed by one resident vLLM engine. Calls are made serially (the offline
+    `LLM` engine is driven one .chat() at a time); throughput comes from vLLM's
+    paged-attention batching within each call. temperature/max_tokens are
+    honoured; `/no_think` is appended unless thinking.
     """
-
-    concurrent = True   # vLLM batches concurrent calls against one model
 
     def __init__(self, model_key: str, precision: str, *,
                  context_size: int | None = None, temperature: float = 0.0,
@@ -320,39 +347,17 @@ class VLLMGenerator:
 
 
 def make_generator(model_key: str, precision: str, **kw):
-    """Build a vLLM generator. (The old server_url/workers paths are gone: vLLM's
-    continuous batching gives parallel decoding from one resident model, so the
-    llama.cpp worker-pool / external-server workarounds are no longer needed.)"""
-    return VLLMGenerator(model_key, precision, **kw)
+    """Build a vLLM generator.
 
-
-def generator_is_concurrent(generate) -> bool:
-    """True if `generate` can be called concurrently for a real speed-up. vLLM
-    generators batch concurrent calls against one model -> always True."""
-    return bool(getattr(generate, "concurrent", False))
-
-
-def parallel_map(fn, items, max_workers: int = 1, description: str | None = None):
-    """Apply `fn` over `items`, up to `max_workers` at a time, results in order.
-
-    With a vLLM-backed generator `fn` releases the GIL during the engine call, so
-    >1 worker lets vLLM's continuous batching overlap the requests. `max_workers<=1`
-    runs sequentially. Progress via rich.track when `description` is set.
+    Set DISTRACE_FORCE_PRECISION=bf16 (or awq4) to override the configured
+    precision for ALL generators in a run — handy for verifying the pipeline
+    end-to-end with bf16 weights pulled from HF before building AWQ weights, or
+    for forcing AWQ once they're built, without editing configs or CLI flags.
     """
-    from rich.progress import track
-    items = list(items)
-    if max_workers <= 1 or len(items) <= 1:
-        return [fn(x) for x in (track(items, description) if description else items)]
-    import concurrent.futures as cf
-    results: list = [None] * len(items)
-    with cf.ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(fn, x): i for i, x in enumerate(items)}
-        completed = cf.as_completed(futures)
-        if description:
-            completed = track(completed, description, total=len(futures))
-        for fut in completed:
-            results[futures[fut]] = fut.result()
-    return results
+    forced = os.environ.get("DISTRACE_FORCE_PRECISION")
+    if forced:
+        precision = forced
+    return VLLMGenerator(model_key, precision, **kw)
 
 
 def close_generator(generate) -> None:

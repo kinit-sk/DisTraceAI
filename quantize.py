@@ -38,8 +38,17 @@ Usage
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
+
+# transformers 5.12 + kernels 0.15 incompatibility: transformers' hub_kernels
+# integration constructs LayerRepository(...) without a version/revision, which
+# the installed `kernels` rejects ("Either a revision or a version must be
+# specified") at import time — crashing before any work. We don't need hub
+# kernels (GPTQModel does its own quant kernels), so disable the mapping. Must
+# be set before transformers is imported (GPTQModel imports it transitively).
+os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
 
 # Pinned calibration config — part of the reproducibility contract.
 CALIB_DATASET = "allenai/c4"      # standard calibration corpus
@@ -85,8 +94,15 @@ def _load_calibration(n: int):
 
 
 def quantize_one(model_key: str, out_root: Path) -> None:
-    from gptqmodel import GPTQModel
-    from gptqmodel.quantization import QuantizeConfig
+    # GPTQModel 5.8.0 selects AWQ via QuantizeConfig(quant_method=METHOD.AWQ),
+    # NOT a dedicated AWQConfig class (that arrived in a later 5.x release) and
+    # NOT QuantizeConfig(format="awq") (format is the checkpoint serialization,
+    # not the method -> mismatch error). FORMAT.GEMM is the standard AWQ kernel
+    # format that vLLM's awq_marlin loader expects. AWQ uses zero-point
+    # quantization, i.e. sym=False (the source sets zero_point = not sym).
+    # AWQ is calibration-based, so a list of text samples goes to .quantize().
+    from gptqmodel import GPTQModel, QuantizeConfig
+    from gptqmodel.quantization.config import METHOD, FORMAT
 
     src = _source_repo(model_key)
     dst = _output_dir(model_key, out_root)
@@ -95,7 +111,14 @@ def quantize_one(model_key: str, out_root: Path) -> None:
         return
     dst.mkdir(parents=True, exist_ok=True)
 
-    qcfg = QuantizeConfig(bits=AWQ_BITS, group_size=AWQ_GROUP_SIZE, format="awq")
+    # Standard AWQ format is GEMM; if this GPTQModel build names it differently,
+    # fall back to method-only (GPTQModel then picks its default AWQ format).
+    cfg_kwargs = dict(bits=AWQ_BITS, group_size=AWQ_GROUP_SIZE,
+                      quant_method=METHOD.AWQ, sym=False)
+    awq_format = getattr(FORMAT, "GEMM", None)
+    if awq_format is not None:
+        cfg_kwargs["format"] = awq_format
+    qcfg = QuantizeConfig(**cfg_kwargs)
     print(f"[quantize] {model_key}: loading {src} …")
     model = GPTQModel.load(src, qcfg)
 
@@ -103,7 +126,7 @@ def quantize_one(model_key: str, out_root: Path) -> None:
           f"({CALIB_DATASET}, n={CALIB_SAMPLES}, seqlen={CALIB_SEQLEN}) "
           f"and quantizing to AWQ-4bit …")
     calib = _load_calibration(CALIB_SAMPLES)
-    model.quantize(calib)
+    model.quantize(calib, batch_size=1)
     model.save(str(dst))
     print(f"[quantize] {model_key}: saved AWQ weights -> {dst}")
 
@@ -114,14 +137,31 @@ def main() -> int:
     ap.add_argument("--models", nargs="+", default=[],
                     help="specific model keys (e.g. qwen3.5-2b gemma4-12b)")
     ap.add_argument("--out", default="models/awq", help="output root dir")
+    ap.add_argument("--probe", action="store_true",
+                    help="print GPTQModel METHOD/FORMAT enums and verify the AWQ "
+                         "QuantizeConfig builds, without loading or quantizing any model")
     args = ap.parse_args()
+
+    if args.probe:
+        from gptqmodel import QuantizeConfig
+        from gptqmodel.quantization.config import METHOD, FORMAT
+        print("METHODS:", [m for m in METHOD])
+        print("FORMATS:", [f for f in FORMAT])
+        cfg_kwargs = dict(bits=AWQ_BITS, group_size=AWQ_GROUP_SIZE,
+                          quant_method=METHOD.AWQ, sym=False)
+        awq_format = getattr(FORMAT, "GEMM", None)
+        if awq_format is not None:
+            cfg_kwargs["format"] = awq_format
+        cfg = QuantizeConfig(**cfg_kwargs)
+        print("AWQ QuantizeConfig built OK:", cfg)
+        return 0
 
     if args.all:
         keys = list(SELF_QUANT_KEYS)
     elif args.models:
         keys = args.models
     else:
-        ap.error("pass --all or --models <keys…>")
+        ap.error("pass --all or --models <keys…> (or --probe)")
 
     out_root = Path(args.out)
     for k in keys:

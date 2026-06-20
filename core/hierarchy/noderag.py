@@ -82,8 +82,8 @@ class _LocalLLMClient:
     NodeRAG extraction unit was serialised through one lock + one context — the
     dominant cost of a SpecFi-CS graph build (multiple hours).
 
-    When handed a generator that exposes multiple independent contexts
-    (a concurrent generator), this client dispatches several units at once
+    When handed a generator that exposes multiple independent contexts (a
+    a concurrent generator), this client dispatches several units at once
     drawn from a bounded semaphore sized to the pool. Distinct workers have
     distinct KV caches, so they decode in parallel and the A100 batches them.
     A non-concurrent generator transparently falls back to
@@ -93,15 +93,15 @@ class _LocalLLMClient:
     def __init__(self, generate, max_tokens: int | None = None) -> None:
         self._gen = generate
 
-        # vLLM serves many concurrent requests from ONE resident model via
-        # continuous batching, so there is no worker pool of model copies. We
-        # still admit several units at once (they overlap inside vLLM's batch);
-        # the concurrency width is a logical dispatch fan-out, not N contexts.
-        # Grammar-constrained JSON goes through generate_json() (vLLM guided
-        # decoding) rather than a raw low-level handle.
+        # The vLLM offline `LLM` engine is driven by ONE generator object. Its
+        # .chat()/.generate() must be called serially — unlike the vLLM *server*,
+        # the offline LLM is not safe under concurrent calls from multiple threads
+        # on the same engine. (The old llama.cpp path gave each worker its own
+        # context; vLLM has a single shared engine.) So dispatch is serialized:
+        # one in-flight unit at a time. Throughput still comes from vLLM's paged
+        # attention per call, not from overlapping .chat() calls at one engine.
         self._workers = [generate]
-        self._n_workers = max(1, int(os.getenv("DISTRACE_NODERAG_FANOUT", "8"))) \
-            if getattr(generate, "concurrent", False) else 1
+        self._n_workers = 1
 
         self._max_tokens = max_tokens or int(os.getenv("DISTRACE_NODERAG_MAXTOK", "4096"))
 
@@ -114,8 +114,9 @@ class _LocalLLMClient:
             self._free_idx.put_nowait(i)
 
     async def __call__(self, input, *, cache_path=None, meta_data=None):
-        # Admit up to n_workers callers; each grabs a free worker index, runs the
-        # blocking llama.cpp call in a thread, then returns the worker to the pool.
+        # Serialized dispatch (n_workers=1): one in-flight unit at a time, run in
+        # a thread so the async build loop isn't blocked. The single vLLM engine
+        # is driven one .chat() at a time.
         async with self._sema:
             idx = await self._free_idx.get()
             try:

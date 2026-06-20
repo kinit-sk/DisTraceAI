@@ -24,6 +24,17 @@ Dataset (also available non-interactively via --generate-dataset).
 """
 from __future__ import annotations
 
+import os
+# Environment workarounds for the current dependency stack, set before any heavy
+# import (transformers / vllm) so they take effect process-wide:
+#  - DISABLE_KERNEL_MAPPING: transformers 5.12 + kernels 0.15 skew (hub_kernels
+#    builds LayerRepository without a version/revision -> crash at import).
+#  - VLLM_DEEP_GEMM_WARMUP=skip: vLLM 0.22 Hopper FP8 warmup crash without
+#    deep_gemm installed (issue #41849); harmless for our non-FP8 models.
+os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
+os.environ.setdefault("VLLM_DEEP_GEMM_WARMUP", "skip")
+os.environ.setdefault("VLLM_USE_DEEP_GEMM", "0")
+
 import argparse
 import logging
 

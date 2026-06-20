@@ -12,6 +12,8 @@ module load GCC/13.2.0
 module load CUDA/12.4.0
 eval "$(conda shell.bash hook)"
 conda activate distrace
+export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm; non-FP8 models)
+export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
 # Campaign extraction: narratives → campaigns with coordination scoring.
 # Run Verify hierarchy first to populate veracity before this step.
