@@ -35,22 +35,25 @@ from core.hierarchy.noderag import NodeRagGraph
 logger = logging.getLogger(__name__)
 
 # Generic HyDE prompt:
-# Generate a short, realistic document that would likely belong to the same
-# topic/domain as the query. The generated text is not shown to the user; it is
-# only used to improve retrieval quality through embedding similarity.
+# HyDE generation prompts, matching the original SpecFi implementation
+# (XplaiNLP/SpecFi-Narrative-Retrieval, specfi_pn.py::generate_hypotheticals).
+# The generated text is not shown to the user; it is only used to improve
+# retrieval quality through embedding similarity.
 _GEN_SYSTEM = (
-    "You are a retrieval assistant. Given a topic, claim, narrative, or query, "
-    "generate a short, realistic document that could plausibly appear in a "
-    "corpus discussing that topic. Return only the document text. /no_think"
+    "You are a disinformation investigator. Your first step is to generate "
+    "short disinformation texts that sound like actual ones. You get a "
+    "disinformation narrative and return a disinformation text that aligns "
+    "with that narrative. Return only 1 single text!"
 )
 
-# User prompt prefix used to build the final generation request. Optional
-# examples from NodeRAG are appended later as in-context conditioning.
+# User prompt prefix used to build the final generation request. Few-shot
+# examples (from NodeRAG for SpecFi-CS/CCS, or the sub-narrative's own claims
+# for cSpecFi) are appended after this prefix as in-context conditioning.
 _GEN_USER_PREFIX = (
-    "Generate a short, realistic text (such as a news excerpt, blog post, "
-    "report paragraph, or social media post) that is semantically aligned "
-    "with the topic provided below. The text should be plausible and resemble "
-    "content that could naturally appear in a document collection."
+    "You are a disinformation investigator. Given a disinformation narrative, "
+    "generate a short, realistic text (such as a news excerpt, blog post, or "
+    "social media post) that supports or aligns with that narrative. The text "
+    "should sound plausible and could be found in the wild."
 )
 
 # Instruction prefix recommended for Qwen3-Embedding query encoding.
@@ -168,7 +171,7 @@ class SpecFiCBackend(RetrievalBackend):
             return self._cache[cache_key]
 
         ctx = self._conditioning(claim, claims=claims).rstrip()
-        user = f"{_GEN_USER_PREFIX}{ctx}\n\nTopic: {claim}\nText:"
+        user = f"{_GEN_USER_PREFIX}{ctx}\n\nNarrative: {claim}\nText:"
         out: list[str] = []
 
         for _ in range(self.k):

@@ -37,7 +37,7 @@ class Config:
     )
 
     canon_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Canonization generator",
         "LLM used to decontextualize and translate check-worthy claims to English.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
@@ -60,7 +60,7 @@ class Config:
     )
 
     subnar_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Sub-narrative generator",
         "LLM used to synthesize the central claim for each sub-narrative cluster.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
@@ -132,7 +132,7 @@ class Config:
     )
 
     nar_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Narrative generator",
         "LLM used to synthesize narrative central claims (Generate) and HyDE "
         "hypotheticals (specfi-cs / cspecfi / context-1).",
@@ -262,6 +262,23 @@ class Config:
         "veracity evaluation benchmark.",
     )
 
+    ver_sample_size: int = _f(
+        10,
+        "MultiClaim sample size",
+        "Randomly sample this many MultiClaim claims for the veracity evaluation "
+        "instead of using the full corpus (~136k claims → hundreds of thousands "
+        "of paraphrase queries). The sample is drawn with a fixed seed "
+        "(ver_sample_seed) so it is reproducible across runs. Set to 0 (or a "
+        "negative value) to disable sampling and use every claim.",
+    )
+
+    ver_sample_seed: int = _f(
+        42,
+        "MultiClaim sample seed",
+        "Random seed for the MultiClaim sub-sample (see ver_sample_size); fixing "
+        "it keeps the selected claims identical across runs.",
+    )
+
     ver_multiclaim_text_col: str = _f(
         "claim",
         "MultiClaim text column",
@@ -312,7 +329,7 @@ class Config:
     )
 
     camp_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Campaign generator",
         "LLM for synthesizing campaign central claims.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",

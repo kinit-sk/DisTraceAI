@@ -77,7 +77,9 @@ STEP_PARAMS: dict[str, list[str]] = {
     "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
                            "subnar_min_similarity",
                            "subnar_min_claims"],
-    "claim-veracity":     [],
+    "claim-veracity":     ["ver_sources", "ver_generator",
+                           "ver_paraphrase_generator", "ver_n_paraphrases",
+                           "ver_sample_size", "ver_sample_seed"],
     "narratives":         ["nar_detector", "nar_extractor", "nar_dense_repr",
                            "nar_embedder", "nar_generator", 
                            "nar_assign_threshold", "nar_min_new_size",
@@ -297,7 +299,13 @@ def _step_submenu(step: str, cfg: Config) -> None:
 
     gen_params  = STEP_PARAMS.get(step, [])
     eval_params = STEP_EVAL_PARAMS.get(step, gen_params)
-    menu_items  = ["Evaluation", "Generate", "← Back"]
+    # Claim veracity has no standalone Generate action — verification is driven
+    # from the Campaigns submenu (Verify / Deep Verify). Offer Evaluation only.
+    if step == "claim-veracity":
+        menu_items = ["Evaluation", "← Back"]
+    else:
+        menu_items = ["Evaluation", "Generate", "← Back"]
+    back_idx = len(menu_items) - 1
 
     # Some steps use a different RELEVANT key for eval vs generate so the
     # pre-launch screen shows only the relevant parameters for each action.
@@ -308,7 +316,7 @@ def _step_submenu(step: str, cfg: Config) -> None:
     while True:
         choice = ui.arrow_menu(STEP_LABELS[step], menu_items)
 
-        if choice < 0 or choice == 2:
+        if choice < 0 or choice == back_idx:
             return
 
         if choice == 0:
@@ -324,7 +332,7 @@ def _step_submenu(step: str, cfg: Config) -> None:
             run_eval(step, cfg)
             input("\n[done] press Enter to continue…")
 
-        elif choice == 1:
+        elif choice == 1 and step != "claim-veracity":
             review_needed = (f"{step}-generate" in ui.RELEVANT
                              or gen_key in ui.RELEVANT
                              or bool(gen_params))

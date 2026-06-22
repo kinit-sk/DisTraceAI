@@ -120,7 +120,8 @@ RELEVANT: dict[str, list[str]] = {
     # Veracity
     "campaigns-verify":        _VER_COMMON,
     "campaigns-deep-verify":   _VER_COMMON,
-    "claim-veracity-eval":     _VER_COMMON + ["ver_n_paraphrases", "ver_paraphrase_generator"],
+    "claim-veracity-eval":     _VER_COMMON + ["ver_n_paraphrases", "ver_paraphrase_generator",
+                                              "ver_sample_size", "ver_sample_seed"],
     # Campaigns
     "campaigns-eval":          _CAMP_COMMON,
     "campaigns-generate":      _CAMP_COMMON + _CAMP_GENERATE_EXTRA,

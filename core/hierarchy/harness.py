@@ -48,21 +48,30 @@ class _State:
     """Mutable agent state across turns. ``active`` maps cluster_id -> document."""
     active: dict[str, str] = field(default_factory=dict)
     seen: set[str] = field(default_factory=set)
+    costs: dict[str, int] = field(default_factory=dict)
     tokens_used: int = 0
     turn_count: int = 0
 
-    def add(self, cluster_id: str, document: str) -> None:
+    def add(self, cluster_id: str, document: str, cost: int | None = None) -> None:
         if cluster_id in self.active:
             return
         self.active[cluster_id] = document
         self.seen.add(cluster_id)
-        self.tokens_used += _approx_tokens(document)
+        # Charge the agent's *context* budget, not the full gathered document.
+        # The harness only ever surfaces a short summary of each hit to the LLM
+        # (see _do_search); the full document is retained purely as OUTPUT for
+        # the backend to re-score. Charging the full doc here made a single
+        # top_k search of large cluster docs blow the budget and trip the hard
+        # cutoff on turn 1 — collapsing the multi-turn loop to a single pass.
+        c = _approx_tokens(document) if cost is None else int(cost)
+        self.costs[cluster_id] = c
+        self.tokens_used += c
 
     def prune(self, cluster_ids: list[str]) -> int:
         freed = 0
         for cid in cluster_ids:
             if cid in self.active:
-                freed += _approx_tokens(self.active[cid])
+                freed += self.costs.pop(cid, _approx_tokens(self.active[cid]))
                 del self.active[cid]
         self.tokens_used = max(0, self.tokens_used - freed)
         return freed
@@ -121,8 +130,9 @@ class AgenticSearchHarness:
             return f"[search_corpus] No new results for: {query!r}"
         lines = [f"[search_corpus] {len(results)} results for {query!r}:"]
         for cid, doc in results:
-            state.add(cid, doc)
-            lines.append(f"  [{cid}] {_summary(doc)}")
+            summ = _summary(doc)
+            state.add(cid, doc, _approx_tokens(summ))
+            lines.append(f"  [{cid}] {summ}")
         return "\n".join(lines)
 
     def _do_grep(self, pattern: str, state: _State) -> str:
@@ -131,8 +141,9 @@ class AgenticSearchHarness:
             return f"[grep_corpus] No new matches for pattern: {pattern!r}"
         lines = [f"[grep_corpus] {len(results)} matches for {pattern!r}:"]
         for cid, doc in results:
-            state.add(cid, doc)
-            lines.append(f"  [{cid}] {_summary(doc)}")
+            summ = _summary(doc)
+            state.add(cid, doc, _approx_tokens(summ))
+            lines.append(f"  [{cid}] {summ}")
         return "\n".join(lines)
 
     def _do_read(self, cluster_id: str, state: _State) -> str:
@@ -209,7 +220,8 @@ class AgenticSearchHarness:
         )
         for turn in range(self.max_turns):
             state.turn_count = turn + 1
-            if state.tokens_used >= self.hard_limit and turn > 0:
+            if (state.tokens_used >= self.hard_limit and turn > 0
+                    and searches_done >= self.min_searches):
                 logger.info("[harness] hard token cutoff at turn %d", turn)
                 break
             raw = self._call_llm(self._build_user(observation, state))

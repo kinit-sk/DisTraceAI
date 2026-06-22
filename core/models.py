@@ -191,15 +191,50 @@ def make_embedder(model_name: str, *, max_seq_length: int = 512):
         max_model_len=max_seq_length,
         gpu_memory_utilization=gpu_util,
         enforce_eager=True, trust_remote_code=True))
-    return _VLLMEmbedder(engine, model_name)
+    return _VLLMEmbedder(engine, model_name, max_seq_length=max_seq_length)
 
 
 class _VLLMEmbedder:
     """SentenceTransformers-compatible ``.encode`` shim over a vLLM embed engine."""
 
-    def __init__(self, engine, model_name: str) -> None:
+    def __init__(self, engine, model_name: str, max_seq_length: int = 512) -> None:
         self.engine = engine
         self.model_name = model_name
+        self.max_seq_length = max_seq_length
+        self._tok = None
+
+    def _truncate_to_window(self, texts):
+        """Truncate inputs to the embedder window so vLLM can't reject long texts.
+
+        The embedder runs with a fixed ``max_model_len`` (512 by default, tuned for
+        short fact-check claims). NodeRAG, however, embeds long units — text chunks
+        and attributes (the attribute prompt allows up to ~2000 words) — and vLLM
+        raises ``VLLMValidationError`` for any input over the window rather than
+        truncating. So we truncate here, token-accurately and multilingually.
+
+        Short texts pass through untouched (no decode round-trip); only over-length
+        texts are clipped. For larger windows (better NodeRAG retrieval) set
+        ``DISTRACE_EMBED_MAXLEN`` before the run.
+        """
+        hard = max(8, int(getattr(self, "max_seq_length", 512)) - 8)  # margin for pooler specials
+        # Fast path: anything under hard//2 CHARACTERS cannot exceed `hard` tokens
+        # for our tokenizers (even CJK), so skip tokenization for the common short
+        # case (claims / sub-narratives) and keep the main pipeline fast.
+        if all(len(t) <= hard // 2 for t in texts):
+            return texts
+        try:
+            if self._tok is None:
+                self._tok = self.engine.get_tokenizer()
+            ids_batch = self._tok(texts, add_special_tokens=False)["input_ids"]
+            out = []
+            for t, ids in zip(texts, ids_batch):
+                out.append(self._tok.decode(ids[:hard]) if len(ids) > hard else t)
+            return out
+        except Exception as exc:  # tokenizer unavailable → conservative char clip
+            logger.warning("[models] embedder token-truncation unavailable (%s); "
+                           "falling back to a character clip", exc)
+            climit = hard * 4
+            return [t if len(t) <= climit else t[:climit] for t in texts]
 
     def encode(self, texts, batch_size: int = 32, convert_to_numpy: bool = True,
                show_progress_bar: bool = False, **_ignore):
@@ -207,6 +242,7 @@ class _VLLMEmbedder:
         texts = list(texts)
         if not texts:
             return np.empty((0, 0), dtype=np.float32)
+        texts = self._truncate_to_window(texts)
         outputs = self.engine.embed(texts, use_tqdm=False)
         vecs = [o.outputs.embedding for o in outputs]
         return np.asarray(vecs, dtype=np.float32)

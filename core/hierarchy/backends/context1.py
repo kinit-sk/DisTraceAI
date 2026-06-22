@@ -58,18 +58,24 @@ class Context1Backend(RetrievalBackend):
     name = "context1"
 
     def __init__(self, generate, embedder, *, max_turns: int = 8,
-                 token_budget: int = 8192, top_k: int = 5) -> None:
+                 token_budget: int = 8192, top_k: int = 5,
+                 min_searches: int = 2) -> None:
         self.generate = generate
         self.embedder = embedder
         self.max_turns = max_turns
         self.token_budget = token_budget
         self.top_k = top_k
+        # Floor on agentic search turns: forces the harness to run a genuine
+        # multi-turn loop rather than terminating after a single pass even if the
+        # model emits an early `done`.
+        self.min_searches = max(1, min_searches)
 
     def rank(self, query: str, corpus, k: int = 10) -> list[tuple[str, float]]:
         tools = _ClusterSearchTools(corpus, k=self.top_k)
         harness = AgenticSearchHarness(
             tools, self.generate, _DISCOVERY_PROMPT,
-            token_budget=self.token_budget, top_k=self.top_k, max_turns=self.max_turns)
+            token_budget=self.token_budget, top_k=self.top_k,
+            max_turns=self.max_turns, min_searches=self.min_searches)
         gathered = harness.search(query)            # [(cluster_id, document)]
         if not gathered:
             return []

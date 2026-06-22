@@ -90,22 +90,27 @@ _CUTOFFS = (1, 3, 5)
 class _Item:
     """One retrievable item: text for embedding, labels for scoring,
     and (for query items) the underlying canonized claims for cSpecFi."""
-    __slots__ = ("key", "text", "labels", "language", "unit", "claims")
+    __slots__ = ("key", "text", "labels", "language", "unit", "claims", "article")
 
-    def __init__(self, key, text, labels, language, unit, claims=()):
+    def __init__(self, key, text, labels, language, unit, claims=(), article=None):
         self.key      = key
         self.text     = text
         self.labels   = labels
         self.language = language
         self.unit     = unit
         self.claims   = list(claims)  # canonized claims — populated for query items
+        self.article  = article       # source article name (for per-article scoring)
 
 
 def _gold_labels(annotations, article_name):
     ann = annotations.get(article_name)
     if not ann:
         return set()
-    return {s for s in ann.get("sub_narratives", []) if s and s.lower() != "none"}
+    # Narrative-level relevance (matching the legacy eval): a retrieved item is
+    # correct when it maps to one of the query article's gold NARRATIVES, not its
+    # finer sub-narratives. There are far fewer narratives than sub-narratives, so
+    # this is the candidate pool the old benchmark scored against.
+    return {n for n in ann.get("narratives", []) if n and n.lower() != "none"}
 
 
 def _split_of(annotations, article_name):
@@ -230,6 +235,7 @@ def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
                 language=ann.get("language", "??"),
                 unit="subnar",
                 claims=claims,
+                article=sn.article_name,
             ))
         return [it for it in items if it.text.strip()]
 
@@ -254,7 +260,8 @@ def _build_items(kb, detector_slug, annotations, repr_mode, want_split,
         ann = annotations[article_name]
         items.append(_Item(
             key=article_name, text=text, labels=labels,
-            language=ann.get("language", "??"), unit="article"))
+            language=ann.get("language", "??"), unit="article",
+            article=article_name))
     return items
 
 
@@ -333,21 +340,48 @@ def _average_precision(ranking, relevant_set):
 
 
 def _score_rankings(rankings, query_items, corpus_items):
+    """Score retrieval, aggregating the BEST rank across each article's query
+    units (matching the legacy eval_retrieval behaviour).
+
+    Gold labels are article-level, so every query unit (sub-narrative) of an
+    article shares the same relevant corpus set. An article counts as a hit@k
+    when *any* of its units ranks a relevant corpus item within the top-k, i.e.
+    the article's rank is the best (minimum) first-hit rank across its units.
+    MAP uses the best (maximum) average precision across the article's units.
+    One score is emitted per article rather than per query unit.
+    """
+    by_article = defaultdict(list)
+    for qi, q in enumerate(query_items):
+        by_article[q.article or q.key].append(qi)
+
     hits = {c: [] for c in _CUTOFFS}
     aps  = []
     langs = []
     n_skipped = 0
-    for qi, q in enumerate(query_items):
-        relevant = set(_relevant_mask(corpus_items, q.labels))
+    for _article, qidxs in by_article.items():
+        # Article-level relevant set (identical across the article's units).
+        relevant = set()
+        for qi in qidxs:
+            relevant |= set(_relevant_mask(corpus_items, query_items[qi].labels))
         if not relevant:
             n_skipped += 1
             continue
-        ranking = list(rankings[qi])
-        first_hit = next((r for r, ci in enumerate(ranking) if ci in relevant), None)
+
+        best_first = None
+        best_ap = None
+        for qi in qidxs:
+            ranking = list(rankings[qi])
+            fh = next((r for r, ci in enumerate(ranking) if ci in relevant), None)
+            if fh is not None and (best_first is None or fh < best_first):
+                best_first = fh
+            ap = _average_precision(ranking, relevant)
+            if ap is not None and (best_ap is None or ap > best_ap):
+                best_ap = ap
+
         for c in _CUTOFFS:
-            hits[c].append(first_hit is not None and first_hit < c)
-        aps.append(_average_precision(ranking, relevant))
-        langs.append(q.language)
+            hits[c].append(best_first is not None and best_first < c)
+        aps.append(best_ap if best_ap is not None else 0.0)
+        langs.append(query_items[qidxs[0]].language)
     return hits, aps, langs, n_skipped
 
 
@@ -386,7 +420,8 @@ def _print_results(detector_slug, method, unit, overall, per_lang,
         f"[bold cyan]Narrative Retrieval — {detector_slug} / {method}"
         f"{f' ({unit})' if unit else ''}[/bold cyan]")
     console.print(
-        f"  [dim]queries={n_query}  corpus={n_corpus}  retrieval unit={unit}[/dim]")
+        f"  [dim]articles={n_query}  corpus={n_corpus}  retrieval unit={unit} "
+        f"(best rank across each article's query units)[/dim]")
     console.print()
     t = Table(box=box.SIMPLE_HEAVY, show_header=True, header_style="bold white")
     t.add_column("Scope", style="bold", min_width=10)
@@ -474,28 +509,28 @@ def _run_dense(query_items, corpus_items, embedder):
 
 
 def _run_bm25rag(query_items, corpus_items, embedder):
-    """BM25 + dense RRF candidate selection, re-scored by cosine.
+    """BM25 + dense retrieval fused with Reciprocal Rank Fusion.
 
-    Strictly stronger than pure dense: BM25 catches keyword overlap that
-    embedding similarity misses, and the two signals are fused via RRF before
-    the final cosine re-score. No LLM needed.
+    Ranks by the RRF-fused BM25+dense order from the corpus directly. (The
+    previous version re-scored the fused candidates by cosine, which at
+    full-corpus k collapsed back to pure dense — identical results. Ranking by
+    the fused score keeps the lexical BM25 signal that dense misses, so this is
+    a genuinely distinct hybrid.) No LLM needed.
     """
     from core.hierarchy.corpus import FactCheckCorpus
-    from core.hierarchy.backends.bm25_rag import BM25RagBackend
 
     fc = FactCheckCorpus(embedder)
     for it in corpus_items:
         fc.add_cluster(it.key, [it.text])
 
-    backend = BM25RagBackend()
     key_to_idx = {it.key: i for i, it in enumerate(corpus_items)}
     n = len(corpus_items)
     rankings = []
     with _Progress("BM25-RAG retrieval") as prog:
         prog.start(len(query_items))
         for q in query_items:
-            ranked = backend.rank(q.text, fc, k=n)
-            idxs = [key_to_idx[cid] for cid, _ in ranked if cid in key_to_idx]
+            fused = fc.search(q.text, k=n)        # RRF(BM25, dense) over full corpus
+            idxs = [key_to_idx[cid] for cid, _ in fused if cid in key_to_idx]
             seen = set(idxs)
             idxs += [i for i in range(n) if i not in seen]
             rankings.append(idxs)
@@ -819,7 +854,7 @@ def main(cfg=None):
                 rankings, query_items, corpus_items)
             if n_skipped:
                 console.print(
-                    f"  [dim]{n_skipped} query(ies) skipped "
+                    f"  [dim]{n_skipped} article(s) skipped "
                     f"(no label match in corpus).[/dim]")
             n_scored = len(langs)
             if n_scored == 0:

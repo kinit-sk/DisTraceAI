@@ -72,7 +72,10 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
 
     Returns list of {source_id, paraphrase, gold_label, generator}.
     """
-    cached = kb.load_paraphrase_test(cfg.ver_paraphrase_generator)
+    _samp = int(getattr(cfg, "ver_sample_size", 0) or 0)
+    _seed = int(getattr(cfg, "ver_sample_seed", 42))
+    cached = kb.load_paraphrase_test(cfg.ver_paraphrase_generator,
+                                     sample_size=_samp, sample_seed=_seed)
     if cached:
         console.print(
             f"[dim]Loaded {len(cached)} cached paraphrase test entries.[/dim]")
@@ -106,7 +109,8 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
             prog.advance(task)
     del llm
 
-    kb.save_paraphrase_test(test_records, cfg.ver_paraphrase_generator)
+    kb.save_paraphrase_test(test_records, cfg.ver_paraphrase_generator,
+                            sample_size=_samp, sample_seed=_seed)
     console.print(
         f"[dim]{len(test_records)} paraphrase queries cached to "
         f"knowledge/veracity/multiclaim_test_paraphrases.json[/dim]")
@@ -163,9 +167,23 @@ def main(cfg=None) -> None:
             "Place fact_checks.csv under data/MultiClaim/.")
         return
 
-    console.print(
-        f"\n[bold cyan]Claim veracity evaluation[/bold cyan]\n"
-        f"[dim]{len(records)} MultiClaim records (True/False/Disputed)[/dim]")
+    # Optionally restrict to a random sub-sample (ver_sample_size; 0 = all).
+    # Drawn with a fixed seed so the selected claims are reproducible across runs.
+    full_n = len(records)
+    sample_size = int(getattr(cfg, "ver_sample_size", 0) or 0)
+    if 0 < sample_size < full_n:
+        import random
+        rng = random.Random(int(getattr(cfg, "ver_sample_seed", 42)))
+        records = rng.sample(records, sample_size)
+        console.print(
+            f"\n[bold cyan]Claim veracity evaluation[/bold cyan]\n"
+            f"[dim]Sampled {len(records)} of {full_n} MultiClaim records "
+            f"(seed={int(getattr(cfg, 'ver_sample_seed', 42))}; "
+            f"set ver_sample_size=0 to use all).[/dim]")
+    else:
+        console.print(
+            f"\n[bold cyan]Claim veracity evaluation[/bold cyan]\n"
+            f"[dim]{len(records)} MultiClaim records (True/False/Disputed)[/dim]")
 
     # Build / load cached test set
     test_set = _build_test_set(records, cfg, kb)

@@ -188,19 +188,29 @@ class KnowledgeBase:
         path = self._veracity_cache_dir() / f"{claim_hash}.json"
         return self._read(path) if path.exists() else None
 
-    def save_paraphrase_test(self, records: list, generator: str) -> None:
+    def save_paraphrase_test(self, records: list, generator: str,
+                             sample_size: int = 0, sample_seed: int = 0) -> None:
         d = self.root / "veracity"
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / "multiclaim_test_paraphrases.json",
-                    {"generator": generator, "records": records})
+                    {"generator": generator,
+                     "sample_size": int(sample_size),
+                     "sample_seed": int(sample_seed),
+                     "records": records})
 
-    def load_paraphrase_test(self, generator: str) -> list | None:
+    def load_paraphrase_test(self, generator: str,
+                             sample_size: int = 0, sample_seed: int = 0) -> list | None:
         path = self.root / "veracity" / "multiclaim_test_paraphrases.json"
         if not path.exists():
             return None
         data = self._read(path)
         if data.get("generator") != generator:
             return None   # stale cache — different generator
+        # A full-corpus cache must not be reused for a sub-sampled run (or vice
+        # versa); the sample size/seed are part of the cache identity.
+        if (int(data.get("sample_size", 0)) != int(sample_size)
+                or int(data.get("sample_seed", 0)) != int(sample_seed)):
+            return None
         return data.get("records", [])
 
     def save_multiclaim_embs(self, ids: list[str], embs: "np.ndarray",

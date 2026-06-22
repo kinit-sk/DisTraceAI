@@ -32,6 +32,110 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Canonical `hnswlib_noderag` shim. NodeRAG hard-imports this (an unpublished
+# fork of hnswlib) and, in its HNSW pipeline, calls Index.get_layer_graph(level)
+# to read the HNSW proximity adjacency (turned into a networkx similarity graph
+# in utils/HNSW.py `nxgraphs`). Plain hnswlib is API-compatible for every other
+# call NodeRAG makes, so we re-export it and add an equivalent get_layer_graph
+# reconstructed from the public API via k-NN — keeping the build self-contained
+# (no C++ fork to compile). _heal_hnswlib_noderag_shim() writes this in place if
+# the installed shim predates the method.
+_HNSWLIB_NODERAG_SHIM = r'''# Auto-generated compatibility shim for NodeRAG (hnswlib_noderag).
+# Re-exports plain hnswlib and adds Index.get_layer_graph() so NodeRAG's HNSW
+# pipeline runs without the unpublished hnswlib_noderag fork. The fork exposes
+# the raw HNSW layer adjacency; here it is reconstructed as a k-NN proximity
+# graph from the stored vectors (each node linked to its k nearest neighbours),
+# which serves the same role (dense-similarity edges) in NodeRAG's graph.
+# Override the neighbour count with DISTRACE_HNSW_LAYER_K (default 16).
+import os as _os
+import numpy as _np
+import hnswlib as _h
+
+globals().update({k: getattr(_h, k) for k in dir(_h) if not k.startswith("__")})
+
+
+class Index:
+    """Delegating wrapper over hnswlib.Index that adds get_layer_graph()."""
+
+    def __init__(self, *args, **kwargs):
+        self._idx = _h.Index(*args, **kwargs)
+
+    def __getattr__(self, name):
+        if name == "_idx":
+            raise AttributeError(name)
+        return getattr(self._idx, name)
+
+    def get_layer_graph(self, level=0, k=None):
+        idx = self._idx
+        try:
+            ids = list(idx.get_ids_list())
+        except Exception:
+            return {}
+        if not ids:
+            return {}
+        if k is None:
+            try:
+                k = int(_os.getenv("DISTRACE_HNSW_LAYER_K", "16"))
+            except ValueError:
+                k = 16
+        kk = max(2, min(int(k), len(ids)))
+        try:
+            idx.set_ef(max(kk + 1, 64))
+        except Exception:
+            pass
+        try:
+            items = idx.get_items(ids)
+        except TypeError:
+            items = idx.get_items(ids, return_type="numpy")
+        data = _np.asarray(items, dtype=_np.float32)
+        if data.ndim == 1:
+            data = data.reshape(1, -1)
+        graph = {}
+        labels, _dist = idx.knn_query(data, k=min(kk + 1, len(ids)))
+        for i, node_id in enumerate(ids):
+            nid = int(node_id)
+            graph[nid] = [int(n) for n in labels[i] if int(n) != nid][:kk]
+        return graph
+'''
+
+
+def _heal_hnswlib_noderag_shim() -> None:
+    """Ensure the installed ``hnswlib_noderag`` shim provides get_layer_graph().
+
+    Older installs wrote a shim that only re-exported plain hnswlib, so NodeRAG's
+    save_HNSW() raised ``'hnswlib.Index' object has no attribute
+    'get_layer_graph'``. Rewrite the shim in place with the enhanced version and
+    reload it so the in-process NodeRAG import picks up the patched module — no
+    reinstall required.
+    """
+    import importlib
+    import sys as _sys
+    import sysconfig
+
+    shim_path = None
+    try:
+        import hnswlib_noderag as _hn  # may be the old, method-less shim
+        if hasattr(getattr(_hn, "Index", None), "get_layer_graph"):
+            return  # already patched
+        shim_path = getattr(_hn, "__file__", None)
+    except Exception:
+        pass
+    if not shim_path:
+        shim_path = os.path.join(sysconfig.get_paths()["purelib"], "hnswlib_noderag.py")
+    try:
+        with open(shim_path, "w", encoding="utf-8") as fh:
+            fh.write(_HNSWLIB_NODERAG_SHIM)
+        importlib.invalidate_caches()
+        if "hnswlib_noderag" in _sys.modules:
+            importlib.reload(_sys.modules["hnswlib_noderag"])
+        else:
+            importlib.import_module("hnswlib_noderag")
+        logger.info("[noderag] patched hnswlib_noderag shim with get_layer_graph (%s)",
+                    shim_path)
+    except Exception as exc:
+        logger.warning("[noderag] could not patch hnswlib_noderag shim (%s)", exc)
+
+
 # Sentinel string NodeRAG inserts between the retrieval preamble and the ranked
 # community findings in its answer text.  Everything after this delimiter and
 # matching "N. <text>" lines becomes the high-level elements we surface to the
@@ -316,12 +420,32 @@ class NodeRagGraph:
     def _dim(self) -> int:
         """Return the embedding dimension for HNSW index construction.
 
-        Tries standard SentenceTransformer introspection methods first; falls
-        back to the DISTRACE_NODERAG_DIM env-var (default 1536, which is
-        OpenAI's text-embedding-3-small dimension).  Must match the actual
-        model output or the HNSW index will silently store wrong-shaped vectors.
+        The dimension written into Node_config.yaml MUST equal the embedder's
+        actual output width, or NodeRAG creates the hnswlib index at the wrong
+        ``dim`` and ``add_items`` raises "Wrong dimensionality of the vectors".
+
+        Resolution order, most reliable first:
+          1. encode a probe string and measure the vector width — works for ANY
+             embedder (our vLLM ``_VLLMEmbedder`` exposes neither of the
+             SentenceTransformer introspection methods, and its real width is
+             2560 for Qwen3-Embedding-4B, not the 1536 OpenAI default);
+          2. SentenceTransformer introspection methods;
+          3. the DISTRACE_NODERAG_DIM env-var (default 1536).
         """
         if self._embedder is not None:
+            try:
+                import numpy as np
+                vec = np.asarray(self._embedder.encode(
+                    ["dimension probe"], convert_to_numpy=True,
+                    show_progress_bar=False))
+                d = vec.shape[1] if vec.ndim == 2 else (
+                    vec.shape[0] if vec.ndim == 1 else 0)
+                if d and int(d) > 0:
+                    logger.info("[noderag] embedding dim probed as %d", int(d))
+                    return int(d)
+            except Exception as exc:
+                logger.warning("[noderag] embedding-dim probe failed (%s); "
+                               "trying introspection / env fallback", exc)
             for attr in ("get_embedding_dimension", "get_sentence_embedding_dimension"):
                 fn = getattr(self._embedder, attr, None)
                 if callable(fn):
@@ -425,24 +549,31 @@ class NodeRagGraph:
         return config
 
     def _is_built(self) -> bool:
-        # A COMPLETE build produces the HNSW index; partial/crashed builds leave
-        # cache/info behind but no HNSW, so key off the final artifact only.
-        return (Path(self.index_path) / "cache" / "HNSW.bin").exists()
+        # NodeSearch.load_graph() requires the HNSW *graph* pickle
+        # (cache/hnsw_graph.pkl), which save_HNSW writes LAST — after HNSW.bin.
+        # A crash during save_HNSW can leave HNSW.bin without the pickle, so a
+        # build is only "complete" once the pickle exists; keying off HNSW.bin
+        # alone made a partial build look done and broke the subsequent load.
+        cache = Path(self.index_path) / "cache"
+        return (cache / "hnsw_graph.pkl").exists() and (cache / "HNSW.bin").exists()
 
     def _has_inputs(self) -> bool:
         """True when at least one file exists in the index's input/ directory."""
         inp = Path(self.index_path) / "input"
         return inp.exists() and any(inp.iterdir())
 
-    def build(self) -> None:
-        """Build (or rebuild) the NodeRAG knowledge-graph index.
+    def build(self, force_clean: bool = False) -> None:
+        """Build (or resume) the NodeRAG knowledge-graph index.
 
         If input/ is empty, the method first tries to auto-populate it from the
         DisTraceAI knowledge-base via ``evaluation.noderag_corpus.export``.
 
-        Any stale ``cache/`` or ``info/`` directories left by a previous crashed
-        build are removed before starting so NodeRAG always gets a clean slate —
-        resuming from a partially-built state tends to produce an empty graph.
+        By default the build RESUMES: NodeRAG persists a state file after every
+        stage, so a run that crashed late (e.g. only the final HNSW save failed)
+        re-runs just the failed stage in seconds instead of repeating the
+        hour-long decomposition. Pass ``force_clean=True`` to wipe ``cache/`` and
+        ``info/`` first and rebuild from scratch — used as a fallback when a
+        resumed index still won't load (a genuinely poisoned partial state).
         """
         if not self._has_inputs():
             # No input documents present — attempt to source them from the
@@ -462,14 +593,23 @@ class NodeRagGraph:
                 "NodeRAG build needs either in-process models (pass generate= and "
                 "embedder= to NodeRagGraph) or OPENAI_API_KEY (+ OPENAI_BASE_URL for a "
                 "local server).")
-        # Clear any partial/crashed build state (keep input/ + config) so NodeRAG
-        # rebuilds cleanly instead of resuming a poisoned, empty-graph state.
-        import shutil
-        for sub in ("cache", "info"):
-            stale = Path(self.index_path) / sub
-            if stale.exists():
-                shutil.rmtree(stale, ignore_errors=True)
-        logger.info("[noderag] cleared stale build state under %s", self.index_path)
+        # Resume by default (keep cache/ + info/ so NodeRAG's state machine
+        # continues from the stage it last failed on). Only wipe on an explicit
+        # clean rebuild, which discards a genuinely poisoned partial state.
+        if force_clean:
+            import shutil
+            for sub in ("cache", "info"):
+                stale = Path(self.index_path) / sub
+                if stale.exists():
+                    shutil.rmtree(stale, ignore_errors=True)
+            logger.info("[noderag] cleared build state under %s (clean rebuild)",
+                        self.index_path)
+        else:
+            logger.info("[noderag] building/resuming index under %s", self.index_path)
+        # Ensure the installed hnswlib_noderag shim has get_layer_graph BEFORE
+        # NodeRAG (and its utils/HNSW.py) imports it — otherwise the HNSW stage
+        # crashes with "'hnswlib.Index' object has no attribute 'get_layer_graph'".
+        _heal_hnswlib_noderag_shim()
         from NodeRAG import NodeRag
 
         # --- build concurrency --------------------------------------------
@@ -527,11 +667,18 @@ class NodeRagGraph:
                     f"Make sure you run that in the SAME env that runs the pipeline."
                 ) from exc
         try:
-            if not self._is_built():
-                logger.info("[noderag] index not built — auto-building from %s/input", self.index_path)
-                self.build()
-            # Load the built index into a NodeSearch instance for answering queries.
-            self._search = NodeSearch(self._node_config())
+            try:
+                if not self._is_built():
+                    logger.info("[noderag] index not complete — building/resuming from %s/input", self.index_path)
+                    self.build()
+                self._search = NodeSearch(self._node_config())
+            except Exception as first_exc:
+                # Resume build or load failed (e.g. a poisoned partial state from
+                # an older crash) → wipe and rebuild once from scratch.
+                logger.warning("[noderag] resume build/load failed (%s); doing a clean rebuild",
+                               first_exc)
+                self.build(force_clean=True)
+                self._search = NodeSearch(self._node_config())
             logger.info("[noderag] index loaded from %s", self.index_path)
         except Exception as exc:
             raise RuntimeError(
