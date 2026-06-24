@@ -90,7 +90,7 @@ class KnowledgeBase:
             if path.exists():
                 return Article.from_dict(self._read(path))
             return None
-        for ds in ("polynarrative", "fake-cti", "massivesumm"):
+        for ds in ("polynarrative", "fake-cti", "massivesumm", "euvsdisinfo"):
             path = self._articles_dir(ds) / f"{article_id}.json"
             if path.exists():
                 return Article.from_dict(self._read(path))
@@ -188,29 +188,24 @@ class KnowledgeBase:
         path = self._veracity_cache_dir() / f"{claim_hash}.json"
         return self._read(path) if path.exists() else None
 
-    def save_paraphrase_test(self, records: list, generator: str,
-                             sample_size: int = 0, sample_seed: int = 0) -> None:
+    def save_paraphrase_test(self, records: list, generator: str, quant: str,
+                             n_samples: int) -> None:
         d = self.root / "veracity"
         d.mkdir(parents=True, exist_ok=True)
         self._write(d / "multiclaim_test_paraphrases.json",
-                    {"generator": generator,
-                     "sample_size": int(sample_size),
-                     "sample_seed": int(sample_seed),
-                     "records": records})
+                    {"generator": generator, "quant": quant,
+                     "n_samples": n_samples, "records": records})
 
     def load_paraphrase_test(self, generator: str,
-                             sample_size: int = 0, sample_seed: int = 0) -> list | None:
+                             quant: str, n_samples: int) -> list | None:
         path = self.root / "veracity" / "multiclaim_test_paraphrases.json"
         if not path.exists():
             return None
         data = self._read(path)
-        if data.get("generator") != generator:
-            return None   # stale cache — different generator
-        # A full-corpus cache must not be reused for a sub-sampled run (or vice
-        # versa); the sample size/seed are part of the cache identity.
-        if (int(data.get("sample_size", 0)) != int(sample_size)
-                or int(data.get("sample_seed", 0)) != int(sample_seed)):
-            return None
+        if (data.get("generator") != generator
+                or data.get("quant") != quant
+                or data.get("n_samples") != n_samples):
+            return None   # stale cache — different generator, quant, or sample size
         return data.get("records", [])
 
     def save_multiclaim_embs(self, ids: list[str], embs: "np.ndarray",

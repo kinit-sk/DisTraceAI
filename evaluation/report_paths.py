@@ -12,10 +12,10 @@ Segments that don't apply to a given step are omitted gracefully. Examples:
     results/narratives/polynarrative/xlm-multicw__specfi-ccs.html
     results/campaigns/fake-cti/xlm-multicw__dense.html
     results/claim-canonization/benchmark.html          (no single detector)
-    results/claim-veracity/gemma4-e2b.html      (no dataset/detector)
+    results/claim-veracity/gemma4-e2b__bf16.html      (no dataset/detector)
 
 All segments are slugified so model paths like ``models/xlm-multicw`` become
-``xlm-multicw`` strings stay intact.
+``xlm-multicw`` and precision strings stay intact.
 """
 from __future__ import annotations
 

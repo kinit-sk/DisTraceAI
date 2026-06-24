@@ -37,11 +37,18 @@ class Config:
     )
 
     canon_generator: str = _f(
-        "gemma4-e4b",
+        "qwen3.5-2b",
         "Canonization generator",
         "LLM used to decontextualize and translate check-worthy claims to English.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    canon_precision: str = _f(
+        "bf16",
+        "Canonization precision",
+        "Model precision for the canonization generator (bf16=16-bit).",
+        choices=["bf16"],
     )
 
     subnar_detector: str = _f(
@@ -60,11 +67,18 @@ class Config:
     )
 
     subnar_generator: str = _f(
-        "gemma4-e4b",
+        "qwen3.5-2b",
         "Sub-narrative generator",
         "LLM used to synthesize the central claim for each sub-narrative cluster.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    subnar_precision: str = _f(
+        "bf16",
+        "Sub-narrative precision",
+        "Model precision for the sub-narrative generator (bf16=16-bit).",
+        choices=["bf16"],
     )
 
     subnar_min_similarity: float = _f(
@@ -132,12 +146,19 @@ class Config:
     )
 
     nar_generator: str = _f(
-        "gemma4-e4b",
+        "qwen3.5-2b",
         "Narrative generator",
         "LLM used to synthesize narrative central claims (Generate) and HyDE "
         "hypotheticals (specfi-cs / cspecfi / context-1).",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    nar_precision: str = _f(
+        "bf16",
+        "Narrative precision",
+        "Model precision for the narrative generator (bf16=16-bit).",
+        choices=["bf16"],
     )
 
     nar_assign_threshold: float = _f(
@@ -262,21 +283,14 @@ class Config:
         "veracity evaluation benchmark.",
     )
 
-    ver_sample_size: int = _f(
-        10,
+    ver_n_samples: int = _f(
+        200,
         "MultiClaim sample size",
-        "Randomly sample this many MultiClaim claims for the veracity evaluation "
-        "instead of using the full corpus (~136k claims → hundreds of thousands "
-        "of paraphrase queries). The sample is drawn with a fixed seed "
-        "(ver_sample_seed) so it is reproducible across runs. Set to 0 (or a "
-        "negative value) to disable sampling and use every claim.",
-    )
-
-    ver_sample_seed: int = _f(
-        42,
-        "MultiClaim sample seed",
-        "Random seed for the MultiClaim sub-sample (see ver_sample_size); fixing "
-        "it keeps the selected claims identical across runs.",
+        "Number of claims to randomly draw from MultiClaim before stratification. "
+        "The sample is filtered to True/False only, then balanced to equal counts "
+        "of each class (so the final stratified set is at most ver_n_samples total, "
+        "split evenly between True and False). A different value invalidates the "
+        "paraphrase cache.",
     )
 
     ver_multiclaim_text_col: str = _f(
@@ -329,11 +343,18 @@ class Config:
     )
 
     camp_generator: str = _f(
-        "gemma4-e4b",
+        "qwen3.5-2b",
         "Campaign generator",
         "LLM for synthesizing campaign central claims.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
+    )
+
+    camp_precision: str = _f(
+        "bf16",
+        "Campaign precision",
+        "Model precision for the campaign generator (bf16=16-bit).",
+        choices=["bf16"],
     )
 
     camp_assign_threshold: float = _f(

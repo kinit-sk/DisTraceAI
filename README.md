@@ -16,7 +16,7 @@ to a JSON-based knowledge base.
   have enough VRAM for the chosen model (the 12B and Context-1 want a large GPU).
 - conda installed and initialised (`conda init bash`, then restart your shell).
 - The datasets placed under `data/` (MultiCW, FakeCTI, PolyNarrative, MultiClaim,
-  MassiveSumm) — not shipped in the repo.
+  EUvsDisinfo) — not shipped in the repo.
 
 ## 1. Create the environment (ONCE)
 From a shell where `conda` works (e.g. base), run:

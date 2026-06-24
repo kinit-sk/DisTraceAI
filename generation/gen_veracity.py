@@ -496,6 +496,45 @@ def build_evidence_tools(cfg, embedder, *,
     return _CompositeEvidenceTools(sources)
 
 
+def build_single_source_tools(source: str, cfg, embedder, *,
+                              exclude_ids: set | None = None,
+                              kb: KnowledgeBase | None = None,
+                              embedder_name: str = "") -> _CompositeEvidenceTools:
+    """Build evidence tools backed by exactly one source.
+
+    Mirrors ``build_evidence_tools`` but ignores ``cfg.ver_sources`` and
+    constructs the requested source only. Used by the veracity eval to run
+    the agentic harness against MultiClaim / Wikipedia / Web in sequence
+    rather than as a single composite pool.
+
+    ``source`` is one of ``"multiclaim"``, ``"wikipedia"``, ``"web"``.
+    """
+    s = source.strip().lower()
+    if s == "multiclaim":
+        multiclaim_path = Path("data") / "MultiClaim" / "fact_checks.csv"
+        if not multiclaim_path.exists():
+            for p in Path("data/MultiClaim").glob("*.csv") if Path("data/MultiClaim").exists() else []:
+                multiclaim_path = p
+                break
+        records = _load_multiclaim(
+            multiclaim_path,
+            getattr(cfg, "ver_multiclaim_text_col", "claim"),
+            getattr(cfg, "ver_multiclaim_label_col", "label"),
+        )
+        if not records:
+            return _CompositeEvidenceTools([])
+        return _CompositeEvidenceTools([_MultiClaimTools(
+            records, embedder,
+            exclude_ids=exclude_ids, kb=kb, embedder_name=embedder_name)])
+    if s == "wikipedia":
+        # EN-only by design: the eval queries are English-paraphrased MultiClaim
+        # entries, so en.wikipedia.org is the right scope.
+        return _CompositeEvidenceTools([_WikipediaTools(lang="en")])
+    if s == "web":
+        return _CompositeEvidenceTools([_WebSearchTools()])
+    raise ValueError(f"Unknown evidence source: {source!r}")
+
+
 # ---------------------------------------------------------------------------
 # Verdict synthesis
 # ---------------------------------------------------------------------------
@@ -607,7 +646,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
         f"— FakeCTI[/bold cyan]")
     console.print(
         f"[dim]Sources: {cfg.ver_sources}  "
-        f"Generator: {cfg.ver_generator}[/dim]\n")
+        f"Generator: {cfg.ver_generator} (bf16)[/dim]\n")
 
     # camp_embedder is intentionally reused here: sharing the embedding model
     # with the campaign step means the MultiClaim .npz cache is shared too.
@@ -615,8 +654,9 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
     embedder = make_embedder(cfg.camp_embedder)
 
     console.print(
-        f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] [dim](bf16)…[/dim]")
-    llm = make_generator(cfg.ver_generator)
+        f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] "
+        f"([dim]bf16[/dim])…")
+    llm = make_generator(cfg.ver_generator, "bf16")
 
     tools = build_evidence_tools(cfg, embedder,
                                  kb=kb,

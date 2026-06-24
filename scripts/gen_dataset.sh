@@ -17,7 +17,7 @@ export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm
 export VLLM_USE_FLASHINFER_SAMPLER=0   # use PyTorch-native sampler; avoids FlashInfer nvcc/ninja JIT build failure
 export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
-# Full pipeline on MassiveSumm SK/CZ → three dataset CSVs.
+# Full pipeline on EUvsDisinfo → three dataset CSVs.
 # Output: knowledge/dataset/{subnarratives,narratives,campaigns}.csv
 # No original article text is included in the output.
 
