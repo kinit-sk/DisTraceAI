@@ -164,7 +164,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
 
     # ---- Step 2: canonization --------------------------------------------
     console.print("[bold]Step 2/5:[/bold] Canonization…")
-    canon_llm = make_generator(cfg.canon_generator, _PREC)
+    canon_llm = make_generator(cfg.canon_generator)
     canon_process(_DATASET_SLUG, _canon_det_slug(cfg.canon_detector),
                   canon_llm, kb)
     close_generator(canon_llm)
@@ -172,7 +172,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     # ---- Step 3: sub-narrative extraction --------------------------------
     console.print("[bold]Step 3/5:[/bold] Sub-narrative extraction…")
     sn_embedder = make_embedder(cfg.subnar_embedder)
-    sn_llm      = make_generator(cfg.subnar_generator, _PREC)
+    sn_llm      = make_generator(cfg.subnar_generator)
     sn_process(
         _DATASET_SLUG, _canon_det_slug(cfg.subnar_detector),
         sn_embedder, sn_llm, kb,
@@ -187,7 +187,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     nar_embedder = make_embedder(cfg.nar_embedder)
     nar_llm = None
     if os.getenv("DISTRACE_NAR_NO_LLM") != "1":
-        nar_llm = make_generator(cfg.nar_generator, _PREC)
+        nar_llm = make_generator(cfg.nar_generator)
     elif cfg.nar_extractor != "dense":
         raise RuntimeError(
             f"nar_extractor={cfg.nar_extractor!r} requires a generator, but "
@@ -209,7 +209,6 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         extractor=cfg.camp_extractor,
         embedder_name=cfg.camp_embedder,
         generator_key=cfg.camp_generator,
-        precision=_PREC,
         kb=kb,
         cfg=cfg,
     )

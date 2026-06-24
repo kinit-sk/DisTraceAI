@@ -110,7 +110,7 @@ class _MultiClaimTools:
         """
         self._records     = records
         self._exclude     = exclude_ids or set()
-        self._id_to_text  = {r["id"]: f"{r['text']} [{r['ratings']}]"
+        self._id_to_text  = {r["id"]: f"{r['text']} [{r['label']}]"
                              for r in records}
         self._embedder      = embedder
         self._embedder_name = embedder_name
@@ -154,7 +154,7 @@ class _MultiClaimTools:
         # Cache miss — build the index, then persist
         logger.info("[ver] Building MultiClaim embedding index "
                     "(%d records)…", len(self._records))
-        texts      = [f"{r['text']} [{r['ratings']}]" for r in self._records]
+        texts      = [f"{r['text']} [{r['label']}]" for r in self._records]
         self._ids  = [r["id"] for r in self._records]
 
         # Encode in one batched call with a Rich progress bar
@@ -656,7 +656,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
     console.print(
         f"[bold]Loading generator[/bold] [cyan]{cfg.ver_generator}[/cyan] "
         f"([dim]bf16[/dim])…")
-    llm = make_generator(cfg.ver_generator, "bf16")
+    llm = make_generator(cfg.ver_generator)
 
     tools = build_evidence_tools(cfg, embedder,
                                  kb=kb,

@@ -322,9 +322,9 @@ class VLLMGenerator:
             # shares the GPU, or lower it on tight-VRAM cards.
             try:
                 gpu_memory_utilization = float(
-                    os.environ.get("DISTRACE_GEN_GPU_UTIL", "0.60"))
+                    os.environ.get("DISTRACE_GEN_GPU_UTIL", "0.40"))
             except ValueError:
-                gpu_memory_utilization = 0.60
+                gpu_memory_utilization = 0.40
 
         llm_kwargs = dict(model=model_repo, dtype="bfloat16",
                           max_model_len=context_size,

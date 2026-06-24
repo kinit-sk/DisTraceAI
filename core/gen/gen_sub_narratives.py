@@ -303,7 +303,7 @@ def generate(
         f"[bold]Loading generator[/bold] [cyan]{generator_key}[/cyan] "
         f"([dim]{precision}[/dim])…"
     )
-    llm = make_generator(generator_key, precision)
+    llm = make_generator(generator_key)
 
     summary: dict = {}
     for dataset_slug in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:

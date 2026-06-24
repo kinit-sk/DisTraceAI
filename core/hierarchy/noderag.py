@@ -622,7 +622,7 @@ if __name__ == "__main__":
         print("       Run scripts/setup.sh first (installs vllm).", file=sys.stderr)
         sys.exit(1)
 
-    _generator = make_generator("gemma4-e2b", "bf16")
+    _generator = make_generator("gemma4-e2b")
     _embedder  = make_embedder("nomic-ai/nomic-embed-text-v1.5")
 
     # ── 3. Write test documents ──────────────────────────────────────────────

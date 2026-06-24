@@ -194,7 +194,7 @@ def _build_test_set(records: list[dict], cfg, kb: KnowledgeBase) -> list[dict]:
         f"[dim]Generator: {cfg.ver_paraphrase_generator} "
         f"({_PRECISION})[/dim]\n")
 
-    llm = make_generator(cfg.ver_paraphrase_generator, _PRECISION)
+    llm = make_generator(cfg.ver_paraphrase_generator)
     test_records = []
     with Progress(SpinnerColumn(),
                   TextColumn("[progress.description]{task.description}"),
@@ -369,7 +369,7 @@ def main(cfg=None) -> None:
     embedder = make_embedder(cfg.camp_embedder)
     console.print(
         f"[bold]Loading verdict generator[/bold] [cyan]{cfg.ver_generator}[/cyan]…")
-    llm = make_generator(cfg.ver_generator, _PRECISION)
+    llm = make_generator(cfg.ver_generator)
 
     # Pre-build the MultiClaim embedding index ONCE (cached to disk) so the
     # leave-one-out loop does not re-encode the corpus for every query.
