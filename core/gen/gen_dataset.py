@@ -129,12 +129,12 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     may not be present on every deployment.
     """
     from core.claims.cw_detector import CheckWorthinessDetector
-    from core.claims.gen_cw_detect import _process_dataset as cw_process
-    from core.claims.gen_canonize import _process_dataset as canon_process
-    from core.claims.gen_canonize import _detector_slug as _canon_det_slug
-    from core.claims.gen_sub_narratives import _process_dataset as sn_process
-    from core.claims.gen_narratives import _process_dataset as nar_process
-    from core.claims.gen_campaigns import generate as gen_camp_entry
+    from core.gen.gen_cw_detect import _process_dataset as cw_process
+    from core.gen.gen_canonize import _process_dataset as canon_process
+    from core.gen.gen_canonize import _detector_slug as _canon_det_slug
+    from core.gen.gen_sub_narratives import _process_dataset as sn_process
+    from core.gen.gen_narratives import _process_dataset as nar_process
+    from core.gen.gen_campaigns import generate as gen_camp_entry
     from core.models import make_embedder, make_generator, close_generator
 
     # AWQ weights may not be present; always use bf16 for this pipeline.

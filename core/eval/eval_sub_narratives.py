@@ -443,7 +443,7 @@ def main(cfg=None) -> None:
             pass
 
         # One structured HTML report per detector.
-        from evaluation.report_paths import report_path
+        from core.eval.report_paths import report_path
         html_out = report_path("sub-narratives", dataset="polynarrative",
                                detector=detector_slug)
         console.save_html(str(html_out), theme=MONOKAI, clear=False)

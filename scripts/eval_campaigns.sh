@@ -20,7 +20,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # Campaign clustering evaluation (ARI/NMI/V-measure) against FakeCTI ground truth.
 # Requires: FakeCTI converter run + full pipeline through campaigns on FakeCTI.
 
-python $HOME/distrace/main.py \
+python ../main.py \
   --eval campaigns \
   --camp-extractor dense \
   --camp-detector both

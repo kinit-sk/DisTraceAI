@@ -20,7 +20,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # Campaign extraction: narratives → campaigns with coordination scoring.
 # Run Verify hierarchy first to populate veracity before this step.
 
-DISTRACE=$HOME/distrace
+DISTRACE=../distrace
 
 # Verify hierarchy (FakeCTI central claims only)
 python $DISTRACE/main.py \

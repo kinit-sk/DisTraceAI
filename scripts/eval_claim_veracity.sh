@@ -22,7 +22,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # on first run (Gemma4-12b) and reused in subsequent runs.
 # Evidence sources: multiclaim,wikipedia,web (disable any by removing from list).
 
-python $HOME/distrace/main.py \
+python ../distrace/main.py \
   --eval claim-veracity \
   --ver-sources multiclaim,wikipedia,web \
   --ver-generator gemma4-e2b \

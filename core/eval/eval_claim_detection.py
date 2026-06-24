@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 console = Console(record=True)
 
 DATA_PATH    = Path("data/MultiCW/multicw-test.csv")
-EVAL_HTML_OUT = Path("evaluation/eval_claim_detection.html")
+EVAL_HTML_OUT = Path("core/eval/eval_claim_detection.html")
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +207,7 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    from evaluation.report_paths import report_path
+    from core.eval.report_paths import report_path
     html_out = report_path("claim-detection", detector=detector.slug)
     console.save_html(str(html_out), theme=MONOKAI, clear=False)
     console.print(f"[dim]HTML report saved to {html_out}[/dim]")

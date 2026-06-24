@@ -42,7 +42,7 @@ export VLLM_DEEP_GEMM_WARMUP=skip   # vLLM #41849: skip FP8 warmup (no deep_gemm
 export VLLM_USE_FLASHINFER_SAMPLER=0   # use PyTorch-native sampler; avoids FlashInfer nvcc/ninja JIT build failure
 export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-time skew
 
-DISTRACE=$HOME/distrace
+DISTRACE=../distrace
 
 # --- Tunables (override on the command line: VAR=value sbatch ...) ----------
 DETECTOR=${DETECTOR:-both}                       # both | models/xlm-multicw | models/mdb-multicw

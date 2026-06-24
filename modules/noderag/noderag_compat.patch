@@ -1,0 +1,160 @@
+# noderag_compat.patch
+# DisTraceAI compatibility fixes for stock NodeRAG (pinned commit). These are
+# NOT the llama-cpp provider (dropped — the pipeline injects in-process vLLM
+# clients instead). They are required behavioral fixes that let stock NodeRAG
+# run on this project's data without crashing:
+#   - token_utils.py: local-model tokenizers (gemma/qwen) have no tiktoken
+#     vocab; fall back to a gpt-4o approximation for chunk-sizing token counts
+#     instead of raising ValueError('Unsupported model ...').
+#   - attribute_generation.py / relationship.py / summary_generation.py:
+#     guard small/empty graphs (avoid ZeroDivisionError, log(0), and
+#     betweenness_centrality(k=10) when |V| < 10). These activate only on
+#     degenerate graphs and do not alter NodeRAG's algorithm on graphs large
+#     enough to matter, so SpecFi replication on real corpora is unaffected.
+#
+# The unpatched llama-cpp provider sections (LLM.py, LLM_route.py) are
+# intentionally excluded so NodeRAG's model routing stays stock (SpecFi-faithful).
+
+diff --git a/NodeRAG/build/pipeline/attribute_generation.py b/NodeRAG/build/pipeline/attribute_generation.py
+index 64ccbba..8bb2d16 100644
+--- a/NodeRAG/build/pipeline/attribute_generation.py
++++ b/NodeRAG/build/pipeline/attribute_generation.py
+@@ -25,10 +25,18 @@ class NodeImportance:
+         self.console = console
+         
+     def K_core(self,k:int|None = None):
+-        
++
++        # Tiny/empty graphs (e.g. a very small corpus) have no meaningful k-core.
++        # (DisTraceAI patch: avoid ZeroDivisionError / degenerate k.)
++        if self.G.number_of_nodes() == 0:
++            return
++
+         if k is None:
+             k = self.defult_k()
+-        
++
++        if k <= 0:
++            return
++
+         self.k_subgraph = nx.core.k_core(self.G,k=k)
+         
+         for nodes in self.k_subgraph.nodes():
+@@ -36,18 +44,31 @@ class NodeImportance:
+                 self.important_nodes.append(nodes)
+         
+     def avarege_degree(self):
+-        average_degree = sum(dict(self.G.degree()).values())/self.G.number_of_nodes()
+-        return average_degree
++        n = self.G.number_of_nodes()
++        if n == 0:                       # DisTraceAI patch: empty graph
++            return 0.0
++        return sum(dict(self.G.degree()).values())/n
+     
+     def defult_k(self):
+-        k = round(np.log(self.G.number_of_nodes())*self.avarege_degree()**(1/2))
+-        return k
++        n = self.G.number_of_nodes()
++        deg = self.avarege_degree()
++        if n <= 1 or deg <= 0:           # DisTraceAI patch: avoid log(0)/0-degree
++            return 0
++        return round(np.log(n)*deg**(1/2))
+     
+     def betweenness_centrality(self):
+-        
+-        self.betweenness = nx.betweenness_centrality(self.G,k=10)
++
++        # DisTraceAI patch: tolerate small/empty graphs (k must be <= |V|; avoid
++        # division by zero and math.log10(<=1)).
++        n = self.G.number_of_nodes()
++        if n == 0:
++            self.betweenness = {}
++            return
++        self.betweenness = nx.betweenness_centrality(self.G,k=min(10, n))
++        if not self.betweenness:
++            return
+         average_betweenness = sum(self.betweenness.values())/len(self.betweenness)
+-        scale = round(math.log10(len(self.betweenness)))
++        scale = round(math.log10(len(self.betweenness))) if len(self.betweenness) > 1 else 1
+         
+         for node in self.betweenness:
+             if self.betweenness[node] > average_betweenness*scale:
+@@ -55,6 +76,9 @@ class NodeImportance:
+                     self.important_nodes.append(node)
+                     
+     def main(self):
++        if self.G.number_of_nodes() == 0:   # DisTraceAI patch: nothing to rank
++            self.console.print('[yellow]NodeImportance: empty graph — no important nodes[/yellow]')
++            return []
+         self.K_core()
+         self.console.print('[bold green]K_core done[/bold green]')
+         self.betweenness_centrality()
+diff --git a/NodeRAG/build/pipeline/summary_generation.py b/NodeRAG/build/pipeline/summary_generation.py
+index 8e0ed91..0803fb0 100644
+--- a/NodeRAG/build/pipeline/summary_generation.py
++++ b/NodeRAG/build/pipeline/summary_generation.py
+@@ -110,11 +110,15 @@ class SummaryGeneration:
+    
+     async def high_level_element_summary(self):
+         results = []
+-        
+-        with open(self.config.summary_path, 'r', encoding='utf-8') as f:
+-            for line in f:
+-                line = json.loads(line)
+-                results.append(line)
++
++        # DisTraceAI patch: tiny/degenerate graphs (or a local model that emitted no
++        # valid community summaries) leave no summary file. Treat that as "no
++        # high-level elements" instead of crashing on open().
++        if os.path.exists(self.config.summary_path):
++            with open(self.config.summary_path, 'r', encoding='utf-8') as f:
++                for line in f:
++                    line = json.loads(line)
++                    results.append(line)
+                 
+         All_nodes = []
+         self.config.tracker.set(len(results),'High Level Element Summary')
+@@ -200,7 +204,8 @@ class SummaryGeneration:
+         self.config.console.print('[bold green]Graph stored[/bold green]')
+         
+     def delete_community_cache(self):
+-        os.remove(self.config.summary_path)
++        if os.path.exists(self.config.summary_path):   # DisTraceAI patch: may not exist
++            os.remove(self.config.summary_path)
+         
+     def store_high_level_elements(self):
+         
+diff --git a/NodeRAG/utils/token_utils.py b/NodeRAG/utils/token_utils.py
+index b75015e..148dddc 100644
+--- a/NodeRAG/utils/token_utils.py
++++ b/NodeRAG/utils/token_utils.py
+@@ -64,7 +64,12 @@ def get_token_counter(model_name:str) -> token_counter:
+     # elif 'deepseek' in model_name:
+     #     return deepseek_counter(model_name)
+     else:
+-        raise ValueError(f"Unsupported model {model_name}")
++        # Local models (llama.cpp: gemma/qwen/llama/mistral or a .gguf path) have no
++        # tiktoken vocab. Token counts here only drive chunk sizing, so a cl100k
++        # (gpt-4o) approximation is fine. (DisTraceAI local-model patch.)
++        token = tiktoken_counter('gpt-4o')
++        token.token_limit_bound = 128000
++        return token
+ 
+ 
+     
+diff --git a/NodeRAG/build/component/relationship.py b/NodeRAG/build/component/relationship.py
+--- a/NodeRAG/build/component/relationship.py
++++ b/NodeRAG/build/component/relationship.py
+@@ -62,4 +62,11 @@
+ 
+     @classmethod
+     def from_df_row(cls,row):
+-        return cls(frozen_set=row['unique_relationship'],context=row['context'],human_readable_id=row['human_readable_id'])
++        # Robust to BOTH df.itertuples() rows (namedtuples -> attribute access)
++        # and df.iterrows()/dict rows (Series/dict -> key access).
++        # load_relationship() iterates with itertuples(), whose namedtuple rows do
++        # NOT support string subscripting, which raised
++        # "TypeError: tuple indices must be integers or slices, not str".
++        g = (lambda k: row[k]) if hasattr(row, 'keys') else (lambda k: getattr(row, k))
++        return cls(frozen_set=g('unique_relationship'), context=g('context'),
++                   human_readable_id=g('human_readable_id'))

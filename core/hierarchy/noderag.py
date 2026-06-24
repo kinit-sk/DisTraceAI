@@ -444,7 +444,7 @@ class NodeRagGraph:
         """Build (or rebuild) the NodeRAG knowledge-graph index.
 
         If input/ is empty, the method first tries to auto-populate it from the
-        DisTraceAI knowledge-base via ``evaluation.noderag_corpus.export``.
+        DisTraceAI knowledge-base via ``core.eval.noderag_corpus.export``.
 
         Any stale ``cache/`` or ``info/`` directories left by a previous crashed
         build are removed before starting so NodeRAG always gets a clean slate —
@@ -455,7 +455,7 @@ class NodeRagGraph:
             # DisTraceAI knowledge-base (PolyNarrative corpus by default).
             kb_root = os.getenv("DISTRACE_KB", "knowledge/polynm")
             lang = os.getenv("DISTRACE_NODERAG_LANG_FILTER", "EN")
-            from evaluation.noderag_corpus import export
+            from core.eval.noderag_corpus import export
             n = export(Path(kb_root), Path(self.index_path) / "input", lang,
                        None, repr=self._build_repr)
             if n == 0:
@@ -571,7 +571,7 @@ class NodeRagGraph:
 #       rm -rf ./test_noderag_index
 #
 # Requirements:
-#   ./setup.sh                     (installs vllm + NodeRAG with the compat patch)
+#   scripts/setup.sh                     (installs vllm + NodeRAG with the compat patch)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -619,7 +619,7 @@ if __name__ == "__main__":
         from core.models import make_generator, make_embedder
     except ImportError as exc:
         print(f"ERROR: could not import vLLM-backed model layer: {exc}", file=sys.stderr)
-        print("       Run ./setup.sh first (installs vllm).", file=sys.stderr)
+        print("       Run scripts/setup.sh first (installs vllm).", file=sys.stderr)
         sys.exit(1)
 
     _generator = make_generator("gemma4-e2b", "bf16")

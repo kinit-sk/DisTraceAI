@@ -26,7 +26,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # dense needs no LLM; specfi-cs / cspecfi / context-1 do (and the SpecFi
 # variants require the patched NodeRAG — see modules/noderag/).
 
-python $HOME/distrace/main.py \
+python ../distrace/main.py \
   --generate narratives \
   --nar-detector both \
   --nar-extractor cspecfi \

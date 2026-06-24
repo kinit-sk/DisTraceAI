@@ -247,7 +247,7 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    from evaluation.report_paths import report_path
+    from core.eval.report_paths import report_path
     html_out = report_path("campaigns", dataset="fake-cti",
                            method=getattr(cfg, "camp_extractor", None))
     console.save_html(str(html_out), theme=MONOKAI, clear=False)

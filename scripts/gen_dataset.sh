@@ -21,7 +21,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # Output: knowledge/dataset/{subnarratives,narratives,campaigns}.csv
 # No original article text is included in the output.
 
-python $HOME/distrace/main.py \
+python ../distrace/main.py \
   --generate-dataset \
   --detector models/xlm-multicw \
   --nar-extractor dense \

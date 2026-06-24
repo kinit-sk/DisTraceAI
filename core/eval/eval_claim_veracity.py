@@ -56,7 +56,7 @@ from rich.progress import (
 
 from core.knowledge_base import KnowledgeBase
 from core.models import make_embedder, make_generator
-from core.claims.gen_veracity import (
+from core.gen.gen_veracity import (
     _load_multiclaim, build_single_source_tools,
     synthesize_verdict, _VERACITY_SYSTEM,
 )
@@ -519,7 +519,7 @@ def main(cfg=None) -> None:
     except Exception:
         pass
 
-    from evaluation.report_paths import report_path
+    from core.eval.report_paths import report_path
     html_out = report_path(
         "claim-veracity",
         extra=f"{cfg.ver_generator}__{_PRECISION}")

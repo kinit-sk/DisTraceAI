@@ -783,7 +783,7 @@ def main(cfg=None):
     console.print(f"\n[bold]Loading embedder[/bold] [cyan]{cfg.nar_embedder}[/cyan]…")
     embedder = make_embedder(cfg.nar_embedder)
 
-    from evaluation.report_paths import report_path
+    from core.eval.report_paths import report_path
 
     # Collected for the benchmark summary table: (detector, method, overall, n).
     bench_rows: list[tuple[str, str, dict, int]] = []

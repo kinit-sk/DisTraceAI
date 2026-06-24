@@ -34,7 +34,7 @@ export DISABLE_KERNEL_MAPPING=1     # transformers 5.12 + kernels 0.15 import-ti
 # Embedder: Qwen3-Embedding-4B (matching SpecFi paper for reproducibility).
 # Hypotheticals: 10 (matching paper's generate_hypotheticals n=10).
 
-DISTRACE=$HOME/distrace
+DISTRACE=../distrace
 
 # --- three dense representations -------------------------------------------
 for REPR in subnar article canonized; do

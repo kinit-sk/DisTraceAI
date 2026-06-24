@@ -96,12 +96,12 @@ STEP_EVAL_PARAMS: dict[str, list[str]] = {
 
 # Evaluation module for each step
 EVAL_MODULES: dict[str, str] = {
-    "claim-detection":    "evaluation.eval_claim_detection",
-    "claim-canonization": "evaluation.eval_claim_canonization",
-    "sub-narratives":     "evaluation.eval_sub_narratives",
-    "claim-veracity":     "evaluation.eval_claim_veracity",
-    "narratives":         "evaluation.eval_narratives",
-    "campaigns":          "evaluation.eval_campaigns",
+    "claim-detection":    "core.eval.eval_claim_detection",
+    "claim-canonization": "core.eval.eval_claim_canonization",
+    "sub-narratives":     "core.eval.eval_sub_narratives",
+    "claim-veracity":     "core.eval.eval_claim_veracity",
+    "narratives":         "core.eval.eval_narratives",
+    "campaigns":          "core.eval.eval_campaigns",
 }
 
 
@@ -129,7 +129,7 @@ def run_generate(step: str, cfg: Config) -> None:
 
     if step == "claim-detection":
         from core.claims.cw_detector import CheckWorthinessDetector
-        from core.claims.gen_cw_detect import generate
+        from core.gen.gen_cw_detect import generate
         console.print(f"\n[bold cyan]Claim detection — Generate[/bold cyan]")
         console.print(f"[dim]Detector: {cfg.detector}[/dim]\n")
         detector = CheckWorthinessDetector(cfg.detector)
@@ -139,7 +139,7 @@ def run_generate(step: str, cfg: Config) -> None:
             console.print(f"  {dataset}: {counts}")
         save_generate_stats(step, summary)
     elif step == "claim-canonization":
-        from core.claims.gen_canonize import canonize
+        from core.gen.gen_canonize import canonize
         console.print(f"\n[bold cyan]Claim canonization — Generate[/bold cyan]")
         console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}  Precision: {cfg.canon_precision}[/dim]\n")
         summary = canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_precision, kb)
@@ -148,7 +148,7 @@ def run_generate(step: str, cfg: Config) -> None:
             console.print(f"  {dataset}: {counts}")
         save_generate_stats(step, summary)
     elif step == "sub-narratives":
-        from core.claims.gen_sub_narratives import generate as generate_sub_narratives
+        from core.gen.gen_sub_narratives import generate as generate_sub_narratives
         console.print(f"\n[bold cyan]Sub-narratives — Generate[/bold cyan]")
         console.print(
             f"[dim]Detector: {cfg.subnar_detector}  Embedder: {cfg.subnar_embedder}  "
@@ -170,7 +170,7 @@ def run_generate(step: str, cfg: Config) -> None:
                 console.print(f"  {dataset}/{detector}: {counts}")
         save_generate_stats(step, summary)
     elif step == "narratives":
-        from core.claims.gen_narratives import generate as generate_narratives
+        from core.gen.gen_narratives import generate as generate_narratives
         if cfg.nar_extractor == "all":
             console.print(
                 "[red]nar_extractor='all' is an Evaluation-only benchmark mode "
@@ -200,14 +200,14 @@ def run_generate(step: str, cfg: Config) -> None:
                 console.print(f"  {dataset}/{detector}: {counts}")
         save_generate_stats(step, summary)
     elif step == "claim-veracity":
-        from core.claims.gen_veracity import verify_hierarchy
+        from core.gen.gen_veracity import verify_hierarchy
         console.print(f"\n[bold cyan]Claim veracity — Verify hierarchy[/bold cyan]")
         console.print(
             f"[dim]Sources: {cfg.ver_sources}  Generator: {cfg.ver_generator}[/dim]\n")
         summary = verify_hierarchy(kb, cfg, deep=False)
         save_generate_stats(step, summary)
     elif step == "campaigns":
-        from core.claims.gen_campaigns import generate as gen_camp
+        from core.gen.gen_campaigns import generate as gen_camp
         from core.knowledge_base import DATASET_FAKECTI, DATASET_POLYNARRATIVE
         console.print(f"\n[bold cyan]Campaigns — Generate[/bold cyan]")
         console.print(
@@ -246,7 +246,7 @@ def _campaigns_submenu(cfg: Config) -> None:
 
         if choice == 0:   # Verify hierarchy
             if ui.prelaunch_review(cfg, "campaigns-verify"):
-                from core.claims.gen_veracity import verify_hierarchy
+                from core.gen.gen_veracity import verify_hierarchy
                 kb = KnowledgeBase(Path("knowledge"))
                 summary = verify_hierarchy(kb, cfg, deep=False)
                 from core.ui.stats import save_generate_stats
@@ -255,7 +255,7 @@ def _campaigns_submenu(cfg: Config) -> None:
 
         elif choice == 1:  # Deep verify
             if ui.prelaunch_review(cfg, "campaigns-deep-verify"):
-                from core.claims.gen_veracity import verify_hierarchy
+                from core.gen.gen_veracity import verify_hierarchy
                 kb = KnowledgeBase(Path("knowledge"))
                 summary = verify_hierarchy(kb, cfg, deep=True)
                 from core.ui.stats import save_generate_stats
@@ -264,13 +264,13 @@ def _campaigns_submenu(cfg: Config) -> None:
 
         elif choice == 2:  # Evaluation
             if ui.prelaunch_review(cfg, "campaigns-eval"):
-                from evaluation.eval_campaigns import main as eval_camp
+                from core.eval.eval_campaigns import main as eval_camp
                 eval_camp(cfg)
                 input("\n[done] press Enter to continue…")
 
         elif choice == 3:  # Generate Dataset
             if ui.prelaunch_review(cfg, "campaigns-generate"):
-                from core.claims.gen_dataset import generate_dataset
+                from core.gen.gen_dataset import generate_dataset
                 summary = generate_dataset(cfg)
                 from core.ui.stats import save_generate_stats
                 save_generate_stats("campaigns", summary)
@@ -385,7 +385,7 @@ def main() -> None:
     elif args.generate:
         run_generate(args.generate, cfg)
     elif args.generate_dataset:
-        from core.claims.gen_dataset import generate_dataset
+        from core.gen.gen_dataset import generate_dataset
         generate_dataset(cfg)
     else:
         tui(cfg)
