@@ -46,22 +46,20 @@ _STATS_KEY: dict[str, tuple[str, str]] = {
 # Parameter lists per action
 # ---------------------------------------------------------------------------
 
-# Common narrative params shown for all methods
 _NAR_COMMON = [
     "nar_detector",
     "nar_embedder",
-    "nar_extractor",        # ← selector; method-specific params follow
+    "nar_extractor",
 ]
 
 _NAR_METHOD_PARAMS: dict[str, list[str]] = {
     "dense":     ["nar_dense_repr"],
     "bm25-rag":  [],
-    "specfi-cs": ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "specfi-ccs": ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "cspecfi":   ["nar_generator", "nar_precision", "nar_specfi_hypotheticals"],
-    "context-1": ["nar_generator", "nar_precision",
-                  "nar_context1_context_size", "nar_context1_max_turns",
-                  "nar_context1_token_budget"],
+    "specfi-cs": ["nar_generator", "nar_specfi_hypotheticals"],
+    "specfi-ccs": ["nar_generator", "nar_specfi_hypotheticals"],
+    "cspecfi":   ["nar_generator", "nar_specfi_hypotheticals"],
+    "context-1": ["nar_generator", "nar_context1_context_size",
+                  "nar_context1_max_turns", "nar_context1_token_budget"],
 }
 
 _NAR_GENERATE_EXTRA = [
@@ -72,23 +70,28 @@ _NAR_GENERATE_EXTRA = [
 ]
 
 _CAT_COLOR = {
-    "detector": "bright_cyan",
-    "canon":    "blue",
-    "subnar":   "magenta",
-    "nar":      "green",
-    "camp":     "yellow",
-    "ver":      "cyan",
+    "detector":  "bright_cyan",
+    "canon":     "blue",
+    "subnar":    "magenta",
+    "nar":       "green",
+    "camp":      "yellow",
+    "ver":       "cyan",
+    # Settings categories
+    "llm":       "bright_white",
+    "env_vllm":  "bright_magenta",
+    "env_distr": "bright_green",
+    "env_hf":    "bright_blue",
+    "env_":      "dark_orange",   # fallback for all env_ keys
 }
 
-# Campaign method-dependent params (mirrors _NAR_METHOD_PARAMS)
 _CAMP_METHOD_PARAMS: dict[str, list[str]] = {
     "dense":     ["camp_dense_repr"],
     "bm25-rag":  [],
-    "specfi-cs": ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "specfi-ccs": ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "cspecfi":   ["camp_generator", "camp_precision", "camp_specfi_hypotheticals"],
-    "context-1": ["camp_generator", "camp_precision",
-                  "camp_context1_max_turns", "camp_context1_token_budget"],
+    "specfi-cs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "specfi-ccs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "cspecfi":   ["camp_generator", "camp_specfi_hypotheticals"],
+    "context-1": ["camp_generator", "camp_context1_max_turns",
+                  "camp_context1_token_budget"],
 }
 
 _CAMP_COMMON = ["camp_detector", "camp_embedder", "camp_extractor"]
@@ -105,6 +108,7 @@ _VER_COMMON = [
     "ver_max_turns", "ver_token_budget",
     "ver_multiclaim_text_col", "ver_multiclaim_label_col",
 ]
+
 RELEVANT: dict[str, list[str]] = {
     "claim-detection":         ["detector"],
     "claim-canonization":      ["canon_detector", "canon_generator", "canon_precision"],
@@ -117,12 +121,10 @@ RELEVANT: dict[str, list[str]] = {
                                 "subnar_min_claims"],
     "narratives-eval":         _NAR_COMMON + ["nar_eval_split", "nar_eval_domain"],
     "narratives-generate":     _NAR_COMMON + _NAR_GENERATE_EXTRA,
-    # Veracity
     "campaigns-verify":        _VER_COMMON,
     "campaigns-deep-verify":   _VER_COMMON,
     "claim-veracity-eval":     _VER_COMMON + ["ver_n_samples", "ver_n_paraphrases",
                                               "ver_paraphrase_generator"],
-    # Campaigns
     "campaigns-eval":          _CAMP_COMMON,
     "campaigns-generate":      _CAMP_COMMON + _CAMP_GENERATE_EXTRA,
 }
@@ -134,13 +136,6 @@ DYNAMIC_FOLLOWERS: dict[str, object] = {
 
 
 def _method_followers(value: str, method_params: dict[str, list[str]]) -> list[str]:
-    """Resolve the follower params for a selector value.
-
-    For a concrete method, returns that method's params. For the "all"
-    benchmark option, returns the UNION of every method's params (preserving
-    first-seen order) so the user can still configure each method's settings
-    even though no single method is selected.
-    """
     if value == "all":
         seen: set[str] = set()
         out: list[str] = []
@@ -153,7 +148,6 @@ def _method_followers(value: str, method_params: dict[str, list[str]]) -> list[s
                     out.append(p)
         return out
     return method_params.get(value, [])
-
 
 
 # ---------------------------------------------------------------------------
@@ -210,8 +204,7 @@ def readkey() -> str:
 def arrow_menu(title: str, items: list[str], subtitle: str = "") -> int:
     """Highlighted arrow-key menu; returns the chosen index, or -1 on Esc.
 
-    Also accepts number keys (1-9) as direct shortcuts. Only redraws on a key
-    that actually changes state, so stray/unknown keys don't cause flicker.
+    Also accepts number keys (1-9) as direct shortcuts.
     """
     idx = 0
     needs_redraw = True
@@ -244,7 +237,6 @@ def arrow_menu(title: str, items: list[str], subtitle: str = "") -> int:
             n = int(key) - 1
             if n < len(items):
                 return n
-        # any other key: no-op, no redraw (avoids flicker)
 
 
 # ---------------------------------------------------------------------------
@@ -268,19 +260,16 @@ def _plain_value(val) -> str:
 
 
 def _cat_color(key: str) -> str:
-    for prefix, col in _CAT_COLOR.items():
+    """Return a border colour for the right-panel based on the field prefix."""
+    # Exact prefix matches first (longest prefix wins)
+    for prefix in sorted(_CAT_COLOR, key=len, reverse=True):
         if key.startswith(prefix):
-            return col
+            return _CAT_COLOR[prefix]
     return "white"
 
 
 def _edit_value(cfg, key: str) -> str:
-    """Cooked-mode prompt for a free (non-choice) field.
-
-    Returns a PLAIN-text status message (no Rich markup): the caller wraps the
-    message in a single colour, and a nested [red]…[/red] inside that wrapper
-    would render incorrectly.
-    """
+    """Cooked-mode prompt for a free (non-choice) field."""
     if cfg.is_locked(key):
         return "Locked by a CLI argument for this run — not editable."
     console.print(f"\n[bold]{cfg.label(key)}[/bold] — current: {cfg.get(key)}")
@@ -302,12 +291,6 @@ def _edit_value(cfg, key: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _build_keys(base_keys: list[str], cfg) -> list[str]:
-    """Expand dynamic followers after their selector in the key list.
-
-    For each key in base_keys that is a DYNAMIC_FOLLOWERS selector, immediately
-    after it insert the method-specific keys for the current selector value.
-    Duplicate keys are silently dropped (first occurrence wins).
-    """
     seen: set[str] = set()
     out: list[str] = []
     for k in base_keys:
@@ -332,18 +315,11 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
                   save_on_exit: bool = True,
                   launch_desc: str | None = None,
                   stats_text: str | None = None) -> bool:
-    """Two-panel editor. Returns True only if the user chose Launch.
-
-    base_keys: the base parameter list; dynamic followers are expanded inline.
-    launch_desc: override text for the right-hand box on the Launch row.
-    stats_text: Rich-markup string shown on the Launch row (prior-run stats).
-    The right panel autosizes from the terminal width after allocating the left.
-    """
+    """Two-panel editor. Returns True only if the user chose Launch."""
     idx = 0
     message = ""
 
     while True:
-        # Rebuild key list each iteration so selector changes take effect.
         keys = [k for k in _build_keys(base_keys, cfg) if k in cfg.field_names()]
         rows = keys + (["__launch__"] if allow_launch else [])
         idx = min(idx, len(rows) - 1)
@@ -359,7 +335,6 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
             f"[bold cyan]{title}[/bold cyan]\n[dim]{hint}[/dim]",
             border_style="blue"))
 
-        # Build left-panel rows
         raw_rows = []
         for i, key in enumerate(rows):
             if key == "__launch__":
@@ -379,13 +354,11 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
                 "locked" if cfg.is_locked(key) else "follower" if is_follower else "normal",
             ))
 
-        # Left panel: fit content, cap at 60% of terminal width
         term_w   = console.width or 120
         left_max = min(max((len(s) for _, s, _ in raw_rows), default=20) + 1,
                        int(term_w * 0.60), 100)
-        # Right panel: fill the remaining terminal width (minus borders + gap)
         right_w  = max(30, term_w - left_max - 8)
-        desc_w   = right_w - 4   # inner text width (subtract panel border padding)
+        desc_w   = right_w - 4
 
         body = Text()
         for i, s, kind in raw_rows:
@@ -433,9 +406,17 @@ def edit_settings(cfg, base_keys: list[str], title: str, *,
                 extra = "\n[dim]Enter to edit value[/dim]"
             badge = ("[dim italic]method-specific parameter[/dim italic]\n"
                      if cur not in base_keys else "")
+            # Special badge for env-var fields
+            env_badge = ""
+            if cur.startswith("env_"):
+                from main import _SETTINGS_ADVANCED_KEYS, _SETTINGS_EMBEDDER_KEYS
+                from config import Config as _Cfg
+                env_var = _Cfg._ENV_FIELD_MAP.get(cur, "")
+                env_badge = (f"[dim]env var:[/dim] [bold yellow]{env_var}[/bold yellow]\n"
+                             if env_var else "")
             desc = (f"[bold]{cfg.label(cur)}[/bold]\n"
                     f"[dim]{'─' * (desc_w - 2)}[/dim]\n"
-                    f"{badge}{wrapped}\n\n"
+                    f"{badge}{env_badge}{wrapped}\n\n"
                     f"[dim]Current:[/dim] {_fmt_value(cfg.get(cur))}{extra}")
             border = _cat_color(cur)
 
@@ -528,13 +509,7 @@ LAUNCH_DESC: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 def prelaunch_review(cfg, action: str) -> bool:
-    """Pre-launch parameter review for an action.
-
-    The Launch row's right panel shows prior-run stats (eval scores and/or KB
-    counts), or 'Not computed yet' if no prior run exists for this step.
-    Dynamic method-specific params expand inline when a selector field
-    (nar_extractor / camp_extractor) changes.
-    """
+    """Pre-launch parameter review for an action."""
     base_keys = RELEVANT.get(action, cfg.field_names())
     base_keys = [k for k in base_keys if k in cfg.field_names()]
 

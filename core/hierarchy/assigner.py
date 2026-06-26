@@ -1,6 +1,6 @@
 """Merge-or-create narrative assignment (narrative extraction, step 5).
 
-For each sub-narrative the configured retrieval backend ranks existing
+For each sub-narrative the configured retrieval llm_backends ranks existing
 narratives; the top match above the assignment threshold merges. Sub-narratives
 that do not match are placed into an unassigned pool; a new narrative is created
 only when enough mutually-similar pooled sub-narratives accumulate.
@@ -9,7 +9,7 @@ Scope
 -----
 An assigner instance is bound to one ``(dataset, detector)`` pair: it only ever
 sees that pair's sub-narratives, and writes narratives under
-``narratives/<dataset>/<backend>/``. This keeps polynarrative and fake-cti pools
+``narratives/<dataset>/<llm_backends>/``. This keeps polynarrative and fake-cti pools
 separate and lets ``kb.get_sub_narrative`` / ``kb.sub_narratives`` be resolved
 with the correct scope (both require dataset + detector).
 
@@ -63,7 +63,7 @@ class RetrievalAssigner:
         # Cosine threshold used while clustering the unassigned pool.
         self.new_narrative_threshold = new_narrative_threshold
 
-        # Load existing narratives for THIS dataset/backend into the corpus.
+        # Load existing narratives for THIS dataset/llm_backends into the corpus.
         self.narratives: dict[str, Narrative] = {
             n.id: n for n in kb.narratives(dataset, backend.name)
         }

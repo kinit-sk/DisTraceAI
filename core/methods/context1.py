@@ -1,4 +1,4 @@
-"""Chroma Context-1 backend (README §5, contribution 3).
+"""Chroma Context-1 llm_backends (README §5, contribution 3).
 
 Drives Chroma Context-1 as an agentic search subagent (multi-turn query
 decomposition + pruning) over the narrative-cluster corpus, then re-scores the
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from core.hierarchy.backends.base import RetrievalBackend
+from core.methods.base import RetrievalBackend
 from core.hierarchy.harness import AgenticSearchHarness
 
 _DISCOVERY_PROMPT = """\

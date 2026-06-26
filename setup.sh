@@ -1,137 +1,193 @@
-#!/usr/bin/env bash
-# DisTraceAI installer — single inference env ("distrace").
+#!/bin/bash
+# DisTraceAI dependency installer.
 #
-# ONE command does everything: creates the env, installs the inference stack
-# (vLLM + torch + transformers v5), the pipeline requirements, NodeRAG (patched
-# local clone), removes the kernels package, and finally VERIFIES every critical
-# import — reinstalling anything missing.
+# Usage:
+#   ./setup.sh hpc     # HPC cluster: module-based toolchain
+#   ./setup.sh desktop # Local workstation with an NVIDIA GPU
+#   ./setup.sh cpu     # CPU-only install (no CUDA)
 #
-# Robustness notes (learned the hard way):
-#   * NO `set -e`  — a single failed install (network blip on a multi-GB wheel,
-#     one unresolvable line) must not abort the run and skip later steps.
-#   * NO `set -u`  — conda's activate/install shell functions reference unbound
-#     variables; under nounset a NON-interactive shell EXITS on the first one,
-#     which silently killed setup right after the CUDA step.
-#   * NO `2>/dev/null` on conda — hiding stderr is how that silent death went
-#     unnoticed. Everything is visible now.
-# The only hard-abort is failure to activate the env (so we never touch base).
+# Each mode will ask whether to install the vLLM or llama-cpp backend and
+# create the appropriate conda environment:
+#   distrace-vllm   — for the vLLM backend  (bf16, full HuggingFace repos)
+#   distrace-llama  — for the llama-cpp backend  (GGUF quant models)
 #
-# Usage:  bash setup.sh
-set -o pipefail
+# Both envs install the shared requirements.txt.  Only one is active at a time;
+# switch with:  conda activate distrace-vllm  or  conda activate distrace-llama
+set -euo pipefail
 
-VLLM_VER="0.22.1"   # supports Qwen3.5 + Gemma 4; ships torch 2.11 / CUDA 13.0 / transformers v5
-export VLLM_VER
-
-_banner() { echo; echo "========================================================"; \
-            echo ">> $*"; echo "========================================================"; }
-
-module load GCC/13.2.0 2>/dev/null || true
-
-# --- create + ACTIVATE the env, then HARD-VERIFY activation (only hard abort) --
-_banner "Creating + activating conda env 'distrace'"
-conda create -n distrace python=3.12 -y || true
-eval "$(conda shell.bash hook)"
-conda activate distrace || true
-
-if [[ "${CONDA_DEFAULT_ENV:-}" != "distrace" ]]; then
-  echo "ERROR: failed to activate the 'distrace' conda env (got '${CONDA_DEFAULT_ENV:-none}')." >&2
-  echo "       Run 'conda init bash', restart your shell, then:  bash setup.sh" >&2
-  echo "       Aborting BEFORE any pip install so the base env is not polluted." >&2
-  exit 1
-fi
-PYBIN="$(python -c 'import sys; print(sys.executable)')"
-case "$PYBIN" in
-  "$CONDA_PREFIX"/*) : ;;
-  *) echo "ERROR: active python ($PYBIN) is not inside \$CONDA_PREFIX ($CONDA_PREFIX). Aborting." >&2
-     exit 1 ;;
+MODE="${1:-}"
+case "$MODE" in
+    hpc|desktop|cpu) ;;
+    *)
+        echo "Usage: $0 {hpc|desktop|cpu}" >&2
+        exit 1
+        ;;
 esac
-echo "[setup] env active: $CONDA_DEFAULT_ENV  ($PYBIN)"
 
-# --- CUDA runtime / libcuda visibility (best-effort, never fatal) --------------
-# nvcc + cudart for any FlashInfer JIT path; harmless if the node uses module
-# CUDA instead. Run in a subshell so its activation side-effects can't change
-# our shell, and never let it stop the script. (stderr is intentionally visible.)
-_banner "CUDA toolkit + libcuda visibility (best-effort)"
-( conda install -n distrace -c nvidia cuda-toolkit=13.3 -y ) \
-  && echo "[setup] cuda-toolkit installed." \
-  || echo "[setup] (cuda-toolkit step returned non-zero — using module/system CUDA; continuing)"
+# ---------------------------------------------------------------------------
+# Backend selection
+# ---------------------------------------------------------------------------
+echo ""
+echo "┌─────────────────────────────────────────────────────┐"
+echo "│  DisTraceAI — LLM backend selection                │"
+echo "├─────────────────────────────────────────────────────┤"
+echo "│  1) vLLM      — bf16 via HuggingFace (recommended) │"
+echo "│  2) llama-cpp — GGUF quantised models              │"
+echo "└─────────────────────────────────────────────────────┘"
+echo ""
 
-_SYS_LIB="/usr/lib/x86_64-linux-gnu"
-if [[ -e "$_SYS_LIB/libcuda.so" || -e "$_SYS_LIB/libcuda.so.1" ]]; then
-  export LD_LIBRARY_PATH="$_SYS_LIB:${LD_LIBRARY_PATH:-}"
-  export LIBRARY_PATH="$_SYS_LIB:${LIBRARY_PATH:-}"
-  export LDFLAGS="-L$_SYS_LIB ${LDFLAGS:-}"
-  echo "[setup] libcuda found in $_SYS_LIB — exported LD_LIBRARY_PATH/LIBRARY_PATH/LDFLAGS (this shell only)."
-else
-  echo "[setup] (no libcuda.so in $_SYS_LIB — relying on module/conda CUDA)"
-fi
-rm -rf "$HOME/.cache/flashinfer" 2>/dev/null || true   # avoid stale JIT cache
+while true; do
+    read -rp "Select backend [1/2]: " BACKEND_CHOICE
+    case "$BACKEND_CHOICE" in
+        1) BACKEND="vllm";      ENV_NAME="distrace-vllm";  break ;;
+        2) BACKEND="llama-cpp"; ENV_NAME="distrace-llama"; break ;;
+        *) echo "Please enter 1 or 2." ;;
+    esac
+done
 
-# --- inference stack -----------------------------------------------------------
-_banner "Installing vLLM ${VLLM_VER} (brings torch 2.11 / CUDA 13.0 / transformers v5)"
-python -m pip install "vllm==${VLLM_VER}" \
-  || echo "[setup] WARNING: vLLM install returned non-zero — final verification will retry it."
+echo ""
+echo "[setup] Mode: ${MODE}  |  Backend: ${BACKEND}  |  Env: ${ENV_NAME}"
+echo ""
 
-# --- pipeline requirements -----------------------------------------------------
-_banner "Installing pipeline requirements"
-python -m pip install -r requirements.txt \
-  || echo "[setup] WARNING: requirements install returned non-zero — self-heal will fix gaps."
+# Pinned versions shared across all modes.
+TORCH_VER="2.5.1"
+TORCHVISION_VER="0.20.1"
+TORCHAUDIO_VER="2.5.1"
+NUMPY_VER="1.26.4"
+TRANSFORMERS_VER="4.57.6"
 
-# --- NodeRAG (patched local clone; driven by in-process vLLM clients) ----------
-# After the main stack, so NodeRAG only ADDS missing deps (installed unpinned)
-# and cannot downgrade vLLM's stack. Never let a hiccup here stop verification.
-_banner "Installing NodeRAG (patched local clone)"
-bash modules/noderag/install_noderag_local.sh \
-  || echo "[setup] WARNING: NodeRAG install returned non-zero — see its output above."
+# ---------------------------------------------------------------------------
+# Create / activate conda env
+# ---------------------------------------------------------------------------
+conda create -n "${ENV_NAME}" python=3.11 -y
+eval "$(conda shell.bash hook)"
+conda activate "${ENV_NAME}"
 
-# --- transformers 5.12 + kernels 0.15 import crash workaround ------------------
-_banner "Removing 'kernels' (transformers v5 import crash workaround)"
-python -m pip uninstall -y kernels 2>/dev/null || true
+# ---------------------------------------------------------------------------
+# Per-mode toolchain
+# ---------------------------------------------------------------------------
+case "$MODE" in
+    hpc)
+        echo "[setup] HPC cluster — loading modules"
+        module purge
+        module load GCC/13.2.0
+        module load CUDA/12.4.0
+        module load CMake/3.27.6
+        export CC=$(which gcc)
+        export CXX=$(which g++)
+        export CUDA_HOME="${CUDA_ROOT:-$CUDA_HOME}"
+        export CUDACXX="$CUDA_HOME/bin/nvcc"
+        export CUDAHOSTCXX="$CXX"
+        ;;
+    desktop)
+        echo "[setup] Desktop (GPU) — using system CUDA toolkit"
+        export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
+        export CUDACXX="${CUDA_HOME}/bin/nvcc"
+        ;;
+    cpu)
+        echo "[setup] CPU-only install"
+        ;;
+esac
 
-# --- FINAL self-heal + verification (single source of truth) -------------------
-_banner "Verifying the environment"
-python - <<'PYCHECK'
-import importlib, subprocess, sys, os
-CRITICAL = {  # import_name : pip_spec ('' = do not pip-install; vllm-managed or editable)
-    "vllm":        "vllm==%s" % os.environ.get("VLLM_VER", "0.22.1"),
-    "torch":       "",
-    "transformers":"",
-    "rich":        "rich",
-    "pandas":      "pandas",
-    "numpy":       "numpy",
-    "yaml":        "pyyaml",
-    "sklearn":     "scikit-learn",
-    "rank_bm25":   "rank-bm25",
-    "feedparser":  "feedparser",
-    "trafilatura": "trafilatura",
-    "chromadb":    "chromadb",
-    "hnswlib":     "hnswlib",
-    "NodeRAG":     "",
+# ---------------------------------------------------------------------------
+# Backend-specific install
+# ---------------------------------------------------------------------------
+
+install_llama_cpp_cuda () {
+    echo "[setup] Building llama-cpp-python with CUDA offload …"
+    export CMAKE_ARGS="-DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON"
+    export FORCE_CMAKE=1
+    mkdir -p modules
+    if [ ! -d "modules/llama-cpp-python" ]; then
+        git clone --recurse-submodules https://github.com/abetlen/llama-cpp-python.git modules/llama-cpp-python
+    fi
+    cd modules/llama-cpp-python
+    pip install --no-cache-dir --force-reinstall .
+    cd ../..
 }
-def importable(mod):
-    try:
-        importlib.invalidate_caches(); importlib.import_module(mod); return True
-    except Exception:
-        return False
-for mod in [m for m in CRITICAL if not importable(m)]:
-    spec = CRITICAL[mod]
-    if spec:
-        print(f"[setup]   reinstalling {mod}  ({spec}) …")
-        subprocess.call([sys.executable, "-m", "pip", "install", spec])
-print()
-print("[setup] === environment verification ===")
-for m in CRITICAL:
-    print(f"[setup]   {'OK     ' if importable(m) else 'MISSING'}  {m}")
-still = [m for m in CRITICAL if not importable(m)]
-if still:
-    print("[setup] WARNING: still not importable: " + ", ".join(still), file=sys.stderr)
-    if "NodeRAG" in still:
-        print("[setup]   → re-run: bash modules/noderag/install_noderag_local.sh", file=sys.stderr)
-    sys.exit(1)
-print("[setup] All critical packages import OK.")
-PYCHECK
-rc=$?
 
-_banner "distrace env ready"
-[[ $rc -ne 0 ]] && echo "[setup] (some packages still missing — see WARNING above)"
-exit $rc
+install_llama_cpp_cpu () {
+    echo "[setup] Installing llama-cpp-python (CPU / OpenBLAS) …"
+    export CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
+    export FORCE_CMAKE=1
+    pip install --no-cache-dir --force-reinstall llama-cpp-python
+}
+
+install_vllm () {
+    echo "[setup] Installing vLLM …"
+    if [ "$MODE" = "cpu" ]; then
+        echo "[warn] vLLM does not officially support CPU-only execution."
+        echo "       Proceeding anyway — GPU is strongly recommended."
+    fi
+    pip install vllm
+}
+
+case "$BACKEND" in
+    vllm)
+        install_vllm
+        ;;
+    llama-cpp)
+        case "$MODE" in
+            hpc|desktop) install_llama_cpp_cuda ;;
+            cpu)         install_llama_cpp_cpu  ;;
+        esac
+        ;;
+esac
+
+# ---------------------------------------------------------------------------
+# Shared Python requirements
+# ---------------------------------------------------------------------------
+echo "[setup] Installing shared requirements …"
+pip install -r requirements.txt
+
+# ---------------------------------------------------------------------------
+# PyTorch
+# ---------------------------------------------------------------------------
+if [ "$MODE" = "cpu" ]; then
+    pip install --upgrade \
+        "torch==${TORCH_VER}" "torchvision==${TORCHVISION_VER}" "torchaudio==${TORCHAUDIO_VER}" \
+        --index-url https://download.pytorch.org/whl/cpu
+else
+    pip install --upgrade \
+        "torch==${TORCH_VER}" "torchvision==${TORCHVISION_VER}" "torchaudio==${TORCHAUDIO_VER}" \
+        --index-url https://download.pytorch.org/whl/cu124
+fi
+
+# ---------------------------------------------------------------------------
+# Post-install version pins
+# ---------------------------------------------------------------------------
+pip install "numpy==${NUMPY_VER}"
+pip install "transformers==${TRANSFORMERS_VER}"
+
+# llama-cpp env also needs SentenceTransformers for its embedder
+if [ "$BACKEND" = "llama-cpp" ]; then
+    pip install sentence-transformers SentencePiece
+fi
+
+# ---------------------------------------------------------------------------
+# Write the chosen backend to config.json so the TUI starts with it selected
+# ---------------------------------------------------------------------------
+CONFIG_FILE="config.json"
+if [ -f "$CONFIG_FILE" ]; then
+    # Use Python to update the JSON in-place (jq may not be available on HPC)
+    python3 - <<PYEOF
+import json, pathlib
+p = pathlib.Path("${CONFIG_FILE}")
+d = json.loads(p.read_text())
+d["llm_backend"] = "${BACKEND}"
+p.write_text(json.dumps(d, indent=2))
+print(f"[setup] config.json updated: llm_backend = ${BACKEND}")
+PYEOF
+fi
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════╗"
+echo "║  DisTraceAI setup complete                               ║"
+echo "╠═══════════════════════════════════════════════════════════╣"
+echo "║  Backend : ${BACKEND}                                    "
+echo "║  Env     : ${ENV_NAME}                                   "
+echo "║                                                           ║"
+echo "║  To start:                                               ║"
+echo "║    conda activate ${ENV_NAME}                            "
+echo "║    python main.py                                        ║"
+echo "╚═══════════════════════════════════════════════════════════╝"

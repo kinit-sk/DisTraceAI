@@ -10,9 +10,9 @@ knowledge/
   # Sub-narratives (per dataset / detector / article)
   <dataset>/<detector>/sub-narratives/<sn-id>.json
 
-  # Downstream pipeline structures (namespaced by retrieval backend)
-  narratives/<dataset>/<backend>/<nar_id>.json
-  campaigns/<dataset>/<backend>/<camp_id>.json
+  # Downstream pipeline structures (namespaced by retrieval llm_backends)
+  narratives/<dataset>/<llm_backends>/<nar_id>.json
+  campaigns/<dataset>/<llm_backends>/<camp_id>.json
   veracity/cache/<claim_hash>.json
   veracity/multiclaim_test_paraphrases.json
   veracity/multiclaim_embs.npz          (pre-cached MultiClaim embeddings)

@@ -95,7 +95,7 @@ class ReclusteringSweep:
         return members[:mid], members[mid:]
 
     def run(self) -> dict:
-        """Run a full re-clustering sweep across this dataset/backend's narratives."""
+        """Run a full re-clustering sweep across this dataset/llm_backends's narratives."""
         dataset = self.assigner.dataset
         detector = self.assigner.detector
 
@@ -108,7 +108,7 @@ class ReclusteringSweep:
             sns = {sn.id: sn
                    for sn in self.kb.sub_narratives(dataset, detector)}
 
-        # Retrieve all narratives managed by the current dataset/backend.
+        # Retrieve all narratives managed by the current dataset/llm_backends.
         narratives = self.kb.narratives(dataset, self.assigner.backend.name)
 
         checked = split = 0

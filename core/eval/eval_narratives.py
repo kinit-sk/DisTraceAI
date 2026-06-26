@@ -570,7 +570,7 @@ def _rank_via_specfi_backend(query_items, corpus_items, embedder, backend, desc,
     """Shared retrieval loop for SpecFi-CS and cSpecFi.
 
     get_claims: optional callable(query_item) -> list[str] that supplies
-    per-query conditioning claims to the backend (cSpecFi only).
+    per-query conditioning claims to the llm_backends (cSpecFi only).
     Returns full-length rankings (list of index lists).
     """
     from core.hierarchy.corpus import FactCheckCorpus
@@ -607,7 +607,7 @@ def _run_specfi_cs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
     domain: optional "CC"/"URW" subset filter (separate index cache per domain).
     """
     from core.models import make_generator, close_generator
-    from core.hierarchy.backends.specfi_c import SpecFiCBackend
+    from core.methods.specfi_c import SpecFiCBackend
 
     llm = make_generator(cfg.nar_generator)
 
@@ -650,7 +650,7 @@ def _run_specfi_ccs(query_items, corpus_items, embedder, cfg, kb, detector_slug,
     domain: optional "CC"/"URW" subset filter (separate index cache per domain).
     """
     from core.models import make_generator, close_generator
-    from core.hierarchy.backends.specfi_c import SpecFiCBackend
+    from core.methods.specfi_c import SpecFiCBackend
 
     llm = make_generator(cfg.nar_generator)
 
@@ -690,10 +690,10 @@ def _run_cspecfi(query_items, corpus_items, embedder, cfg):
     graph community summaries vs. claim-level evidence in the sub-narrative.
     """
     from core.models import make_generator, close_generator
-    from core.hierarchy.backends.specfi_c import SpecFiCBackend
+    from core.methods.specfi_c import SpecFiCBackend
 
     llm = make_generator(cfg.nar_generator)
-    # cSpecFi: noderag=None signals the backend to skip _conditioning()
+    # cSpecFi: noderag=None signals the llm_backends to skip _conditioning()
     # and receive claims directly via rank(..., claims=[...]).
     backend = SpecFiCBackend(embedder, llm, noderag=None,
                              k=cfg.nar_specfi_hypotheticals,
@@ -708,7 +708,7 @@ def _run_cspecfi(query_items, corpus_items, embedder, cfg):
 
 def _run_context1(query_items, corpus_items, embedder, cfg):
     from core.models import make_generator, close_generator
-    from core.hierarchy.backends.context1 import Context1Backend
+    from core.methods.context1 import Context1Backend
 
     llm = make_generator(cfg.nar_generator)
     from core.hierarchy.corpus import FactCheckCorpus

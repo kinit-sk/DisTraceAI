@@ -2,7 +2,7 @@
 
 Same assign-or-cluster mechanism as gen_narratives.py, one level up:
 narratives→campaigns instead of sub-narratives→narratives. The extractor
-backend is selected by ``camp_extractor`` (same choices as nar_extractor).
+llm_backends is selected by ``camp_extractor`` (same choices as nar_extractor).
 
 After clustering, four coordination signals are computed for each campaign
 and combined into a weighted coordination_score:
@@ -41,7 +41,7 @@ from rich.progress import (
     MofNCompleteColumn, TimeElapsedColumn,
 )
 
-from core.knowledge_base import KnowledgeBase, DATASET_FAKECTI, DATASET_POLYNARRATIVE
+from core.knowledge_base import KnowledgeBase
 from core.structures import Campaign, Narrative
 from core.ids import campaign_id
 from core.models import make_embedder, make_generator, close_generator
@@ -233,7 +233,6 @@ class CampaignAssigner:
                  threshold: float,
                  min_new_size: int = 2,
                  new_threshold: float = 0.70) -> None:
-        from core.hierarchy.assigner import RetrievalAssigner
         # Reuse RetrievalAssigner — it works on any object with .id and .central_claim
         # We wrap Narrative objects to look like SubNarrative for the assigner
         self._kb = kb
@@ -398,7 +397,6 @@ def generate(
     """
     from config import Config
     from core.hierarchy.corpus import FactCheckCorpus
-    from core.hierarchy.reclustering import ReclusteringSweep
     cfg = cfg or Config.load()
     if kb is None:
         kb = KnowledgeBase(Path("knowledge"))
@@ -418,7 +416,7 @@ def generate(
     for det_slug in det_slugs:
         narratives = kb.narratives(dataset, extractor)
         if not narratives:
-            # Try all backends if no specific-backend narratives
+            # Try all backends if no specific-llm_backends narratives
             for backend in ("dense", "bm25-rag", "bm25_rag",
                             "specfi-cs", "cspecfi", "context-1"):
                 narratives += kb.narratives(dataset, backend)
@@ -430,18 +428,18 @@ def generate(
                 f"run narrative Generate first; skipping.[/yellow]")
             continue
 
-        from core.hierarchy.backends.bm25_rag import BM25RagBackend
+        from core.methods.bm25_rag import BM25RagBackend
         corpus = FactCheckCorpus(embedder)
 
         if extractor == "dense" or extractor == "bm25-rag":
             backend = BM25RagBackend()
         elif extractor == "context-1":
-            from core.hierarchy.backends.context1 import Context1Backend
+            from core.methods.context1 import Context1Backend
             backend = Context1Backend(llm, embedder,
                                       max_turns=cfg.camp_context1_max_turns,
                                       token_budget=cfg.camp_context1_token_budget)
         elif extractor in ("specfi-cs", "specfi-ccs", "cspecfi"):
-            from core.hierarchy.backends.specfi_c import SpecFiCBackend
+            from core.methods.specfi_c import SpecFiCBackend
             mode = {"specfi-cs": "static", "specfi-ccs": "static-ccs",
                     "cspecfi": "continuous"}[extractor]
             if mode == "continuous":

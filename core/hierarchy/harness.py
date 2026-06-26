@@ -60,7 +60,7 @@ class _State:
         # Charge the agent's *context* budget, not the full gathered document.
         # The harness only ever surfaces a short summary of each hit to the LLM
         # (see _do_search); the full document is retained purely as OUTPUT for
-        # the backend to re-score. Charging the full doc here made a single
+        # the llm_backends to re-score. Charging the full doc here made a single
         # top_k search of large cluster docs blow the budget and trip the hard
         # cutoff on turn 1 — collapsing the multi-turn loop to a single pass.
         c = _approx_tokens(document) if cost is None else int(cost)
@@ -93,7 +93,7 @@ class AgenticSearchHarness:
     tools :
         Adapter exposing ``search(query, seen, k) -> [(cid, doc)]``,
         ``grep(pattern, seen) -> [(cid, doc)]``, and ``get(cid) -> str | None``
-        (see ``_ClusterSearchTools`` in the Context-1 backend).
+        (see ``_ClusterSearchTools`` in the Context-1 llm_backends).
     generate :
         DisTraceAI generator callable ``generate(system, user, *, temperature,
         max_tokens) -> str``.

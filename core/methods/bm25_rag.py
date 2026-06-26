@@ -1,4 +1,4 @@
-"""BM25 + dense + RRF baseline backend (README §5).
+"""BM25 + dense + RRF baseline llm_backends (README §5).
 
 Candidate clusters are selected by the corpus's hybrid BM25+dense RRF search;
 the returned score is the cosine similarity of the query to each candidate
@@ -8,7 +8,7 @@ threshold can be compared against directly. No LLM, no generation.
 from __future__ import annotations
 
 
-from core.hierarchy.backends.base import RetrievalBackend
+from core.methods.base import RetrievalBackend
 
 
 class BM25RagBackend(RetrievalBackend):

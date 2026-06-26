@@ -1,4 +1,4 @@
-"""SpecFi backend — shared machinery for the SpecFi variants.
+"""SpecFi llm_backends — shared machinery for the SpecFi variants.
 
 `mode` selects the variant:
   * "static"     → reproduced ORIGINAL SpecFi-CS (Upravitelev et al.):
@@ -29,7 +29,7 @@ import logging
 
 import numpy as np
 
-from core.hierarchy.backends.base import RetrievalBackend
+from core.methods.base import RetrievalBackend
 from core.hierarchy.noderag import NodeRagGraph
 
 logger = logging.getLogger(__name__)

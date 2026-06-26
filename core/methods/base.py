@@ -1,6 +1,6 @@
-"""Retrieval backend interface (README §5).
+"""Retrieval llm_backends interface (README §5).
 
-A backend ranks the existing narrative clusters (held in a FactCheckCorpus) for a
+A llm_backends ranks the existing narrative clusters (held in a FactCheckCorpus) for a
 query claim. The assigner uses the top result to decide merge-or-create.
 """
 from __future__ import annotations

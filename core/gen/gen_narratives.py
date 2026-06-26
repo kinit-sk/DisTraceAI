@@ -6,7 +6,7 @@ Application of the retrieval component benchmarked in
 it as an incremental assign-or-cluster loop:
 
   * Sub-narratives are streamed per source article (KB order). For each, the
-    backend ranks existing narratives; a top match above ``nar_assign_threshold``
+    llm_backends ranks existing narratives; a top match above ``nar_assign_threshold``
     merges. Non-matches go to an unassigned pool; a new narrative is seeded once
     ``nar_min_new_size`` mutually-similar pooled sub-narratives accumulate
     (``nar_new_threshold``).
@@ -24,7 +24,7 @@ rather than a fixed corpus. (NodeRAG 0.1.0 cannot do incremental updates, so the
 cadence bounds the cost of full rebuilds instead of rebuilding every article.)
 
 This step has no automatic metric (the hierarchy has no ground truth); its output
-is the narrative KB under ``narratives/<dataset>/<backend>/``.
+is the narrative KB under ``narratives/<dataset>/<llm_backends>/``.
 """
 from __future__ import annotations
 
@@ -60,17 +60,17 @@ def _detector_slugs(detector_path: str) -> list[str]:
 
 
 def _build_backend(method, embedder, llm, cfg, *, dataset, detector, index_root):
-    """Construct the retrieval backend for ``nar_extractor``.
+    """Construct the retrieval llm_backends for ``nar_extractor``.
 
-    Returns (backend, noderag_or_None). The NodeRAG handle is returned so the
+    Returns (llm_backends, noderag_or_None). The NodeRAG handle is returned so the
     caller can rebuild it on cadence (cspecfi only).
     """
     if method == "dense":
-        from core.hierarchy.backends.bm25_rag import BM25RagBackend
+        from core.methods.bm25_rag import BM25RagBackend
         return BM25RagBackend(), None
 
     if method == "context-1":
-        from core.hierarchy.backends.context1 import Context1Backend
+        from core.methods.context1 import Context1Backend
         return Context1Backend(
             llm, embedder,
             max_turns=cfg.nar_context1_max_turns,
@@ -78,7 +78,7 @@ def _build_backend(method, embedder, llm, cfg, *, dataset, detector, index_root)
 
     if method in ("specfi-cs", "specfi-ccs", "cspecfi"):
         from core.hierarchy.noderag import NodeRagGraph
-        from core.hierarchy.backends.specfi_c import SpecFiCBackend
+        from core.methods.specfi_c import SpecFiCBackend
         mode = {"specfi-cs": "static", "specfi-ccs": "static-ccs",
                 "cspecfi": "continuous"}[method]
         index_path = str(Path(index_root) / dataset / detector / method)
@@ -92,7 +92,7 @@ def _build_backend(method, embedder, llm, cfg, *, dataset, detector, index_root)
             build_context_size=getattr(cfg, "nar_context1_token_budget", 16384),
             build_repr=("canonized" if method == "specfi-ccs" else "text"),
         )
-        # static/static-ccs pass the graph to the backend (NodeRAG conditioning);
+        # static/static-ccs pass the graph to the llm_backends (NodeRAG conditioning);
         # continuous passes noderag=None (conditions on the sub-narrative's
         # claims) but still returns the graph handle for the rebuild machinery.
         backend = SpecFiCBackend(

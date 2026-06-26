@@ -124,10 +124,10 @@ class Narrative:
                                   for quick inspection / sweep thresholds).
 
     ``dataset`` scopes the narrative so polynarrative and fake-cti pools never
-    merge; the KB stores it under ``narratives/<dataset>/<backend>/``.
+    merge; the KB stores it under ``narratives/<dataset>/<llm_backends>/``.
     """
     id: str
-    backend: str                      # which retrieval backend produced it
+    backend: str                      # which retrieval llm_backends produced it
     central_claim: str                # English
     dataset: str = "polynarrative"    # scopes the pool; KB path component
     sub_narratives: list[str] = field(default_factory=list)   # membership lives here

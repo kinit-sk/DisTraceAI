@@ -1,6 +1,6 @@
 """Check-worthiness detection.
 
-Single PyTorch/HuggingFace backend for both xlm-multicw and mdb-multicw.
+Single PyTorch/HuggingFace llm_backends for both xlm-multicw and mdb-multicw.
 Mirrors HFTextClassifier.load_model() + evaluate() from full-evaluation.py:
   - AutoTokenizer.from_pretrained(model_path)
   - AutoModelForSequenceClassification.from_pretrained(model_path)

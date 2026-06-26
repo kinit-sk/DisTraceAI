@@ -256,7 +256,7 @@ def _verdict_with_fallback(paraphrase: str, source_id: str, *,
             exclude_ids=exclude_ids,
             kb=kb, embedder_name=embedder_name,
         )
-        # If the stage has no usable backend (e.g. MultiClaim CSV missing),
+        # If the stage has no usable llm_backends (e.g. MultiClaim CSV missing),
         # treat it as Disputed and fall through to the next stage.
         if not tools._sources:
             continue
@@ -273,7 +273,7 @@ def _verdict_with_fallback(paraphrase: str, source_id: str, *,
             return pred_norm, stage
         # else: Disputed → fall through to next stage
 
-    # Every stage returned Disputed (or had no backend) → miss.
+    # Every stage returned Disputed (or had no llm_backends) → miss.
     return "Disputed", "miss"
 
 

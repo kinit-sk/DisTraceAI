@@ -8,6 +8,7 @@ Main menu
 4. Sub-narratives extraction
 5. Narrative extraction
 6. Campaigns extraction
+7. Settings
 
 Steps 1-5 expose two sub-menu actions:
   • Evaluation  — run the evaluation module for that step
@@ -19,26 +20,26 @@ Campaigns extraction (6) has a four-item sub-menu instead:
   • Evaluation        — clustering metrics against FakeCTI ground truth
   • Generate Dataset  — run the full pipeline on EUvsDisinfo and export CSVs
 
-The full end-to-end dataset compilation lives under Campaigns -> Generate
-Dataset (also available non-interactively via --generate-dataset).
+Settings (7) exposes three sub-menus:
+  • LLM Backend       — switch between vLLM and llama-cpp + GGUF quant
+  • Embedder & Memory — embedder device, precision, batching, sequence length
+  • Advanced / Env    — all remaining OS environment-variable overrides
 """
 from __future__ import annotations
 
 import os
-# Environment workarounds for the current dependency stack, set before any heavy
-# import (transformers / vllm) so they take effect process-wide:
-#  - DISABLE_KERNEL_MAPPING: transformers 5.12 + kernels 0.15 skew (hub_kernels
-#    builds LayerRepository without a version/revision -> crash at import).
-#  - VLLM_DEEP_GEMM_WARMUP=skip: vLLM 0.22 Hopper FP8 warmup crash without
-#    deep_gemm installed (issue #41849); harmless for our non-FP8 models.
-os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
-os.environ.setdefault("VLLM_DEEP_GEMM_WARMUP", "skip")
-os.environ.setdefault("VLLM_USE_DEEP_GEMM", "0")
-
 import argparse
 import logging
 
 from config import Config
+
+# Environment defaults are now managed by Config.load() / Config._apply_env_fields().
+# We keep the two most critical ones here so they fire before any heavy import
+# (vllm / transformers) that might be triggered by top-level module imports on
+# some code paths — but Config will also set them correctly once loaded.
+os.environ.setdefault("DISABLE_KERNEL_MAPPING", "1")
+os.environ.setdefault("VLLM_DEEP_GEMM_WARMUP", "skip")
+os.environ.setdefault("VLLM_USE_DEEP_GEMM", "0")
 
 logging.basicConfig(level=logging.WARNING,
                     format="%(asctime)s  %(levelname)-8s  %(name)s: %(message)s")
@@ -65,7 +66,6 @@ STEP_LABELS = {
     "campaigns":          "Campaigns extraction",
 }
 
-# Config fields shown in the pre-launch review for each step
 STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
     "claim-canonization": ["canon_detector", "canon_generator", "canon_precision"],
@@ -82,8 +82,6 @@ STEP_PARAMS: dict[str, list[str]] = {
     "campaigns":          [],
 }
 
-# Evaluation-specific param lists (when they differ from generate params).
-# Steps not listed here reuse STEP_PARAMS for both actions.
 STEP_EVAL_PARAMS: dict[str, list[str]] = {
     "sub-narratives": ["subnar_detector", "subnar_embedder", "subnar_generator",
                        "subnar_precision", "subnar_min_similarity",
@@ -94,7 +92,6 @@ STEP_EVAL_PARAMS: dict[str, list[str]] = {
                        "nar_context1_token_budget", "nar_eval_split"],
 }
 
-# Evaluation module for each step
 EVAL_MODULES: dict[str, str] = {
     "claim-detection":    "core.eval.eval_claim_detection",
     "claim-canonization": "core.eval.eval_claim_canonization",
@@ -104,6 +101,45 @@ EVAL_MODULES: dict[str, str] = {
     "campaigns":          "core.eval.eval_campaigns",
 }
 
+# ---------------------------------------------------------------------------
+# Settings field groups
+# ---------------------------------------------------------------------------
+
+# Fields shown in the "LLM Backend" settings sub-menu
+_SETTINGS_BACKEND_KEYS = [
+    "llm_backend",
+]
+
+# Fields shown in the "Embedder & Memory" settings sub-menu
+_SETTINGS_EMBEDDER_KEYS = [
+    "env_distrace_embed_maxlen",
+    "env_distrace_embed_gpu_util",   # vLLM
+    "env_distrace_gen_gpu_util",     # vLLM
+    "env_distrace_embedder_device",  # llama-cpp
+    "env_distrace_embed_fp32",       # llama-cpp
+    "env_distrace_encode_batch",     # llama-cpp
+    "env_distrace_noderag_workers",  # llama-cpp
+    "env_distrace_cw_cpu",
+]
+
+# Fields shown in the "Advanced / Env" settings sub-menu
+_SETTINGS_ADVANCED_KEYS = [
+    "env_vllm_deep_gemm_warmup",
+    "env_vllm_use_deep_gemm",
+    "env_use_flashinfer_sampler",
+    "env_disable_kernel_mapping",
+    "env_distrace_show_tqdm",
+    "env_hf_hub_download_timeout",
+    "env_hf_token",
+    "env_distrace_noderag_maxtok",
+    "env_distrace_noderag_dim",
+    "env_distrace_noderag_chunk",
+    "env_distrace_noderag_lang",
+    "env_distrace_noderag_rate",
+    "env_distrace_noderag_lang_filter",
+    "env_distrace_nar_no_llm",
+    "env_distrace_nar_noderag_index_root",
+]
 
 # ---------------------------------------------------------------------------
 # Runner helpers
@@ -152,14 +188,13 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print(f"\n[bold cyan]Sub-narratives — Generate[/bold cyan]")
         console.print(
             f"[dim]Detector: {cfg.subnar_detector}  Embedder: {cfg.subnar_embedder}  "
-            f"Generator: {cfg.subnar_generator}  Precision: {cfg.subnar_precision}  "
+            f"Generator: {cfg.subnar_generator} "
             f"MinSim: {cfg.subnar_min_similarity}  MinClaims: {cfg.subnar_min_claims}[/dim]\n"
         )
         summary = generate_sub_narratives(
             detector_path=cfg.subnar_detector,
             embedder_name=cfg.subnar_embedder,
             generator_key=cfg.subnar_generator,
-            precision=cfg.subnar_precision,
             kb=kb,
             min_similarity=cfg.subnar_min_similarity,
             min_claims=cfg.subnar_min_claims,
@@ -182,7 +217,7 @@ def run_generate(step: str, cfg: Config) -> None:
         console.print(
             f"[dim]Detector: {cfg.nar_detector}  Method: {cfg.nar_extractor}  "
             f"Embedder: {cfg.nar_embedder}  Generator: {cfg.nar_generator}  "
-            f"Precision: {cfg.nar_precision}  AssignThr: {cfg.nar_assign_threshold}  "
+            f"AssignThr: {cfg.nar_assign_threshold}  "
             f"MinNew: {cfg.nar_min_new_size}  NewThr: {cfg.nar_new_threshold}  "
             f"Cadence: {cfg.nar_recluster_cadence}[/dim]\n")
         summary = generate_narratives(
@@ -190,7 +225,6 @@ def run_generate(step: str, cfg: Config) -> None:
             extractor=cfg.nar_extractor,
             embedder_name=cfg.nar_embedder,
             generator_key=cfg.nar_generator,
-            precision=cfg.nar_precision,
             kb=kb,
             cfg=cfg,
         )
@@ -221,7 +255,6 @@ def run_generate(step: str, cfg: Config) -> None:
                 extractor=cfg.camp_extractor,
                 embedder_name=cfg.camp_embedder,
                 generator_key=cfg.camp_generator,
-                precision=cfg.camp_precision,
                 kb=kb, cfg=cfg,
             )
             if result:
@@ -244,7 +277,7 @@ def _campaigns_submenu(cfg: Config) -> None:
         if choice < 0 or choice == 4:
             return
 
-        if choice == 0:   # Verify hierarchy
+        if choice == 0:
             if ui.prelaunch_review(cfg, "campaigns-verify"):
                 from core.gen.gen_veracity import verify_hierarchy
                 kb = KnowledgeBase(Path("knowledge"))
@@ -253,7 +286,7 @@ def _campaigns_submenu(cfg: Config) -> None:
                 save_generate_stats("claim-veracity", summary)
                 input("\n[done] press Enter to continue…")
 
-        elif choice == 1:  # Deep verify
+        elif choice == 1:
             if ui.prelaunch_review(cfg, "campaigns-deep-verify"):
                 from core.gen.gen_veracity import verify_hierarchy
                 kb = KnowledgeBase(Path("knowledge"))
@@ -262,13 +295,13 @@ def _campaigns_submenu(cfg: Config) -> None:
                 save_generate_stats("claim-veracity", {"deep": summary})
                 input("\n[done] press Enter to continue…")
 
-        elif choice == 2:  # Evaluation
+        elif choice == 2:
             if ui.prelaunch_review(cfg, "campaigns-eval"):
                 from core.eval.eval_campaigns import main as eval_camp
                 eval_camp(cfg)
                 input("\n[done] press Enter to continue…")
 
-        elif choice == 3:  # Generate Dataset
+        elif choice == 3:
             if ui.prelaunch_review(cfg, "campaigns-generate"):
                 from core.gen.gen_dataset import generate_dataset
                 summary = generate_dataset(cfg)
@@ -276,6 +309,81 @@ def _campaigns_submenu(cfg: Config) -> None:
                 save_generate_stats("campaigns", summary)
                 input("\n[done] press Enter to continue…")
 
+
+# ---------------------------------------------------------------------------
+# Settings menu
+# ---------------------------------------------------------------------------
+
+def _settings_menu(cfg: Config) -> None:
+    """Three-panel Settings menu: Backend / Embedder & Memory / Advanced."""
+    from core.ui import tui as ui
+
+    items = [
+        "LLM Backend",
+        "Embedder & Memory",
+        "Advanced / Environment",
+        "← Back",
+    ]
+
+    while True:
+        # Show current backend in the subtitle for quick orientation
+        subtitle = f"Active backend: [bold]{cfg.llm_backend}[/bold]"
+        choice = ui.arrow_menu("Settings", items, subtitle=subtitle)
+        if choice < 0 or choice == 3:
+            return
+
+        if choice == 0:
+            _settings_backend(cfg, ui)
+        elif choice == 1:
+            _settings_embedder(cfg, ui)
+        elif choice == 2:
+            _settings_advanced(cfg, ui)
+
+
+def _settings_backend(cfg: Config, ui) -> None:
+    """Backend selector sub-menu."""
+    keys = [k for k in _SETTINGS_BACKEND_KEYS if k in cfg.field_names()]
+    ui.edit_settings(
+        cfg, keys,
+        "Settings › LLM Backend",
+        allow_launch=False,
+        save_on_exit=True,
+    )
+    # Inform the user they may need to switch conda envs
+    from rich.console import Console
+    from rich.panel import Panel
+    Console().print(Panel(
+        f"[bold]Active backend set to:[/bold] [cyan]{cfg.llm_backend}[/cyan]\n\n"
+        "If you changed the backend, remember to activate the matching conda env "
+        "before running any pipeline step:\n\n"
+        "  [dim]vLLM:[/dim]      [green]conda activate distrace-vllm[/green]\n"
+        "  [dim]llama-cpp:[/dim] [green]conda activate distrace-llama[/green]",
+        title="[bold yellow]⚠  Conda environment reminder[/bold yellow]",
+        border_style="yellow",
+    ))
+    input("\nPress Enter to continue…")
+
+
+def _settings_embedder(cfg: Config, ui) -> None:
+    """Embedder & memory settings sub-menu."""
+    keys = [k for k in _SETTINGS_EMBEDDER_KEYS if k in cfg.field_names()]
+    ui.edit_settings(
+        cfg, keys,
+        "Settings › Embedder & Memory",
+        allow_launch=False,
+        save_on_exit=True,
+    )
+
+
+def _settings_advanced(cfg: Config, ui) -> None:
+    """Advanced / environment-variable settings sub-menu."""
+    keys = [k for k in _SETTINGS_ADVANCED_KEYS if k in cfg.field_names()]
+    ui.edit_settings(
+        cfg, keys,
+        "Settings › Advanced / Environment",
+        allow_launch=False,
+        save_on_exit=True,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -286,16 +394,13 @@ def _step_submenu(step: str, cfg: Config) -> None:
     """Arrow-key sub-menu for a single pipeline step."""
     from core.ui import tui as ui
 
-    # Campaigns has its own 4-item submenu (Verify/Deep Verify/Eval/Generate Dataset)
     if step == "campaigns":
         _campaigns_submenu(cfg)
         return
 
-
     gen_params  = STEP_PARAMS.get(step, [])
     eval_params = STEP_EVAL_PARAMS.get(step, gen_params)
 
-    # claim-veracity is evaluation-only; no Generate sub-option.
     if step == "claim-veracity":
         eval_key = f"{step}-eval" if f"{step}-eval" in ui.RELEVANT else step
         review_needed = (f"{step}-eval" in ui.RELEVANT
@@ -307,11 +412,7 @@ def _step_submenu(step: str, cfg: Config) -> None:
         input("\n[done] press Enter to continue…")
         return
 
-    menu_items  = ["Evaluation", "Generate", "← Back"]
-
-    # Some steps use a different RELEVANT key for eval vs generate so the
-    # pre-launch screen shows only the relevant parameters for each action.
-    # Convention: "<step>-eval" and "<step>-generate" override the plain "<step>" key.
+    menu_items = ["Evaluation", "Generate", "← Back"]
     eval_key = f"{step}-eval" if f"{step}-eval" in ui.RELEVANT else step
     gen_key  = f"{step}-generate" if f"{step}-generate" in ui.RELEVANT else step
 
@@ -322,10 +423,6 @@ def _step_submenu(step: str, cfg: Config) -> None:
             return
 
         if choice == 0:
-            # Show the pre-launch review when the action has a registered
-            # parameter screen (RELEVANT key) or any params to display. An
-            # empty RELEVANT list (e.g. canonization benchmark) still shows the
-            # screen — it renders just the Launch row + description.
             review_needed = (f"{step}-eval" in ui.RELEVANT
                              or eval_key in ui.RELEVANT
                              or bool(eval_params))
@@ -347,17 +444,19 @@ def _step_submenu(step: str, cfg: Config) -> None:
 def tui(cfg: Config) -> None:
     from core.ui import tui as ui
 
-    # "Full pipeline - Dataset compilation" entry removed:
-    # replaced by Campaigns -> Generate Dataset.
-    main_items = [STEP_LABELS[s] for s in STEPS] + ["Quit"]
-    quit_idx   = len(STEPS)
+    main_items = [STEP_LABELS[s] for s in STEPS] + ["Settings", "Quit"]
+    settings_idx = len(STEPS)
+    quit_idx     = len(STEPS) + 1
 
     while True:
-        choice = ui.arrow_menu("DisTraceAI", main_items,
-                               subtitle="Campaign detection pipeline")
+        choice = ui.arrow_menu(
+            "DisTraceAI", main_items,
+            subtitle=f"Campaign detection pipeline  ·  backend: {cfg.llm_backend}")
         if choice < 0 or choice == quit_idx:
             return
-        if 0 <= choice < len(STEPS):
+        if choice == settings_idx:
+            _settings_menu(cfg)
+        elif 0 <= choice < len(STEPS):
             _step_submenu(STEPS[choice], cfg)
 
 

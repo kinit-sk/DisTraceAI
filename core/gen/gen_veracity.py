@@ -9,7 +9,7 @@ Evidence sources (controlled by ``ver_sources`` in Config):
   * wikipedia   — online Wikipedia REST API. Degrades gracefully when offline.
   * web         — online web search (DuckDuckGo). Optional, degrades gracefully.
 
-The harness is shared with the Context-1 narrative retrieval backend
+The harness is shared with the Context-1 narrative retrieval llm_backends
 (``core.hierarchy.harness.AgenticSearchHarness``) — the only difference is the
 evidence-tools adapter and system prompt.
 

@@ -7,9 +7,9 @@ CIKM '24) and exports the resulting hierarchy as three CSV files under
   subnarratives.csv   — id, narrative_id, campaign_id, central_claim,
                         claims (pipe-separated), detector, language,
                         veracity, veracity_confidence
-  narratives.csv      — id, campaign_id, central_claim, backend, dataset,
+  narratives.csv      — id, campaign_id, central_claim, llm_backends, dataset,
                         languages, veracity, veracity_confidence, member_count
-  campaigns.csv       — id, label, central_claim, backend, dataset,
+  campaigns.csv       — id, label, central_claim, llm_backends, dataset,
                         languages, veracity, veracity_confidence,
                         coordination_score, n1_burst, n2_coamp, n3_reuse,
                         n4_crosslingual, member_count
@@ -26,7 +26,7 @@ the same five pipeline steps as the regular Generate flow — but TARGETED at th
 hard-code PolyNarrative + FakeCTI iteration, so we bypass them and call each
 step's ``_process_dataset`` helper directly with the EUvsDisinfo slug).
 
-The narrative step uses the SAME backend as Narrative detection
+The narrative step uses the SAME llm_backends as Narrative detection
 (``cfg.nar_extractor`` / ``cfg.nar_embedder`` / ``cfg.nar_generator``), so the
 hierarchy produced here is methodologically consistent with the Narrative
 evaluation run.
@@ -123,10 +123,6 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     We bypass the public ``generate()`` entry points (which hard-code
     PolyNarrative+FakeCTI iteration) and call each step's ``_process_dataset``
     helper directly, scoped to ``_DATASET_SLUG``.
-
-    All LLM generators are loaded at bf16 regardless of the config precision,
-    because AWQ-quantised weights are not required for the dataset pipeline and
-    may not be present on every deployment.
     """
     from core.claims.cw_detector import CheckWorthinessDetector
     from core.gen.gen_cw_detect import _process_dataset as cw_process
@@ -137,18 +133,11 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     from core.gen.gen_campaigns import generate as gen_camp_entry
     from core.models import make_embedder, make_generator, close_generator
 
-    # AWQ weights may not be present; always use bf16 for this pipeline.
-    _PREC = "bf16"
-
     # Downstream helpers (gen_campaigns, gen_narratives) pull precision
     # directly from cfg for NodeRAG build paths. Shadow all precision fields
     # on a lightweight wrapper so bf16 is used consistently.
     import copy as _copy
     cfg = _copy.copy(cfg)
-    cfg.canon_precision  = _PREC
-    cfg.subnar_precision = _PREC
-    cfg.nar_precision    = _PREC
-    cfg.camp_precision   = _PREC
 
     # ---- Step 1: check-worthy claim detection -----------------------------
     console.print("[bold]Step 1/5:[/bold] Claim detection…")
@@ -179,11 +168,12 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         cfg.subnar_min_similarity, cfg.subnar_min_claims,
     )
     close_generator(sn_llm)
+    close_generator(sn_embedder)  # free VRAM before Step 4 loads embedder+generator
 
-    # ---- Step 4: narrative extraction (uses the Narrative-detection backend)
+    # ---- Step 4: narrative extraction (uses the Narrative-detection llm_backends)
     console.print(
         f"[bold]Step 4/5:[/bold] Narrative extraction "
-        f"(backend={cfg.nar_extractor})…")
+        f"(llm_backends={cfg.nar_extractor})…")
     nar_embedder = make_embedder(cfg.nar_embedder)
     nar_llm = None
     if os.getenv("DISTRACE_NAR_NO_LLM") != "1":
@@ -200,6 +190,7 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
         nar_embedder, nar_llm, kb, cfg, index_root,
     )
     close_generator(nar_llm)
+    close_generator(nar_embedder)  # free VRAM before Step 5
 
     # ---- Step 5: campaign extraction -------------------------------------
     console.print("[bold]Step 5/5:[/bold] Campaign extraction…")
@@ -286,7 +277,7 @@ def export_csvs(kb: KnowledgeBase, cfg, out_dir: Path) -> dict:
     n_nar = 0
     with nar_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["id", "campaign_id", "central_claim", "backend", "dataset",
+        w.writerow(["id", "campaign_id", "central_claim", "llm_backends", "dataset",
                     "languages", "veracity", "veracity_confidence",
                     "member_count"])
         for backend in ("dense", "bm25-rag", "bm25_rag",
@@ -307,7 +298,7 @@ def export_csvs(kb: KnowledgeBase, cfg, out_dir: Path) -> dict:
     n_camp = 0
     with camp_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["id", "label", "central_claim", "backend", "dataset",
+        w.writerow(["id", "label", "central_claim", "llm_backends", "dataset",
                     "languages", "veracity", "veracity_confidence",
                     "coordination_score", "n1_burst", "n2_coamp",
                     "n3_reuse", "n4_crosslingual", "member_count"])
