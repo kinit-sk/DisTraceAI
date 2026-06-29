@@ -151,7 +151,7 @@ _CATALOGUE: dict[str, tuple[str, str]] = {
 _DEFAULT_CTX: dict[str, int] = {"context-1": 32768}
 
 
-_DEFAULT_QUANT = "Q8_0"  # plan §4: Q8_0 is the canonical llama-cpp precision.
+_DEFAULT_QUANT = "Q4_K_M"
 
 
 def resolve_generator(model_key: str, quant: str = "") -> tuple[str, str]:

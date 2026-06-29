@@ -1,0 +1,1003 @@
+id,campaign_id,central_claim,llm_backends,dataset,languages,veracity,veracity_confidence,member_count
+nar_999,camp_0,"Geopolitical actors are navigating complex international relations involving Russia, Western influence, and national sovereignty.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_486,camp_0,Authorities are facing scrutiny over arrests related to election misinformation and legal proceedings concerning violent events.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_437,camp_1,"Russia is accused of military buildup and threatening naval operations near Ukraine, while Kyiv's exercises are viewed as provocative.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_466,camp_1,"Political tensions, EU sanctions against Russia, and calls for Czech exit reflect deep geopolitical instability.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_58,camp_2,Poroshenko's political maneuvering involves secret agreements and external pressures related to the Donbas conflict.,bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_463,camp_2,"Misinformation circulates regarding Turkish involvement, election fraud, US biological warfare testing, and Ukraine's economic challenges.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_503,camp_3,"The provided claims cover unrelated topics, making a single central narrative impossible to construct.",bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,5
+nar_863,camp_3,"Russia uses military actions and disinformation to shield its interests in Ukraine, Syria, and beyond.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_361,camp_4,Disinformation narratives link political figures' health to geopolitical conflicts involving Russia and Ukraine.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_148,camp_4,Misinformation falsely links media ownership to George Soros while exaggerating the global impact of the Ukraine war.,bm25_rag,euvsdisinfo,Czech|English|Russian,,,3
+nar_668,camp_5,"Geopolitical tensions are escalating, while global power dynamics are shifting away from Western dominance.",bm25_rag,euvsdisinfo,ARABIC|EN|ES|RU,,,4
+nar_845,camp_5,External sanctions and interference are driving Syria's economic collapse and humanitarian crisis.,bm25_rag,euvsdisinfo,Arabic|German,,,3
+nar_943,camp_6,"Disinformation targets Ukrainian political figures amid geopolitical tensions, while severe weather disrupts Russian cities.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_455,camp_6,"Official reports about James Forrestal's death are incomplete and flawed, while disinformation challenges electoral faith.",bm25_rag,euvsdisinfo,EN,,,3
+nar_305,camp_7,"Western policies are misleading, while evidence suggests internal causes for events like MH17 and a shift in Europe-Russia relations.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_527,camp_7,Russian narratives claim US-backed biolabs threaten borders while actively sowing discord through media campaigns.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_856,camp_8,"The provided claims cover unrelated topics: Swiss financial regulation, international sporting events, and historical persecution.",bm25_rag,euvsdisinfo,Georgian,,,3
+nar_899,camp_8,"European water scarcity, geopolitical tensions, and internal political divisions are shaping current regional instability.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_287,camp_9,Russia deflects external aggression by blaming US interference and internal Ukrainian corruption.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_230,camp_9,Western powers are accused of misrepresenting aid delivery and unfairly blaming Russia for incidents.,bm25_rag,euvsdisinfo,English|Russian|Spanish,,,3
+nar_924,camp_10,Russia's actions and regional dynamics are linked to historical revisionism and geopolitical instability.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_628,camp_10,The EU faces criticism for inadequate crisis support while geopolitical maneuvering involves Russia and Slovakia facilitating trade.,bm25_rag,euvsdisinfo,EN|FR|RU,,,3
+nar_167,camp_11,Geopolitical tensions are fueling narratives about alleged poisonings and disinformation campaigns targeting vaccines.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_41,camp_11,"Misinformation narratives span geopolitical threats, US decline, and alleged media cover-ups regarding political figures.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_997,camp_12,Military actions in Syria and Ukraine involve the alleged use of banned weaponry causing significant civilian damage.,bm25_rag,euvsdisinfo,English,,,3
+nar_404,camp_12,External interference and contamination are being used to frame military exercises and public health issues.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_973,camp_13,"These claims assert the validity of specific national decisions, refute election fraud allegations, and deny false conflict narratives.",bm25_rag,euvsdisinfo,Arabic|English|Lithuanian,,,3
+nar_214,camp_13,"Geopolitical tensions involve Russia, Ukraine, and the EU's strategic direction.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_204,camp_14,Russian forces allegedly suppressed protests while a tornado caused severe damage in the Urals region.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_960,camp_14,"Russia views NATO as a militarist threat, escalating tensions through military exercises and alleged incidents in Ukraine.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_458,camp_15,Elites are allegedly exploiting the pandemic and geopolitical events to consolidate power by discrediting alternative vaccines.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_240,camp_15,"The claims link sophisticated threats, political actions, and international conflicts involving military transfers.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_886,camp_16,"Western powers and the US are accused of interfering in Russia's affairs, including poisoning Navalny and destabilizing regions.",bm25_rag,euvsdisinfo,Arabic|English|Spanish,,,4
+nar_664,camp_17,"Despite some biological adaptation, accelerating ice loss and climate impacts are occurring despite low climate sensitivity findings.",bm25_rag,euvsdisinfo,EN,,,3
+nar_405,camp_16,Russian authorities are accused of human rights violations while asserting their actions as a defense against perceived threats.,bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_576,camp_17,Authoritarian regimes are using violence and repression against their own citizens.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_903,camp_17,Misinformation suggests global events like pandemics are manufactured pretexts for elite power grabs and political upheaval.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_279,camp_18,Global powers allegedly manipulate international bodies and suppress dissent to control populations through manufactured health crises.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_638,camp_18,The current geopolitical tensions require a firm Western response while diplomatic efforts continue to address international disputes.,bm25_rag,euvsdisinfo,RU,,,3
+nar_76,camp_1,"Western actions are allegedly provoking conflict in Ukraine, with Russia denying excessive military mobilization.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_866,camp_19,"Russia is accused of aggressive actions in Donbass, while Ukraine cites broken international security assurances.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_110,camp_19,Russian military hardware is being promoted as superior while geopolitical narratives are manipulated.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_508,camp_20,External forces are influencing US and UK military support in Ukraine amid shifting battlefield dynamics.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_146,camp_20,"Misinformation narratives span political attacks, questionable data validation, and international aid mobilization.",bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,4
+nar_780,camp_21,"Disputes surround geopolitical tensions, Rodchenkov's testimony, and the analysis of substances like the ""Duchess cocktail.""",bm25_rag,euvsdisinfo,RU,,,3
+nar_23,camp_21,Various groups are claiming external pressures or coercion to support their political or athletic agendas.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_457,camp_22,"Political tensions involving Brexit, Russia, and far-right groups are causing international friction.",bm25_rag,euvsdisinfo,DE|EN|ES,,,3
+nar_919,camp_22,Geopolitical events are being manipulated or misrepresented by media and political actors to serve hidden agendas.,bm25_rag,euvsdisinfo,Arabic|Finnish,,,3
+nar_794,camp_23,Accusations of staged attacks and geopolitical tensions surround alleged military actions involving various actors.,bm25_rag,euvsdisinfo,EN|FR|RU,,,3
+nar_14,camp_23,"US intervention in Afghanistan failed due to flawed assumptions, elite mismanagement, and an inability to address complex local realities.",bm25_rag,euvsdisinfo,ARABIC|Arabic|English|Russian|Spanish,,,6
+nar_890,camp_24,Geopolitical tensions are escalating as regional powers challenge established global hegemony.,bm25_rag,euvsdisinfo,Czech|Russian,,,3
+nar_379,camp_3,"The provided claims cover diverse, unrelated topics, making a single central claim impossible to formulate.",bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_362,camp_24,International actors question the conflict while condemning atrocities and demanding Russia's withdrawal from occupied territories.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_931,camp_25,"Political and economic interests are manipulating migration, energy supplies, and financial reforms to destabilize Europe.",bm25_rag,euvsdisinfo,Hungarian|Russian,,,3
+nar_587,camp_25,"Misinformation campaigns are targeting political figures and initiatives, including accusations of anti-national sentiment.",bm25_rag,euvsdisinfo,ARABIC|CS,,,3
+nar_431,camp_26,"Russia alleges the West is orchestrating a hybrid war against it, using Ukraine as a proxy to undermine its security.",bm25_rag,euvsdisinfo,RU,,,3
+nar_645,camp_26,Russia is involved in vaccine production and geopolitical incidents across Europe.,bm25_rag,euvsdisinfo,ARABIC|DE|EN,,,3
+nar_750,camp_27,"Geopolitical tensions are evident through international decisions, military acquisitions, and intelligence discrepancies.",bm25_rag,euvsdisinfo,FR|RU,,,3
+nar_627,camp_27,"Misinformation narratives currently circulate regarding Cuban shortages, Biden's alleged influence in Ukraine, and rising antisemitic violence.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_779,camp_28,"Various nations are facing international scrutiny over political actions, alleged attacks, and information warfare.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_855,camp_28,"Misinformation circulates regarding historical events, scientific origins, and future political schedules.",bm25_rag,euvsdisinfo,Arabic|English|Georgian,,,3
+nar_858,camp_29,"Brazilian authorities are investigating various entities regarding political restrictions, election integrity, and criminal activities like drug trafficking.",bm25_rag,euvsdisinfo,Georgian,,,3
+nar_597,camp_29,Powerful entities are allegedly conspiring to suppress scientific truth regarding pandemic dangers and origins.,bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_223,camp_30,Disinformation campaigns are intentionally spreading narratives to incite conflict and societal tension across various geopolitical issues.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_39,camp_30,"Russia is strategically shifting its geopolitical focus, impacting European energy markets and military actions.",bm25_rag,euvsdisinfo,English|Hungarian|Russian,,,3
+nar_182,camp_31,Geopolitical narratives suggest unpredictable maneuvers are shaping Russia's standing while challenging Ukraine's Western integration.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_224,camp_31,"Misinformation spans celebrity claims, apocalyptic theories, and military operational narratives.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_489,camp_32,Nationalist and isolationist forces are destabilizing the EU while geopolitical shifts demand European cooperation.,bm25_rag,euvsdisinfo,RU,,,3
+nar_105,camp_32,European expansionism and regional conflicts threaten long-term stability across Eastern Europe.,bm25_rag,euvsdisinfo,English|German|Russian,,,3
+nar_836,camp_33,The provided sub-claims are unrelated and do not share a common narrative.,bm25_rag,euvsdisinfo,English|Russian,,,5
+nar_498,camp_33,Russia blames Western sanctions for its situation while alleging US involvement in infrastructure attacks.,bm25_rag,euvsdisinfo,EN|UK,,,3
+nar_862,camp_33,"Critics dispute Ukraine's territorial claims, Russian warnings about Georgia, and Zelensky's sanctions.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_729,camp_34,COVID-19 is a manufactured crisis used by elites to enforce political control and economic restructuring.,bm25_rag,euvsdisinfo,RU,,,3
+nar_52,camp_34,"The conflict is prolonged by external interests, while US involvement benefits from the rejection of Russian resources.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_898,camp_35,"Global political tensions are escalating amid military planning, authoritarian crackdowns, and unusual diplomatic gestures.",bm25_rag,euvsdisinfo,English|Georgian|German|Russian,,,4
+nar_599,camp_35,"Accusations link Lithuanian political actions to authoritarianism, while Russian narratives deflect scrutiny through claims of foreign involvement and EU obstruction.",bm25_rag,euvsdisinfo,EN|PL|RU,,,3
+nar_140,camp_36,"External actors are allegedly orchestrating blockades and threats against Crimea, prompting increased military responses.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_417,camp_36,"Political disputes, misleading official statements, and perceived governmental failures define the current state of affairs.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_798,camp_37,State-sponsored cyber operations and military exercises are occurring alongside claims about chemical weapon synthesis.,bm25_rag,euvsdisinfo,ARABIC|EN|LITHUANIAN,,,3
+nar_829,camp_37,"Geopolitical tensions involve Western influence strategies, Russian military concerns, and calls for arms disarmament.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_465,camp_38,Authoritarian leaders advocate for spheres of influence while Western healthcare systems face scrutiny.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_31,camp_38,Russian narratives assert threats from NATO and allege staged attacks in contested regions to justify political actions.,bm25_rag,euvsdisinfo,German|Russian,,,3
+nar_602,camp_39,External geopolitical tensions and internal political narratives are being used to provoke unrest in the region.,bm25_rag,euvsdisinfo,ARABIC|FINNISH|RU,,,3
+nar_860,camp_39,The US is perceived as driving crises while simultaneously engaging in politically charged international actions.,bm25_rag,euvsdisinfo,English|Georgian|Russian,,,3
+nar_894,camp_40,"Disinformation campaigns are being used to manipulate public perception regarding viral origins, geopolitical conflicts, and national economic data.",bm25_rag,euvsdisinfo,Arabic|French|Russian,,,3
+nar_337,camp_40,Russia is allegedly using specialized military resources to combat a pandemic in Italy while blaming Western involvement for regional instability.,bm25_rag,euvsdisinfo,ARABIC|English|Russian,,,3
+nar_786,camp_41,"Russia denies Crimea's annexation, while other conflicts involve disputed narratives and continued military action.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_531,camp_41,US policy towards Ukraine and Russia is shifting amid internal political debates and changing geopolitical realities.,bm25_rag,euvsdisinfo,ARABIC|EN|RU|SERBIAN,,,4
+nar_64,camp_38,"Russian narratives frame geopolitical events, like NATO expansion and incidents, as existential threats or successful intelligence operations.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_940,camp_42,International climate pledges are intertwined with geopolitical tensions involving Russia and NATO expansion.,bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_205,camp_42,NATO's alleged ambitions in Crimea are cited by Russia to justify its defense posture against Ukrainian actions.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_271,camp_43,"Geopolitical tensions involve concerns over Belarusian protests, vaccine procurement strategies, and Russian chemical weapons demands.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_731,camp_43,"Current events are framed by narratives suggesting a hidden agenda, control measures, and attacks on free speech.",bm25_rag,euvsdisinfo,RU,,,3
+nar_36,camp_44,"External factors, including political agreements and sanctions, hinder Ukraine's military modernization and economic integration.",bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_679,camp_44,Western military and political actions are facing domestic rejection and external challenges from rivals.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_515,camp_45,External forces are manipulating local desires to instigate political change in regions like Ukraine and Belarus.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_263,camp_45,Russian authorities are suppressing political opposition while global health and education systems face ongoing changes and scrutiny.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_545,camp_46,"International actors are monitoring security threats, political instability, and human rights concerns across various regions.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_47,camp_46,Western powers allegedly use geopolitical actions to control nations while unrelated violent incidents occur.,bm25_rag,euvsdisinfo,English|Italian|Russian,,,3
+nar_429,camp_47,"European unity and cooperation are currently strained by geopolitical tensions involving Russia, the EU, and Ukraine.",bm25_rag,euvsdisinfo,EN|FR|UK,,,3
+nar_852,camp_47,"Narratives are shifting across diverse topics, from historical anti-Semitism to healthcare language and geopolitical tensions.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_569,camp_48,Geopolitical tensions are driving complex military and political actions involving Russia and Ukraine.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_184,camp_48,"Escalating conflicts and regional crises are driving political instability, humanitarian needs, and disinformation campaigns.",bm25_rag,euvsdisinfo,English|Ukrainian,,,3
+nar_244,camp_49,"Geopolitical tensions involve disputed territories, restrictive domestic policies, and potential military escalations.",bm25_rag,euvsdisinfo,Arabic|Russian|Spanish,,,3
+nar_530,camp_49,"Ukraine's integration with the West is complex, requiring open-mindedness despite challenges to reunification.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_830,camp_50,External powers and internal actors are manipulating regional conflicts for strategic geopolitical gain.,bm25_rag,euvsdisinfo,ARABIC|EN|English,,,3
+nar_732,camp_50,The provided sub-claims are unrelated to the idiom about rats abandoning a sinking ship.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_479,camp_50,Misinformation narratives distort scientific consensus on virus contagiousness and climate change impacts.,bm25_rag,euvsdisinfo,EN,,,3
+nar_967,camp_51,External political influence and economic instability have undermined the stated goals of Eastern Bloc nations and Ukraine.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_285,camp_51,Disinformation narratives link foreign military involvement to past events while current geopolitical tensions drive sanctions against Venezuela.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_949,camp_52,"Geopolitical instability involves shifting leadership, disputed territories, and uncertain international political outcomes.",bm25_rag,euvsdisinfo,Arabic|Russian,,,4
+nar_283,camp_52,"Various international and domestic events involve aid, legal actions, and military considerations across different regions.",bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_258,camp_53,"Global political and economic shifts are characterized by evolving regulations, technological changes, and geopolitical tensions.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,5
+nar_672,camp_53,"Global challenges, including migration, military support, and vaccine access, are complicated by international limitations and geopolitical pressures.",bm25_rag,euvsdisinfo,EN|GEORGIAN|RU,,,3
+nar_872,camp_54,"The claims cover diverse topics, including vehicle models and regional Italian cuisine.",bm25_rag,euvsdisinfo,Italian,,,3
+nar_907,camp_54,Western actions in Eastern Europe are framed by some as politically motivated provocations against Russia.,bm25_rag,euvsdisinfo,English|German|Russian,,,3
+nar_338,camp_19,Russia is accused of military advancements while simultaneously accusing the West of provocative actions against its territory.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_183,camp_55,"Authorities are allegedly coercing confessions and staging events, with international actors involved in re-examining evidence.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_454,camp_19,Russia is accused of military buildup in Crimea while denying international scrutiny over its actions.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_180,camp_55,The EU is increasing financial support for Ukraine while facing criticism that its overall policies are failing citizens.,bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_519,camp_56,"Discussions surrounding the conflict involve geopolitical stances, military action, and scrutiny of Ukrainian leadership.",bm25_rag,euvsdisinfo,EN,,,3
+nar_107,camp_56,"Political maneuvering and geopolitical shifts are influencing major international decisions regarding Brexit, energy, and election integrity.",bm25_rag,euvsdisinfo,English|Ukrainian,,,3
+nar_656,camp_57,Western support and geopolitical shifts are fueling conflict escalation and instability in various regions.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_480,camp_57,The crisis is prompting drastic European measures while urging proportional responses and decentralized border control.,bm25_rag,euvsdisinfo,DE|RU,,,3
+nar_972,camp_58,"These claims link environmental damage, geopolitical conflict, and alleged financial misconduct.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_294,camp_58,"Political tensions, foreign interference, and cultural shifts are reshaping international relations and domestic narratives.",bm25_rag,euvsdisinfo,French|Russian,,,3
+nar_953,camp_59,External geopolitical and economic factors are being blamed for current global instability and political unrest.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_32,camp_59,Russian speakers in post-Soviet states face rights issues amid political disagreements and public dissatisfaction.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_839,camp_60,"Misinformation mixes claims about Ukrainian biological threats, Trump's diplomatic hopes, and EU energy initiatives in the region.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_784,camp_60,"Military aid is crucial for Ukraine, while Russia argues Western demands prevent diplomatic resolution.",bm25_rag,euvsdisinfo,AFRIKAANS|ARABIC|HUNGARIAN,,,3
+nar_328,camp_61,"Global events involve mandated educational reforms, limited military support in conflicts, and preparations for the Hajj.",bm25_rag,euvsdisinfo,Arabic|English|French,,,3
+nar_72,camp_61,"Geopolitical and social narratives reveal selective scrutiny regarding international relations, energy, and migration.",bm25_rag,euvsdisinfo,Czech|English|Russian,,,3
+nar_227,camp_62,"Global events include legislative changes, security incidents, political poisoning allegations, and international democratic monitoring.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_640,camp_62,Russian disinformation campaigns falsely allege Ukrainian nationalist groups committed mass violence against Poles in Volhynia.,bm25_rag,euvsdisinfo,EN|UK,,,3
+nar_191,camp_63,"Misinformation suggests Ukraine has nuclear capabilities and is facing external control, alongside travel restrictions impacting international research.",bm25_rag,euvsdisinfo,Armenian|English|Russian,,,3
+nar_987,camp_63,Misinformation narratives target Ukrainian elections and military losses while detailing specific equipment components.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_13,camp_68,"Climate change is primarily driven by natural cycles, and the scientific consensus on human impact is flawed or exaggerated.",bm25_rag,euvsdisinfo,EN|English,,,4
+nar_225,camp_64,"Economic shifts in Ukraine are allegedly being forced by external pressures, mirroring geopolitical disputes over Syria.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_533,camp_64,"Geopolitical conflicts are being framed as interconnected global narratives, risking widespread disaster.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_535,camp_65,"Discussions involve covert military operations, political bans on individuals, and controversial rhetoric regarding targeted groups.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_412,camp_65,"Religious and political figures are addressing various societal issues in the Middle East, including economic stability and human welfare.",bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_976,camp_66,RT is challenging Estonian penalties and censorship claims in a High Court review.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_499,camp_66,Various geopolitical and economic issues highlight perceived failures in international policies and regional stability.,bm25_rag,euvsdisinfo,DE|EN|RU|UK,,,4
+nar_697,camp_67,Russia is accused of covertly interfering in global affairs while nations develop dangerous biological agents.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_387,camp_67,The US is allegedly involved in destabilizing Central Asia through covert operations and political influence.,bm25_rag,euvsdisinfo,ARABIC|ITALIAN|RU,,,3
+nar_439,camp_68,"Political actors are accused of using geopolitical maneuvering, threats, and migration to destabilize regions and nations.",bm25_rag,euvsdisinfo,EN|PL|RU,,,3
+nar_7,camp_68,"Misinformation narratives promote unproven natural cures, question vaccine safety and efficacy, and allege conspiracy surrounding COVID-19.",bm25_rag,euvsdisinfo,ARABIC|Arabic|EN|English|Georgian|RU|Russian,,,26
+nar_669,camp_69,"Ukrainian special forces are actively engaged in diverse, internationally supported military training operations.",bm25_rag,euvsdisinfo,EN|RU|UK,,,4
+nar_438,camp_69,Ukrainian political narratives are being manipulated while international tensions surround virus origins and military readiness.,bm25_rag,euvsdisinfo,RU,,,3
+nar_432,camp_70,Misinformation mixes unsubstantiated claims about cannabis risks with speculative military superiority narratives.,bm25_rag,euvsdisinfo,RU,,,3
+nar_591,camp_70,"The provided claims cover diverse, unrelated topics ranging from international politics to local regulations.",bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_93,camp_11,"Misinformation narratives falsely link international events, such as poisonings and health efforts, to geopolitical agendas.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_968,camp_71,"Global power structures, from national governments to secret elites, are allegedly maneuvering for control.",bm25_rag,euvsdisinfo,Russian|Slovak,,,5
+nar_568,camp_71,"Misinformation narratives link geopolitical instability, such as Putin's actions, with exaggerated and potentially engineered threats from COVID-19.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_500,camp_72,International relations involve complex diplomatic discussions and contentious issues like aviation disasters.,bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_422,camp_72,"The subject matter involves high-stakes, dangerous situations characterized by severe conflict and shocking violence.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_775,camp_73,"Misinformation narratives are actively spreading across various topics, often mixing unrelated events and actors.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_231,camp_73,"The claims present disparate narratives, suggesting British focus on the Skripals is a distraction from Brexit and Russian energy strength.",bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_988,camp_74,"Regional actors warn that NATO expansion, Iranian ambitions, and Israeli occupation fuel escalating conflict.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_718,camp_74,Russia is asserting control over Crimea while increasing military presence in neighboring regions.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_18,camp_19,"Russia is accused of aggression, while other nations assert territorial claims and resist external pressure.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_517,camp_75,The government is opposing evidence suggesting Russian GRU involvement in hacking the DNC.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_610,camp_75,Global health initiatives and climate data are being manipulated by political interests for financial gain.,bm25_rag,euvsdisinfo,FR|RU,,,3
+nar_808,camp_76,Various leaks and meetings suggest hidden governmental involvement in major international events.,bm25_rag,euvsdisinfo,EN|ES,,,3
+nar_955,camp_76,Russia and Cuba are allegedly leveraging energy and political support to undermine Western pressure on Ukraine.,bm25_rag,euvsdisinfo,Afrikaans|Hungarian|Russian,,,3
+nar_891,camp_26,Russia alleges Western nations are prolonging the conflict by supplying mercenaries to Ukraine.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_237,camp_77,"African manufacturing faces long-term challenges despite major industry deals, while geopolitical tensions persist in Europe.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_402,camp_77,"International bodies and regulators are scrutinizing geopolitical claims, potential biological threats, and vaccine safety.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_5,camp_78,Child protection statistics show a recent and ongoing decrease in the number of children receiving mandatory services.,bm25_rag,euvsdisinfo,NORWEGIAN|NORWEGIAN NYNORSK|Norwegian|Norwegian Nynorsk,,,4
+nar_295,camp_78,Elite forces are allegedly censoring information about the ongoing global health crisis and its impact.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_78,camp_79,"A powerful elite is allegedly manipulating global events, including in Ukraine and Syria, for hidden financial gain.",bm25_rag,euvsdisinfo,English|Hungarian|Russian,,,3
+nar_813,camp_3,"The provided claims cover unrelated topics, making a single central narrative impossible.",bm25_rag,euvsdisinfo,EN|GEORGIAN,,,3
+nar_749,camp_79,Russian figures and political events are linked to support for separatist movements in Ukraine.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_617,camp_80,Russia seeks full control of southern Ukraine while the EU supports Kyiv's defense and international law.,bm25_rag,euvsdisinfo,ARABIC|DE|EN,,,3
+nar_816,camp_80,External powers are actively manipulating Eastern European elections and security through disinformation and military posturing.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_846,camp_81,"Geopolitical pressures and international support dynamics significantly influence demographic, military, and health outcomes across various regions.",bm25_rag,euvsdisinfo,English|Georgian|Russian,,,4
+nar_233,camp_81,"Regional media is focused on Egyptian national team success, upcoming weather forecasts, and local events.",bm25_rag,euvsdisinfo,Arabic,,,4
+nar_691,camp_82,"Russian military actions in Ukraine involve violence against civilians, prompting protective measures like state emergencies elsewhere.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_803,camp_82,"Disputes surround NATO architecture, the French election outcome, and proposed military strategies for Ukrainian territorial control.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_12,camp_83,"The coronavirus's origin is disputed, with claims suggesting laboratory creation involving HIV particles in Wuhan.",bm25_rag,euvsdisinfo,ARABIC|Arabic|RU|Russian,,,9
+nar_297,camp_83,"These claims present specific narratives regarding cultural shifts, international organizations, and information sources.",bm25_rag,euvsdisinfo,Arabic|English|Hungarian|Russian,,,4
+nar_837,camp_84,"Climate change science is disputed, with claims challenging data accuracy and the viability of renewable energy solutions.",bm25_rag,euvsdisinfo,English,,,3
+nar_757,camp_84,Investigations have addressed allegations of misconduct involving public figures and authorities in Colombia.,bm25_rag,euvsdisinfo,EN,,,3
+nar_649,camp_84,"Russia is employing various tactics, including energy leverage and political claims, to challenge Western resolve.",bm25_rag,euvsdisinfo,EN|ES,,,4
+nar_529,camp_85,"Global tensions are rising as nations address security threats, military developments, and foreign interference.",bm25_rag,euvsdisinfo,EN|HUNGARIAN,,,3
+nar_788,camp_85,"Various actors are accused of covertly undermining Russian interests through sabotage, biological threats, and political infiltration.",bm25_rag,euvsdisinfo,ES|PL|RU,,,3
+nar_380,camp_86,"Global events are framed by political instability, corruption, and narratives promoted by Sputnik Belarus.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_307,camp_86,"Global elites and political forces are allegedly using crises to advance agendas of control, migration, and outdated geopolitical conflicts.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_880,camp_87,Geopolitical tensions and internal pressures are shaping the strategic concerns of various nations.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_365,camp_87,External powers are allegedly launching information campaigns to undermine national sovereignty and vaccine initiatives.,bm25_rag,euvsdisinfo,EN|ITALIAN|RU,,,3
+nar_689,camp_88,"Military actions involve dangerous experiments, political targeting, and strategic military maneuvers.",bm25_rag,euvsdisinfo,RU,,,3
+nar_364,camp_88,"Misinformation narratives span alleged animal manipulation, government economic shifts, and politically charged media bans.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_639,camp_89,"International alliances face crises, while specific incidents are linked to cover-ups and comparisons to past atrocities.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_658,camp_89,Russian narratives link health claims to geopolitical events surrounding Ukraine and NATO tensions.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_296,camp_90,Eastern European nations are bolstering military cooperation and defense against perceived threats.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_705,camp_90,Western entities are allegedly interfering with Russian vaccine approval and military assessments.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_81,camp_91,Misinformation campaigns attempt to deny atrocities in Bucha while international bodies challenge the recognition of Ukrainian territory.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_723,camp_91,"These claims frame international actions as deceptive, hostile campaigns orchestrated by external powers.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_511,camp_14,"Russia's aggression in Ukraine is framed by some as a defense against NATO expansion, amidst ongoing regional political shifts.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_353,camp_92,"NATO's role, chemical weapon disputes, and military interventions highlight ongoing geopolitical tensions.",bm25_rag,euvsdisinfo,DE|EN|RU,,,3
+nar_677,camp_92,"Authoritarian regimes like Belarus suppress dissent, contrasting with NATO's engagement in Ukraine.",bm25_rag,euvsdisinfo,EN,,,3
+nar_882,camp_93,"Geopolitical tensions involve disputed territories, domestic political instability, and increased military presence in Eastern Europe.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_506,camp_93,"Powerful, unaccountable entities are making strategic decisions with unchecked authority across various global domains.",bm25_rag,euvsdisinfo,EN|FINNISH|RU,,,4
+nar_507,camp_94,"Disputes surround Western promises, NATO operations, and health claims involving political figures.",bm25_rag,euvsdisinfo,ARABIC|FINNISH|RU,,,3
+nar_559,camp_94,Political maneuvering and external pressures complicated Ukraine's path toward European integration.,bm25_rag,euvsdisinfo,RU,,,3
+nar_469,camp_95,"Various global issues include nuclear monitoring, debt relief debates, political violence claims, educational policy shifts, and student academic performance.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_94,camp_95,State-sponsored disinformation campaigns weaponize news to influence narratives surrounding real-world political events and conflicts.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_567,camp_96,"Western powers are accused of orchestrating political interference through financing, election manipulation, and military training.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_292,camp_96,Political pressures and alleged corruption are shaping global health initiatives and international economic stability.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_934,camp_97,Political figures and international economic actions are fueling instability and controversy across various nations.,bm25_rag,euvsdisinfo,English|Russian|Spanish,,,4
+nar_659,camp_97,Russian actors are allegedly involved in schemes to interfere with Ukrainian politics and distribute questionable vaccines.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_104,camp_98,US aid policies are allegedly fueling global religious conflicts while geopolitical tensions involve disputed events and cyberattacks.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_3,camp_98,"Saudi and regional authorities are issuing updates regarding health, education, employment, and academic schedules.",bm25_rag,euvsdisinfo,ARABIC|Arabic|UK|Ukrainian,,,13
+nar_861,camp_99,"The origins of COVID-19 are disputed, with official investigations finding no conclusive link to Wuhan.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_178,camp_99,Russia is leveraging geopolitical events and domestic successes to counter Western influence.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_440,camp_100,Belarus and Russia are bolstering defenses while planning negotiations amid increased NATO military activity near their borders.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_714,camp_100,Political division and Western hypocrisy fuel anti-vaccination sentiment and the rapid spread of online misinformation.,bm25_rag,euvsdisinfo,ARABIC|DE|RU,,,3
+nar_195,camp_101,"Western actions, including sanctions and narratives, are framed by Russia as illegitimate overreach harming the West.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_909,camp_101,"Belarusian leadership blames external control, while Russia asserts sanctions are permanent despite toxicology reports.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_769,camp_102,"Nations are making conditional climate pledges while political tensions rise, affecting international media presence.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_198,camp_102,Russia claims it is defending its territory against Western provocations while managing evidence related to alleged war crimes.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_252,camp_103,"Geopolitical tensions and alleged foreign influence are fueling extremist narratives, including claims about engineered pandemics.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_695,camp_103,"External actors and conflict have negatively impacted Ukrainian industry, human rights, and civilian safety.",bm25_rag,euvsdisinfo,RU,,,3
+nar_59,camp_104,"Global communities face crises of religious persecution and political instability, while outreach efforts emphasize human dignity.",bm25_rag,euvsdisinfo,Arabic,,,3
+nar_778,camp_104,"Ukraine faces existential threats, including potential division and severe humanitarian crises in refugee camps.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_44,camp_105,Political inaction and selective focus obscure critical issues across various global events.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_335,camp_105,"Russia's actions involve military threats, infrastructure attacks, and regional isolation amidst ongoing international discussions.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_160,camp_106,Transatlantic unity against Russian aggression outweighs the economic impact of sanctions.,bm25_rag,euvsdisinfo,English|Georgian|Russian,,,4
+nar_176,camp_106,"These disparate claims involve alleged political interference, scientific research practices, and shifts in international travel patterns.",bm25_rag,euvsdisinfo,English|Georgian|Russian,,,3
+nar_736,camp_107,Accusations of foreign manipulation and hidden agendas are being denied by various parties.,bm25_rag,euvsdisinfo,EN,,,3
+nar_211,camp_107,Global economic disparities and geopolitical tensions are driving migration and international conflict.,bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_255,camp_108,Disputes over territorial recognition and military escalation are fueling international tensions.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_267,camp_108,"Globalist narratives attempt to undermine Europe and the US, often using Ukraine as a central focus.",bm25_rag,euvsdisinfo,Arabic|English|Ukrainian,,,3
+nar_374,camp_109,Political manipulation and data security concerns are intertwined with potential economic instability.,bm25_rag,euvsdisinfo,CS|EN,,,3
+nar_547,camp_109,"Wieluń represents the brutal early suffering of Poles in WWII, while narratives contest other nations' roles in defeating fascism.",bm25_rag,euvsdisinfo,PL|RU,,,3
+nar_601,camp_109,"Government actions and international politics are impacting Ukraine's agricultural plans, military aid, and Crimean autonomy.",bm25_rag,euvsdisinfo,ARABIC|EN,,,4
+nar_161,camp_110,The EU is managing the pandemic with decentralized national responses amid economic strain and addressing fertility concerns.,bm25_rag,euvsdisinfo,English|German,,,3
+nar_272,camp_110,"Misinformation circulates regarding health cures, geopolitical actions, and vaccine accessibility.",bm25_rag,euvsdisinfo,Arabic|Russian|Ukrainian,,,5
+nar_451,camp_111,"The provided claims cover diverse, unrelated topics ranging from sports and travel to politics and health.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_622,camp_111,"Western support for Ukraine is escalating tensions, mirroring historical struggles for freedom in Eastern Europe.",bm25_rag,euvsdisinfo,EN|RU|UK,,,3
+nar_168,camp_111,"Global instability and financial collapse are fueling a rise in nationalist, isolationist movements challenging established international structures.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_758,camp_112,These claims mix promotional content with geopolitical narratives about illicit oil trade and potential military escalation.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_945,camp_112,Local and regional actors are allegedly aligning with Russian influence while prioritizing pro-Russian identities.,bm25_rag,euvsdisinfo,Finnish|Russian,,,3
+nar_57,camp_113,"These claims reflect geopolitical disputes, political accusations, and historical revisionism among world powers.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_696,camp_113,The West is accused of using opposition figures and oppression to destabilize and weaken Russia.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_67,camp_114,"US actions are allegedly aimed at destabilizing Asia to undermine Russia, while Russian intelligence is reportedly active in Italy.",bm25_rag,euvsdisinfo,Arabic|Italian|Russian,,,3
+nar_1000,camp_114,"Disputes exist regarding diplomatic engagement with Russia, vaccine mandates, and accusations of viral origin.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_888,camp_115,Misinformation and escalating conflict have complicated diplomatic relations between involved parties.,bm25_rag,euvsdisinfo,French|German|Russian,,,3
+nar_585,camp_115,"Ukraine's military capacity is limited, while other nations pursue distinct geopolitical and diplomatic agendas.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_174,camp_116,Geopolitical conflicts and economic shifts signal a fundamental breakdown of the current international order.,bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_650,camp_116,Tensions are rising between Russia and surrounding nations due to political repression and military mobilization.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_494,camp_117,Russia's military actions and geopolitical shifts suggest a prolonged conflict with enduring global power dynamics.,bm25_rag,euvsdisinfo,ARABIC|EN,,,4
+nar_55,camp_117,Foreign actors are using sophisticated cyber and media tactics to interfere with US elections.,bm25_rag,euvsdisinfo,Czech|English|Russian,,,3
+nar_462,camp_118,US actions in Ukraine and Baltic reforms are linked to broader narratives of cultural and ethnic suppression.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_372,camp_118,"The conflict is primarily benefiting America, while vaccination efforts are ongoing despite the difficulty of international intervention.",bm25_rag,euvsdisinfo,RU,,,3
+nar_806,camp_119,"Global economic and public health issues, alongside past policy failures, are creating significant negative outcomes.",bm25_rag,euvsdisinfo,EN,,,3
+nar_445,camp_119,EU actions are perceived by Russia as equating the Soviet system with Nazism while disputing claims about Crimea's status and progress.,bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_316,camp_120,"Climate change is causing unprecedented events, while the situation in Donbas is being framed as genocide.",bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_317,camp_1,Russia is accused of military intervention in Kazakhstan and using Ukraine's nuclear plant as a shield.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_841,camp_120,The MH17 incident is viewed as a disputed event fueling geopolitical tensions and potential propaganda warfare between Russia and the West.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_575,camp_121,"Disputes surround international events, including alleged responsibility for disasters and geopolitical negotiation strategies.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_313,camp_121,Governments are implementing various support measures while regional political groups and international surveillance increase.,bm25_rag,euvsdisinfo,Arabic,,,4
+nar_744,camp_122,Allegations of political suppression and foreign interference are circulating amid inconclusive official records.,bm25_rag,euvsdisinfo,EN,,,3
+nar_112,camp_122,Political and economic interests are allegedly suppressing scientific debate regarding cannabis benefits and vaccine safety.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_488,camp_123,Political movements are secretly shifting away from globalist financial systems toward regionalism.,bm25_rag,euvsdisinfo,RU,,,3
+nar_564,camp_123,"Elite actions and systemic issues are driving global crises, while energy solutions require nuclear power.",bm25_rag,euvsdisinfo,ARABIC|EN|FR,,,4
+nar_762,camp_124,"Global instability is driven by geopolitical conflict, unsustainable national debt, and humanity's existential risks.",bm25_rag,euvsdisinfo,ITALIAN,,,3
+nar_701,camp_124,European political maneuvering and suppressed truths complicate Ukraine's stance on Crimea.,bm25_rag,euvsdisinfo,RU,,,3
+nar_375,camp_125,Russian media operations are linked to covert activities and fabricated events in Ukraine.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_721,camp_125,"Misinformation promotes alternative narratives regarding virus origins, national statistics, and vaccine efficacy.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_828,camp_126,Various claims suggest government narratives are incomplete or misleading regarding public health and geopolitical events.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_493,camp_126,"Allegations suggest hidden truths, exaggerated threats, and questionable actions by various political and military entities.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_911,camp_127,"Various entities are facing scrutiny over military aid, healthcare practices, and secret public health measures.",bm25_rag,euvsdisinfo,Arabic|Russian|Slovak|Ukrainian,,,4
+nar_819,camp_127,Russian claims allege Jabhat al-Nusra plans chemical attacks in Syria involving White Helmets.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_89,camp_128,"Child protection measures are decreasing overall, though they remain more common for immigrant youth.",bm25_rag,euvsdisinfo,Arabic|Norwegian Nynorsk,,,3
+nar_149,camp_128,Western powers are accused of hypocrisy and influencing global narratives while undermining local systems.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_352,camp_129,"Political disagreements and regional tensions are driving policy decisions regarding sanctions, energy, and internal stability.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_673,camp_129,Lithuanian efforts to align with the West contrast with alleged external influence in Ukraine amid pro-Russian unrest.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_947,camp_130,"Misinformation narratives are falsely conflating unrelated topics, such as Soviet remains and political events.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_30,camp_130,"Obama recognized Russia's growing influence in the Middle East, while some support Trump for managing US-Russia relations.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_754,camp_131,Russia is accused of pursuing a genocidal campaign against Ukraine while international actors express reservations about the conflict's outcome.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_132,camp_131,Rossiya 1 broadcasts a late-night program featuring discussions on current issues with Vladimir Solovyov.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_125,camp_132,The candidate's platform focuses on strengthening Ukraine's defense and integration while improving the economy away from Russian influence.,bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_851,camp_132,"US military operations are hampered by intelligence gaps, while geopolitical tensions involve perceived provocations and societal control.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_210,camp_133,Russia's aggression threatens Ukrainian culture while NATO anticipates a decisive military shift leading to Russian withdrawal.,bm25_rag,euvsdisinfo,English|Hungarian,,,3
+nar_347,camp_49,"Geopolitical tensions involve disputed territories, potential conflict, and legislative actions regarding citizenship.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_902,camp_133,"The provided claims cover disparate topics including health, crime, social benefits, and geopolitical denial.",bm25_rag,euvsdisinfo,Arabic|Czech,,,3
+nar_970,camp_134,"Threat actors like Fancy Bear target specific entities, while global chemical synthesis and military exercises occur.",bm25_rag,euvsdisinfo,Arabic|English|Lithuanian,,,3
+nar_759,camp_134,"Specific regional crises, including health disparities, demographic decline, and infrastructure sabotage, are straining various global systems.",bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_687,camp_135,"The provided claims mix unrelated topics, suggesting a narrative of conspiracy and geopolitical dispute.",bm25_rag,euvsdisinfo,RU,,,3
+nar_106,camp_135,"Current diplomatic efforts are stalled, with blame for the Ukraine conflict being placed on Kyiv.",bm25_rag,euvsdisinfo,English|French|German,,,4
+nar_811,camp_136,Discussions suggest that political narratives and perceived failures in policy are dominating public discourse.,bm25_rag,euvsdisinfo,RU,,,3
+nar_654,camp_136,Government decrees and legal mandates establish the minimum wage and require formal authorization for compliance.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_616,camp_137,Western influence and internal actions are fueling conflict escalation in Ukraine while NATO supports Bosnia's sovereignty.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_433,camp_137,Disputed narratives surround labor practices in Xinjiang and alleged military involvement in Ukraine.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_0,camp_48,"Global conflicts and political crises are fueled by competing narratives, disinformation, and geopolitical power struggles.",bm25_rag,euvsdisinfo,AFRIKAANS|ARABIC|ARMENIAN|AZERBAIJANI|Afrikaans|Arabic|Armenian|Azerbaijani|CS|Czech|DE|EN|ES|English|FINNISH|FR|Finnish|French|GEORGIAN|Georgian|German|HUNGARIAN|Hungarian|ITALIAN|Italian|LITHUANIAN|Lithuanian|PL|Polish|ROMANIAN|RU|Romanian|Russian|SERBIAN|SK|Serbian|Slovak|Spanish|UK|Ukrainian,,,2692
+nar_241,camp_138,"Various unrelated claims involve political dismissals, failed projects, and fabricated narratives.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_555,camp_96,Global powers are accused of interfering in the domestic affairs and elections of other nations.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_790,camp_138,Misinformation narratives often obscure military actions or exaggerate geopolitical events involving Russia and Ukraine.,bm25_rag,euvsdisinfo,DE|RU,,,3
+nar_810,camp_139,"Accusations against Russia are politically motivated distractions, while alternative theories point to Ukrainian involvement or overreactions.",bm25_rag,euvsdisinfo,FINNISH|RU,,,3
+nar_897,camp_139,Western entities are accused of using aid restrictions and political actions against Ukraine and Syria.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_588,camp_140,Poland is concerned about Belarusian election suppression while navigating media literacy and influence allegations.,bm25_rag,euvsdisinfo,CS|EN,,,3
+nar_772,camp_140,"Misinformation mixes false claims about past information, government misuse, and current geopolitical or weather events.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_344,camp_141,"Elite figures maintain secret ties to Putin, while official investigations and energy project safety are being obstructed.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_605,camp_141,"International political tensions are manifesting through travel restrictions, organizational interference, and diplomatic maneuvering.",bm25_rag,euvsdisinfo,EN,,,3
+nar_578,camp_142,US actions are allegedly creating election issues in Georgia to mask geopolitical and economic agendas.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_518,camp_142,Western assessments of Ukraine are complicated by internal political divisions and Russia's denial of violating international agreements.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_122,camp_143,"The provided claims cover diverse, unrelated geopolitical events and personal anecdotes.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_913,camp_143,Western powers are allegedly orchestrating regional instability and conflict in Ukraine for geopolitical gain.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_332,camp_116,Tensions are rising between Russia and other nations due to political actions and military posturing.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_175,camp_144,"Sanctions against Belarus are weak, while claims of YouTube censorship against Russian media are disputed.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_868,camp_11,"Misinformation narratives link geopolitical conflicts, immigration crises, and international relations through deceptive claims.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_436,camp_144,Russian authorities used excessive force against protesters and targeted opposition figures during recent events.,bm25_rag,euvsdisinfo,RU,,,3
+nar_540,camp_145,Western pressure on regional leaders is countered by geopolitical shifts and alternative international financial support.,bm25_rag,euvsdisinfo,ARABIC|HUNGARIAN|RU,,,3
+nar_468,camp_145,Russian aggression is driving a global food crisis while narratives about Ukrainian energy and media ownership are disputed.,bm25_rag,euvsdisinfo,CS|EN|RU,,,3
+nar_763,camp_146,Political instability and economic crises are fueling internal conflict and calls for systemic change across various nations.,bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_777,camp_146,"Putin's actions aim to undermine Ukraine's Western integration, while external pressures limit its sovereignty.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_399,camp_147,Geopolitical conflicts and economic policies are causing uneven global prosperity and financial strain.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_38,camp_147,Western actions are allegedly obstructing peace with Russia while simultaneously undermining European autonomy amid security concerns.,bm25_rag,euvsdisinfo,English|German|Hungarian,,,3
+nar_917,camp_148,Russian actions and alleged biolab activities suggest a dangerous geopolitical conflict involving state-sponsored threats.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_541,camp_148,"International bodies and geopolitical pressures influence global crises, including health and political stability.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_536,camp_149,The provided claims cover unrelated topics ranging from geopolitical maneuvering to online gambling practices.,bm25_rag,euvsdisinfo,RU|UK,,,4
+nar_472,camp_149,"Global political tensions involve accusations, international legal uncertainty, and diverging stances on major geopolitical issues.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_525,camp_150,"Global power dynamics involve economic influence, geopolitical vetoes, and military aid to Ukraine.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_847,camp_150,"Historical and contemporary events involve allegations of external control, forceful actions, and past state-sponsored deportations.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_69,camp_151,"Various entities are facing accusations of political bias, funding impropriety, or questionable actions.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_892,camp_151,Russia claims Crimea as integral territory while tensions rise over Swedish military actions and Turkish involvement.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_804,camp_152,Estonia and NATO are responding to perceived Russian aggression through actions against journalists and political figures.,bm25_rag,euvsdisinfo,EN|ES|RU,,,3
+nar_725,camp_152,European water security and geopolitical tensions are complicated by regional military activities and internal political divisions.,bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_108,camp_153,Western entities are allegedly using surveillance and proxy conflicts to wage a global hybrid war against Russia.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_193,camp_153,Russia's aggression and claims of security threats are juxtaposed against Ukraine's decommunization efforts and civilian casualties.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_413,camp_154,Disparate global issues range from geopolitical tensions and sports achievements to rising hate speech in France.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_546,camp_154,Platforms are addressing coordinated inauthentic behavior while geopolitical actors engage in strategic influence operations.,bm25_rag,euvsdisinfo,EN,,,3
+nar_985,camp_155,"Russian involvement in chemical attacks is alleged, alongside political instability in Kyrgyzstan.",bm25_rag,euvsdisinfo,English|Spanish,,,3
+nar_681,camp_155,Governments are actively managing domestic policies while regional geopolitical tensions remain high.,bm25_rag,euvsdisinfo,GEORGIAN|RU|UK,,,3
+nar_394,camp_143,Western powers are allegedly maneuvering to influence geopolitical conflicts involving Russia and its neighbors.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_100,camp_156,"Various narratives involve state actions, military failures, and personal threats in high-stakes conflicts.",bm25_rag,euvsdisinfo,English|Russian|Spanish,,,4
+nar_483,camp_156,"US political actions and international relations are complex, involving domestic criticism and foreign policy maneuvering.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_651,camp_157,"A major economic collapse is underway, coinciding with legislative changes in tax and asylum procedures.",bm25_rag,euvsdisinfo,ARABIC|DE|RU,,,3
+nar_760,camp_157,Americans favor economic growth through innovation and prefer international engagement over military escalation.,bm25_rag,euvsdisinfo,EN,,,3
+nar_752,camp_158,Political actions are hindering official recognition of historical atrocities and threats to essential medical supplies.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_685,camp_158,The U.S. government is actively strengthening its national security and military capabilities against external threats.,bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_514,camp_159,Western actions are undermining the global order while Russian military failures and civilian deaths remain disputed.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_113,camp_159,"Russia's actions, including sanctions and infrastructure control, continue to negatively impact Ukraine.",bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_343,camp_160,"Western influence pressures Arab nations, while political figures face accusations of misconduct and diplomatic inconsistency.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_848,camp_160,"Western support for Ukraine is complicated by internal political shifts, energy concerns, and refugee policy debates.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_151,camp_161,"Geopolitical tensions involving Russia, China, and Europe are driving conflict and sanctions over energy and technology.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_25,camp_161,"Wealthy Russian figures use offshore networks, while alternative theories challenge official events and call for more sanctions.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_222,camp_162,International financial bodies and geopolitical shifts are influencing support for Eastern European nations.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_449,camp_49,"Geopolitical tensions are highlighted by disputed elections, international negotiations, and accusations of hostile foreign agendas.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_308,camp_146,Political and economic instability is driving public unrest and scrutiny in various international contexts.,bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_975,camp_162,External influence and US support are allegedly driving Ukrainian policy changes and military actions.,bm25_rag,euvsdisinfo,English|Georgian|Russian,,,3
+nar_359,camp_163,"Global events include military developments, border incidents, and domestic political reactions to economic issues.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_139,camp_163,"These claims involve accusations of government deception, hidden pasts, and alleged criminal acts by vulnerable populations.",bm25_rag,euvsdisinfo,Russian|Spanish,,,3
+nar_963,camp_164,Russia is signaling a shift away from established norms while preparing responses to Western pressure.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_573,camp_164,Vaccine distribution challenges and geopolitical tensions are shaping international relations and public health responses.,bm25_rag,euvsdisinfo,EN|LITHUANIAN|RU,,,3
+nar_385,camp_165,The narrative suggests Western media misrepresents Ukrainian actions while questioning the origins and use of chemical weapons like Novichok.,bm25_rag,euvsdisinfo,EN|ES|RU,,,3
+nar_572,camp_165,"The EU's foundations are allegedly unstable, influenced by US interests and historical elements, facing aristocratic resistance.",bm25_rag,euvsdisinfo,RU,,,3
+nar_249,camp_166,"Russia is strengthening its power and military presence, including nuclear capabilities, amidst regional tensions.",bm25_rag,euvsdisinfo,Russian|Serbian,,,3
+nar_954,camp_166,Western actions and internal political issues have contributed to ongoing conflicts in Ukraine and Syria.,bm25_rag,euvsdisinfo,Arabic|English|Hungarian,,,3
+nar_442,camp_167,Authoritarian regimes are using suppression and restrictions to control dissent in modern society.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_981,camp_167,Government agencies are allegedly involved in orchestrating political violence and manipulating global events.,bm25_rag,euvsdisinfo,Czech|Spanish,,,3
+nar_840,camp_168,"Geopolitical tensions involve conflicts, border disputes, and international sanctions impacting Russia.",bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_156,camp_168,"The claims cover diverse topics, lacking a single shared central narrative.",bm25_rag,euvsdisinfo,Slovak|Ukrainian,,,3
+nar_686,camp_169,Political and economic anxieties surrounding the pandemic are intertwined with fears of escalating violence and geopolitical conflict.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_962,camp_169,Western actions and internal fragility suggest Ukraine's stability is under threat from external pressure.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_990,camp_49,"Various geopolitical and domestic events involve allegations of violence, foreign interference, and political extremism.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_490,camp_170,The provided claims mix historical genocide allegations with unrelated vaccine procurement issues.,bm25_rag,euvsdisinfo,EN|UK,,,3
+nar_702,camp_170,Political maneuvering and alleged threats fuel narratives about Ukrainian involvement in detentions and power struggles.,bm25_rag,euvsdisinfo,RU,,,3
+nar_194,camp_171,Global elites are allegedly using orchestrated events and vaccines to control populations while authorities fail to protect vulnerable groups.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_694,camp_171,"Disinformation narratives manipulate perceptions of Russian actions, Western behavior, and conflict dynamics.",bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_961,camp_172,Russia denies election interference and frames Western criticism as fabricated disinformation or aggression.,bm25_rag,euvsdisinfo,English|German|Russian,,,3
+nar_502,camp_172,A group claims they are the sole authority while alleging Russian sabotage and intense shelling in the region.,bm25_rag,euvsdisinfo,EN|UK,,,3
+nar_22,camp_173,NATO selectively applies its defensive principles while international focus shifts regarding the Crimean situation.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_843,camp_173,Ukrainian special forces undergo rigorous training and have complex personnel histories influencing their operations.,bm25_rag,euvsdisinfo,Ukrainian,,,3
+nar_996,camp_174,Political instability and external influence are shaping the governance and health crises in these regions.,bm25_rag,euvsdisinfo,Czech|English,,,3
+nar_147,camp_174,"Ukraine is navigating complex geopolitical shifts involving international inspections, military alliances, and energy dependency.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_414,camp_175,"Armenian law strictly regulates visual media through comprehensive rules covering content, operations, and penalties.",bm25_rag,euvsdisinfo,ARMENIAN,,,3
+nar_737,camp_175,"Russia allegedly uses private military groups to secure resources while Ukraine receives continued, though evolving, international military support.",bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,3
+nar_726,camp_22,Geopolitical tensions and alleged hidden influences drive narratives about global events and information control.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_505,camp_175,Russia restricts its athletes and suppresses dissent while denying international accusations of chemical warfare.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_99,camp_176,"Russia faces economic pressures and external geopolitical threats, including vaccine disinformation and NATO escalation.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_889,camp_176,"The war in Ukraine has caused severe humanitarian crises, while the nation simultaneously addresses internal governance issues.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_476,camp_177,"The claims cover diverse topics, lacking a single shared central narrative.",bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_581,camp_177,"Russian authorities are targeting financial entities, while international sports and historical narratives face political scrutiny.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_71,camp_178,"Political figures face scrutiny over corruption, while international alliances express concerns regarding foreign policy.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_278,camp_178,"Ukrainian narratives are undermined by staged videos, hidden extremist elements, and persistent elite corruption.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_46,camp_87,External powers are allegedly undermining the nation's sovereignty through information campaigns and political pressure.,bm25_rag,euvsdisinfo,Italian|Russian,,,3
+nar_791,camp_179,"The conflict is framed by competing narratives of Russian aggression, Western provocation, and international complicity.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_300,camp_179,Russia is pursuing expanded geopolitical control while challenging international sanctions and demanding concessions from allies.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_208,camp_180,External actors are manipulating global events through disinformation and military actions.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_713,camp_180,"Navalny's poisoning, US interference, and Russian anti-gay laws highlight systemic political and human rights issues in Russia.",bm25_rag,euvsdisinfo,EN|ES,,,3
+nar_190,camp_181,US and UK military involvement in Ukraine is shifting amid ongoing political and legal developments.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_85,camp_181,Russian protests reflect public dissatisfaction with the current political climate and perceived lack of freedom.,bm25_rag,euvsdisinfo,Hungarian|Russian,,,3
+nar_376,camp_182,"Geopolitical tensions involve diplomatic expulsions, conflicting international alliances, and skepticism toward EU values.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_53,camp_182,Global health and geopolitical conflicts are characterized by uneven vaccination efforts and alleged military actions.,bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_549,camp_183,"The Skripal case narrative is intertwined with political distractions, Russian obfuscation, and Ukrainian political commentary.",bm25_rag,euvsdisinfo,EN|FR|RU,,,3
+nar_482,camp_183,"Various geopolitical events involve alleged Russian interference, Ukrainian provocations, and information opacity.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_785,camp_184,"Misinformation narratives target specific local events, international political figures, and organizational assessments.",bm25_rag,euvsdisinfo,AZERBAIJANI|RU,,,3
+nar_496,camp_184,"Misinformation narratives involve alleged political interference, shifting travel trends, and persecution of journalists.",bm25_rag,euvsdisinfo,EN|GEORGIAN|RU,,,3
+nar_942,camp_185,"Various groups maintain firm, often disputed, narratives regarding political power, territorial claims, and public health information.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_340,camp_185,Ukrainian regional leaders are independently engaging with Russia while internal political maneuvering and external threats persist.,bm25_rag,euvsdisinfo,HUNGARIAN|RU,,,3
+nar_582,camp_186,Georgia faces domestic policy changes amid concerns over Western and Russian influence on its national interests.,bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_309,camp_186,European institutions are failing to protect citizens from rising antisemitic violence while political processes face manipulation.,bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_11,camp_187,The requested video or content is currently inaccessible due to technical limitations.,bm25_rag,euvsdisinfo,EN,,,9
+nar_522,camp_187,"Misinformation circulates regarding global control, pandemic origins, and vaccine efficacy.",bm25_rag,euvsdisinfo,ARABIC|FR,,,3
+nar_95,camp_188,"US foreign policy failures, including in Afghanistan and border control, suggest a lack of perceived external threats.",bm25_rag,euvsdisinfo,English,,,3
+nar_270,camp_188,"Political figures face scrutiny over national initiatives, anti-Czech sentiment, and unproven foreign influence allegations.",bm25_rag,euvsdisinfo,Arabic|Czech,,,3
+nar_767,camp_93,Geopolitical tensions and economic dependencies are creating instability across Eastern Europe.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_288,camp_189,"Geopolitical tensions involve Ukrainian evidence, chemical concerns with Palladium, and US opposition to Nord Stream 2.",bm25_rag,euvsdisinfo,English,,,3
+nar_397,camp_189,"Misinformation is circulating regarding Belarusian protests, Russian foreign policy, and alleged Ukrainian nuclear threats.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_574,camp_190,Western powers are accused of exploiting nations like Ukraine and Cuba while engaging in military interventions.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_453,camp_190,Russian media broadcasts are being countered by a growing Ukrainian shift toward linguistic and national unity.,bm25_rag,euvsdisinfo,EN|RU|UK,,,3
+nar_84,camp_191,Russian authorities are accused of suppressing dissent while simultaneously warning about potential health threats.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_447,camp_191,Geopolitical tensions are causing economic disruptions and fueling security concerns in the Balkans.,bm25_rag,euvsdisinfo,EN|RU|UK,,,3
+nar_753,camp_192,Some narratives suggest external powers are exploiting the Belarusian crisis for geopolitical and military advantage.,bm25_rag,euvsdisinfo,RU,,,3
+nar_792,camp_192,Russia claims Ukraine's identity and territory are being artificially severed from its Eastern roots.,bm25_rag,euvsdisinfo,RU,,,3
+nar_900,camp_193,Powerful entities manipulate information and exploit geopolitical situations to control narratives.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_648,camp_193,"Misinformation is circulating regarding device functionality, sports news authenticity, and viral video origins.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_782,camp_52,"Geopolitical instability, from poisoning incidents to regional unrest and economic shifts, is impacting global affairs.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_586,camp_195,Regional powers are actively engaged in diplomatic efforts to restore balance and address geopolitical concerns.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_662,camp_194,The provided sub-claims are unrelated and do not share a common narrative.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_268,camp_115,Ukraine's military capacity is questioned while international geopolitical maneuvering continues across various regions.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_952,camp_194,Misinformation narratives manipulate events and figures to discredit Western reporting and challenge established historical facts.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_734,camp_195,"Western powers allegedly support authoritarian groups, fueling conflicts while Belarus needs a unified approach.",bm25_rag,euvsdisinfo,RU,,,3
+nar_539,camp_196,"Russian military actions in Ukraine are alleged war crimes, while external powers complicate the regional stability.",bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_946,camp_196,The war in Ukraine is causing devastating loss of life and widespread suffering across Central and Eastern Europe.,bm25_rag,euvsdisinfo,English,,,4
+nar_280,camp_197,Georgia is modernizing its infrastructure while maintaining cultural ties with neighboring nations amidst geopolitical tensions.,bm25_rag,euvsdisinfo,Georgian|Norwegian,,,4
+nar_310,camp_197,"Russian actions in Ukraine are framed by narratives involving economic influence, military opacity, and media distortion.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_83,camp_198,Russia frames its climate stance while criticizing EU sanctions and highlighting military cooperation with Ukraine.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_577,camp_198,Syria claims chemical disarmament while media allegedly hides military defeats and Russia warns against US provocations.,bm25_rag,euvsdisinfo,ARABIC|HUNGARIAN|RU,,,3
+nar_96,camp_199,Western media narratives are criticized for framing the conflict while downplaying Russian aggression and Ukrainian concerns.,bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_881,camp_49,"Geopolitical tensions are rising due to suspected foreign influence, border blockades, and increased military posturing.",bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_137,camp_199,Some narratives suggest Russian aggression and internal power struggles are being manipulated by elites.,bm25_rag,euvsdisinfo,English|German|Russian,,,3
+nar_918,camp_200,"Narratives often obscure underlying truths regarding political violence, societal values, and international responsibilities.",bm25_rag,euvsdisinfo,English|Spanish|Ukrainian,,,3
+nar_707,camp_200,"Global and domestic pressures are impacting various regions, from energy dependence to political investigations and conflict zones.",bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_720,camp_201,"These claims cover diverse topics, including drug policy reform, international political designations, and debunking false reports of violence.",bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,3
+nar_77,camp_201,Russia promotes internal development while advocating for the UN's central role in global security amidst regional political shifts.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_276,camp_202,"Allegations suggest internal Ukrainian corruption, military escalation, and foreign interference in regional conflicts.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_925,camp_202,US intelligence is allegedly funding opposition in Eastern Europe while Russia criticizes Western actions in global conflicts.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_474,camp_203,"Russia claims Crimea's annexation is legal, while globalist opposition targets potential US political shifts.",bm25_rag,euvsdisinfo,ARABIC|CS|RU,,,3
+nar_859,camp_203,"These disparate claims cover political systems, languages, corporate growth, and EU policy.",bm25_rag,euvsdisinfo,Georgian,,,4
+nar_512,camp_204,Political forces manipulate public focus by diverting attention from racial issues to COVID-19 and globalist agendas.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_657,camp_204,"Ukrainian politics involves shifting power dynamics, elite corruption, and military conflicts involving key figures.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_487,camp_205,"Western entities are allegedly involved in discrediting Russian figures and vaccines, including the Navalny poisoning.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_443,camp_205,"These claims weave together narratives of geopolitical conflict, foreign policy maneuvering, and disputed events.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_745,camp_206,Russian narratives allege Ukrainian biolabs pose a threat while criticizing Syrian and NATO military actions.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_448,camp_49,"Geopolitical tensions are fueled by alleged foreign interference, economic shifts, and infrastructure sabotage.",bm25_rag,euvsdisinfo,ARMENIAN|EN|RU,,,4
+nar_797,camp_206,"Various events are being framed by specific narratives, often involving political maneuvering or deliberate actions.",bm25_rag,euvsdisinfo,RU|SK,,,5
+nar_521,camp_207,Russia accuses the West of hypocrisy while political tensions and disinformation campaigns escalate globally.,bm25_rag,euvsdisinfo,EN|GEORGIAN,,,3
+nar_751,camp_207,"Russia alleges external forces, particularly the US, instigated the Ukrainian crisis and are conducting cyberattacks against Russia.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_964,camp_208,Russian officials criticize US actions while alleging staged chemical attacks in Syria and reporting nuclear damage.,bm25_rag,euvsdisinfo,Arabic|French|Russian,,,3
+nar_835,camp_208,Claims range from military stagnation to successful counter-terrorism operations without a unified narrative.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_284,camp_209,"Regional security concerns are intertwined with geopolitical tensions involving the West, Russia, and Belarus.",bm25_rag,euvsdisinfo,Arabic|Finnish|Russian,,,3
+nar_771,camp_209,"Geopolitical actors assert their own narratives regarding military alliances, political futures, and territorial claims.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_153,camp_210,Russia claims its annexation of Crimea is permanent while accusing Ukraine of deliberately distancing itself from Russia.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_461,camp_210,Geopolitical tensions are driving military alliances and political support for figures like Vladimir Putin.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_75,camp_211,"A sophisticated cyberattack, like the SolarWinds hack, is being hampered by external interference during investigations.",bm25_rag,euvsdisinfo,English,,,3
+nar_269,camp_211,Regional actors are engaged in efforts to restore balance while discussing economic and geopolitical matters.,bm25_rag,euvsdisinfo,Arabic,,,3
+nar_885,camp_53,"Global events show varied geopolitical tensions, including tech censorship, resource assurances, and travel restrictions.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_196,camp_212,Russian forces are accused of atrocities in Bucha while implementing restrictive laws in Crimea.,bm25_rag,euvsdisinfo,English,,,3
+nar_281,camp_212,"Lithuanian politics faces criticism regarding rhetoric, business influence, and alleged authoritarian leanings mirroring Belarus.",bm25_rag,euvsdisinfo,Georgian|Polish|Russian,,,3
+nar_815,camp_213,Israeli aggression threatens regional escalation despite Iran's stated commitment against nuclear weapons.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_789,camp_213,Biden's presidency faces severe global instability from economic crises and escalating nuclear threats.,bm25_rag,euvsdisinfo,EN,,,3
+nar_349,camp_214,Separatist narratives mirror historical discrimination while Russia challenges U.S. influence in the Middle East.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_927,camp_11,"Misinformation narratives falsely link international events to biological warfare, organ trafficking, and missing children.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_992,camp_214,Media outlets and state actors are engaged in coordinated narratives to deflect blame regarding international political and military actions.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_386,camp_215,"Western skepticism surrounds Russian scientific claims, while military aid to Ukraine is alleged to be insufficient.",bm25_rag,euvsdisinfo,RU,,,3
+nar_698,camp_215,"The claims are too disparate to form a single, coherent central narrative.",bm25_rag,euvsdisinfo,EN|ITALIAN,,,3
+nar_641,camp_216,External powers are allegedly influencing domestic politics and challenging international norms in various nations.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_820,camp_216,Western accusations against Russia are countered by claims of internal actions and state-sponsored narratives.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_614,camp_217,"Global geopolitical tensions are manifesting through localized anti-Ukrainian sentiment, ongoing pandemic effects, and naval arms races.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_603,camp_49,"Geopolitical tensions involve international confrontations, sanctions, and political narratives across various regions.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_424,camp_217,External pressures and political shifts are undermining Moldova's efforts against Russian influence in Transnistria.,bm25_rag,euvsdisinfo,RU,,,3
+nar_134,camp_218,Western nations are hypocritically threatening Russia while ignoring its actions and the flaws in other investigations.,bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_62,camp_218,"Western doubts about Navalny's poisoning, Polish military threats, and Russian vaccine promotion suggest geopolitical instability.",bm25_rag,euvsdisinfo,English|Polish|Russian,,,3
+nar_389,camp_219,"Tobacco industry allegedly funded Chatham House, while other unrelated events occurred.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_348,camp_219,"Nazism is gaining influence in Europe, while international stances on the Ukraine war remain politically contested.",bm25_rag,euvsdisinfo,CS|EN|RU,,,3
+nar_171,camp_220,Western influence is allegedly pressuring nations like Moldova and impacting regional stability in the Balkans.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_944,camp_220,External military actions and language proficiency are framed as critical factors in geopolitical conflicts.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_814,camp_221,Russia faces military and strategic challenges in Ukraine while internal political processes are questioned.,bm25_rag,euvsdisinfo,ROMANIAN|RU|UK,,,3
+nar_831,camp_221,"Geopolitical tensions and domestic political maneuvering are characterized by broken promises, internal power struggles, and accusations of corruption.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_873,camp_222,The provided claims mix unrelated medical topics with subjective commentary and program descriptions.,bm25_rag,euvsdisinfo,Italian,,,3
+nar_595,camp_222,"Russian accusations of biological warfare, mixed reports on political meetings, and alleged Ukrainian military abuses form a complex narrative of conflict.",bm25_rag,euvsdisinfo,ARABIC|PL|RU,,,3
+nar_982,camp_223,Russia alleges Western powers are conspiring against it and disputes the findings of international investigations.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_974,camp_223,"Misinformation narratives allege weapon diversion, extremist political demands, and the presence of fascist symbolism in military infrastructure.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_363,camp_224,Geopolitical tensions and historical events complicate current international efforts and narratives.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_357,camp_224,The West is accused of obstructing peace while simultaneously increasing military commitments and undermining European autonomy.,bm25_rag,euvsdisinfo,DE|EN|HUNGARIAN,,,4
+nar_97,camp_194,Narratives from various sources are being manipulated to discredit figures and rewrite historical events.,bm25_rag,euvsdisinfo,Arabic|Azerbaijani|Russian,,,4
+nar_979,camp_225,"Russian COVID-19 issues, Putin's image, and Afghan drug policy failures represent diverse geopolitical challenges.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_24,camp_225,Borrell's alleged deception and skepticism about Navalny's poisoning coincide with cautious monitoring of the BelNPP.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_682,camp_226,US and Russia are major global powers navigating internal political crises amidst ongoing legislative activity.,bm25_rag,euvsdisinfo,GEORGIAN,,,3
+nar_542,camp_226,"Global events, from fires to geopolitical shifts, are linked by hidden forces and external pressures.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_632,camp_228,"Government efforts aim to boost domestic stability by strengthening institutions, supporting health, and ensuring employment.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_229,camp_227,"Historical disputes over World War II events, like the bombing of Wieluń, fuel current political tensions.",bm25_rag,euvsdisinfo,English|Polish|Russian,,,4
+nar_950,camp_227,"These claims reflect contested narratives regarding humanitarian crises, historical events, and international political disputes.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_173,camp_228,"NATO's security concerns are exaggerated, while historical geopolitical shifts and alleged human rights abuses in Russia are highlighted.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_262,camp_228,Ukraine's political survival and direction are heavily dependent on Western support against external pressures.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_700,camp_229,"Misinformation narratives falsely link unrelated events, health issues, and political actions to create misleading narratives.",bm25_rag,euvsdisinfo,EN|ITALIAN|RU,,,5
+nar_282,camp_229,"Russian vaccine approval is contested, while Syrian rescuers face danger and government plans agricultural expansion.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_730,camp_230,Global elites are orchestrating a destabilizing shift that threatens national sovereignty and societal stability.,bm25_rag,euvsdisinfo,RU,,,3
+nar_409,camp_230,"Political figures are engaged in discussions regarding elections, foreign influence, and national sovereignty.",bm25_rag,euvsdisinfo,RU,,,3
+nar_406,camp_231,"The provided claims lack a coherent narrative thread connecting political dissent, historical weather events, and population stagnation.",bm25_rag,euvsdisinfo,RU,,,3
+nar_995,camp_231,Escalating conflicts and global economic instability present severe threats to national security and financial stability.,bm25_rag,euvsdisinfo,English|Hungarian,,,3
+nar_130,camp_232,"Disputes involve high medical costs, international airspace violations, and threats to cultural sovereignty.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_912,camp_232,"Government actions and political tensions are fueling unrest, division, and concerns over electoral integrity in Ukraine.",bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_854,camp_233,Global powers face challenges while regional states navigate political shifts and economic reforms.,bm25_rag,euvsdisinfo,Georgian|Russian|Ukrainian,,,4
+nar_162,camp_233,"Global political shifts involve disputed energy stances, internal US crises, and regional economic protectionism.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_674,camp_234,"The provided claims touch upon historical persecution, contemporary political repression, and differing views on societal safety.",bm25_rag,euvsdisinfo,EN,,,3
+nar_930,camp_234,Global issues range from illicit oil funding terrorism to demographic crises and geopolitical tensions.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_935,camp_235,"The government faces political crisis, public discontent, and scrutiny over its actions.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_739,camp_235,External actors are allegedly threatening Ukraine through military buildup and political interference.,bm25_rag,euvsdisinfo,EN|RU|UK,,,3
+nar_551,camp_236,Egyptian national team's World Cup victory is being widely celebrated across regional media.,bm25_rag,euvsdisinfo,ARABIC,,,4
+nar_186,camp_236,"Ukrainian actions are framed as politically motivated, while Russian military strikes cause civilian casualties.",bm25_rag,euvsdisinfo,Armenian|Russian|Ukrainian,,,3
+nar_706,camp_237,Global powers are allegedly engaged in covert military actions and election interference against international interests.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_54,camp_237,Global economic instability and political unrest are being fueled by widespread misinformation narratives.,bm25_rag,euvsdisinfo,Czech|English|Russian,,,3
+nar_341,camp_237,"International agreements and geopolitical actions are being undermined by political interference, black markets, and contested claims.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_712,camp_238,"Western actions are accused of destabilizing nations through occupation, resource exploitation, and supporting terrorism.",bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_834,camp_238,"Western nations are accused of hypocrisy, profiting from global instability while ignoring human rights violations.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_642,camp_239,"Various claims suggest systemic failures in education, health advice, international diplomacy, and consular services.",bm25_rag,euvsdisinfo,ARABIC|FR|RU,,,4
+nar_477,camp_239,Russian military presence and Western narratives are disputed amid ongoing conflict and aid reports.,bm25_rag,euvsdisinfo,ARABIC|HUNGARIAN|SK,,,3
+nar_644,camp_240,Historical Polish population statistics show trends in death rates and natural increase over several decades.,bm25_rag,euvsdisinfo,EN,,,3
+nar_932,camp_240,"Global stability requires economic growth, balancing international engagement against existential threats.",bm25_rag,euvsdisinfo,Arabic|English|Italian,,,5
+nar_275,camp_241,International financial institutions and political pressures are allegedly manipulating developing nations for resource gain.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_711,camp_22,Global actors are allegedly manipulating information and processes to control narratives and political outcomes.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_738,camp_241,Societal divisions and hidden policies are fueling conflict and resistance against established authorities.,bm25_rag,euvsdisinfo,RU|SK,,,3
+nar_314,camp_242,"Egypt is actively engaging in international diplomacy to boost governance, economy, and global presence.",bm25_rag,euvsdisinfo,Arabic,,,3
+nar_635,camp_242,Western actions are framed as a coordinated campaign to undermine Russia while alleging surveillance and atrocities.,bm25_rag,euvsdisinfo,RU|SK,,,3
+nar_717,camp_243,Western nations are accused of undermining international law and escalating conflicts to control global decision-making.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_50,camp_243,"Ukrainian elites are allegedly controlled by the West, while Russia provides aid amid disputed Minsk Agreement implementation in Donbas.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_218,camp_244,Geopolitical actors are allegedly manipulating international events through disinformation and strategic provocations.,bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_274,camp_244,Exclusion of partners from NATO summits and geopolitical tensions suggest regional instability.,bm25_rag,euvsdisinfo,Georgian|Russian,,,3
+nar_86,camp_245,"These disparate claims involve geopolitical events, vaccine promotion, and social unrest allegations.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_978,camp_19,Russia is accused of using provocations and chemical attacks to justify Western intervention.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_998,camp_245,"Leaders are facing scrutiny over geopolitical stances, including support for Ukraine and migration concerns.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_849,camp_246,Russian state actors and US influence are allegedly manipulating information platforms and medical decisions.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_865,camp_246,Global powers are allegedly interfering in sovereign nations through political pressure and military support.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_369,camp_247,"External powers manipulate Ukraine to provoke conflict, challenging Russia's interests and leading to military escalation.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_850,camp_247,Trump's election fraud claims coincide with international military activity and NATO presence in Ukraine.,bm25_rag,euvsdisinfo,English,,,3
+nar_556,camp_11,"Misinformation narratives suggest fabricated events regarding fuel, military actions, and nuclear disarmament.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_977,camp_248,"European nations are bolstering defenses, including acquiring U.S. tanks, in response to Russian military threats.",bm25_rag,euvsdisinfo,English|Russian|Spanish,,,4
+nar_652,camp_248,Russia frames its actions in Donbas and Crimea as humanitarian responses against Ukrainian aggression.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_663,camp_249,"Climate change narratives are disputed, with claims questioning environmental impacts and the viability of renewable energy.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_428,camp_249,"Powerful hidden influences dictate the true nature of agreements and security outcomes, as seen in the Ukraine conflict.",bm25_rag,euvsdisinfo,DE|EN,,,3
+nar_473,camp_250,European and international political instability is characterized by internal disputes and external geopolitical threats.,bm25_rag,euvsdisinfo,EN,,,3
+nar_618,camp_179,Russia is engaging in geopolitical demands while simultaneously promoting its own narratives amidst international conflict.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_670,camp_227,"These disparate claims cover historical remembrance, international diplomacy, political unrest, and geopolitical disputes.",bm25_rag,euvsdisinfo,EN|ES|GEORGIAN,,,4
+nar_492,camp_250,"Various entities are facing scrutiny over alleged misconduct, investigations, and disputed employment actions.",bm25_rag,euvsdisinfo,EN,,,3
+nar_621,camp_251,"Various actors are involved in disputed events, including attacks, poisonings, and foreign interference.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_464,camp_251,Geopolitical instability is fueled by ineffective Western intervention and escalating political violence.,bm25_rag,euvsdisinfo,EN|RU|SERBIAN,,,3
+nar_600,camp_252,Regional actors are engaged in humanitarian aid and diplomatic efforts amidst security concerns.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_761,camp_252,"External pressures and political actions are creating instability, impacting Ukrainian citizens and democratic processes.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_286,camp_253,"These claims suggest geopolitical tensions involving historical revisionism, perceived bias in international alliances, and regional instability.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_400,camp_253,"Powerful entities are allegedly manipulating events, including political actions and public health information.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_456,camp_254,"US policy appears inconsistent, favoring certain allies while criticizing energy projects and facing international defense challenges.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_584,camp_254,"The provided claims cover disparate topics of political oppression, geopolitical conspiracy theories, and historical nationalism.",bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,3
+nar_719,camp_255,"Global politics are characterized by controversy surrounding historical memory, political figures, and energy infrastructure.",bm25_rag,euvsdisinfo,FR|LITHUANIAN|RU,,,3
+nar_818,camp_255,Russian forces are allegedly using Ukrainian infrastructure in Crimea to broadcast programming into Ukraine.,bm25_rag,euvsdisinfo,ARABIC|DE|RU,,,3
+nar_532,camp_256,"The Arab Spring was a wave of pro-democracy uprisings, while international bodies face political pressures.",bm25_rag,euvsdisinfo,DE|EN|RU,,,3
+nar_128,camp_256,"Disinformation narratives target political legitimacy, foreign policy alliances, and military intentions.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_98,camp_257,"Regional tensions involve Kosovo's expansion, ideological threats to religion, and accusations of foreign provocation.",bm25_rag,euvsdisinfo,Italian|Russian,,,3
+nar_200,camp_257,"The conflict in Ukraine involves intense military action, complicated by internal political dynamics and external geopolitical pressures.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_770,camp_258,"Geopolitical actors are using economic and military pressure to influence Ukraine, often through international forums.",bm25_rag,euvsdisinfo,EN|ES,,,3
+nar_401,camp_258,"These claims suggest orchestrated events involving chemical attacks, staged atrocities, and deliberate violence.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_938,camp_179,Russia is asserting strategic and economic influence over its neighbors while countering Western actions.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_878,camp_259,"The provided claims cover unrelated topics of alleged misconduct, disaster impact, and vaccine regulatory delays.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_92,camp_259,"Armenian law strictly regulates visual media through comprehensive rules covering content, operations, and penalties.",bm25_rag,euvsdisinfo,Armenian,,,3
+nar_921,camp_259,Russian influence and support for separatist movements in Ukraine are evidenced by various intelligence and media reports.,bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_742,camp_259,Russia rejects Western interference while border migration increases amid political disputes.,bm25_rag,euvsdisinfo,EN|LITHUANIAN|RU,,,3
+nar_306,camp_260,Western powers selectively enforce rules while the Kremlin denies involvement in international incidents.,bm25_rag,euvsdisinfo,Arabic|Czech|English|Russian,,,4
+nar_342,camp_260,"The conflict involves accusations of hypocrisy, denials of invasion, and separatist movements seeking international recognition.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_929,camp_261,Allegations of state torture against Lukashenko are being documented and widely circulated through various media channels.,bm25_rag,euvsdisinfo,Arabic|English,,,4
+nar_119,camp_261,Russia's geopolitical and economic interests drive its actions to undermine democratic norms in the US.,bm25_rag,euvsdisinfo,Russian|Spanish,,,3
+nar_879,camp_262,"Foreign entities are allegedly involved in disinformation campaigns and geopolitical maneuvering concerning Russia, Ukraine, and ISIS.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_958,camp_262,Global powers are allegedly using the pandemic and geopolitical events to advance political agendas against specific groups.,bm25_rag,euvsdisinfo,Armenian|English|Russian,,,3
+nar_131,camp_264,Religious leaders are actively engaged in community and diplomatic efforts while upholding core Christian values.,bm25_rag,euvsdisinfo,Arabic,,,3
+nar_969,camp_263,"The downing of the Boeing aircraft is being framed as a deliberate, state-sponsored act intended as international provocation.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_324,camp_263,"Media and officials are allegedly involved in a coordinated effort against Russia, while Ukraine faces accusations of biological attacks.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_45,camp_264,"Misinformation circulates regarding government actions, media bans, and vaccine safety.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_29,camp_265,Global powers are using political rhetoric and legislation to isolate and undermine Russia's influence.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_325,camp_265,"The misinformation centers on presenting specific, often disputed, historical population and death rate statistics for Poland.",bm25_rag,euvsdisinfo,English,,,3
+nar_592,camp_266,"External pressures and internal challenges threaten Ukraine's stability, governance, and economic future.",bm25_rag,euvsdisinfo,EN|GEORGIAN|RU,,,4
+nar_346,camp_266,"Various global crises involve alleged illegal activities, political instability, and documented human rights violations.",bm25_rag,euvsdisinfo,ARABIC|EN,,,4
+nar_684,camp_267,"The provided claims cover disparate topics, including totalitarian regimes, election misinformation, and EU policy.",bm25_rag,euvsdisinfo,GEORGIAN,,,3
+nar_579,camp_267,"These disparate claims cover financial incentives, health disparities, governmental updates, and international assurances.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_51,camp_268,Uncontrolled external military factors and alleged crimes are occurring without full official international acknowledgment.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_299,camp_268,"Tensions are escalating toward conflict, with differing narratives on responsibility and the path to resolution.",bm25_rag,euvsdisinfo,Arabic|German|Russian,,,3
+nar_410,camp_269,US military power and alleged foreign interference are central to current geopolitical conflicts.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_138,camp_269,"Geopolitical tensions are fueling vaccine narratives, with claims involving Russia, China, the EU, and Ukraine.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_728,camp_270,Soros's alleged bias and geopolitical maneuvering are linked to narratives involving Russian actions and US health concerns.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_391,camp_270,Geopolitical tensions and strategic alignments are shaping international political dynamics among key global actors.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_251,camp_271,Russian narratives dismiss Western evidence and sanctions as illegitimate propaganda.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_326,camp_271,Europeans are considering registering Russian and Chinese vaccines despite geopolitical tensions and security concerns.,bm25_rag,euvsdisinfo,Arabic|English|German,,,3
+nar_360,camp_272,"German views on threats are divided, while Europe must bolster defense without forming a separate army amid US decline.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_485,camp_272,The West is allegedly using Ukraine as a proxy to pressure Russia while engaging in questionable activities.,bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_9,camp_273,Egypt supports Nabil Fahmy's Arab League appointment to bolster Arab solidarity and regional security.,bm25_rag,euvsdisinfo,ARABIC|Arabic,,,4
+nar_264,camp_273,"European political actions, separatist efforts, and Georgian policy changes are subjects of current international scrutiny.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_366,camp_274,External powers and internal actors are allegedly manipulating events to control nations and target specific groups.,bm25_rag,euvsdisinfo,ITALIAN|RU,,,3
+nar_396,camp_116,"Tensions near the Russia-Ukraine border are escalating due to NATO actions, nationalism, and territorial disputes.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_4,camp_274,Genetically modified organism feed is prohibited from sale and reexport in the local market.,bm25_rag,euvsdisinfo,RU|Russian,,,4
+nar_895,camp_275,"Misinformation circulates regarding European actions against Russia, vaccine safety, and alleged antisemitic violence.",bm25_rag,euvsdisinfo,Arabic|Ukrainian,,,3
+nar_534,camp_275,Narratives suggest political maneuvering and military actions are driving the conflict's progression and aid requests.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_377,camp_276,"Political figures have faced allegations of misconduct, including impeachment, territorial gains, and controversial refugee agreements.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_991,camp_276,Russia alleges external forces are undermining it while regional educational and militant activities continue.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_874,camp_277,Authoritarian and influential figures are accused of using legal or political means to suppress dissent and control societal values.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_426,camp_277,"Geopolitical tensions are escalating due to alleged military actions, aid conditions, and cyber warfare between nations.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_257,camp_278,Western support and internal political actions are being framed as oppressive or manipulative forces in various nations.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_189,camp_278,"Western political and military actions are characterized by opaque funding, inaccessible legal systems, and broken promises.",bm25_rag,euvsdisinfo,Arabic|Finnish|Russian,,,4
+nar_109,camp_279,Russia denies Western accusations of terrorism and human rights abuses while blaming the West for conflict.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_801,camp_279,RT is legally challenging Ofcom's fines while Russia supports the OSCE mission to ease tensions in Ukraine.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_842,camp_280,Russian influence is asserted as non-interfering while geopolitical shifts challenge European power.,bm25_rag,euvsdisinfo,English|Russian|Spanish,,,4
+nar_228,camp_280,Russia is using disinformation and private military operations to expand its influence globally.,bm25_rag,euvsdisinfo,English,,,3
+nar_629,camp_281,"Geopolitical conflicts involve disputed military movements, media bias, and ongoing regional instability.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_870,camp_67,The West is accused of undermining Russia while allegedly engaging in covert biological warfare and global interference.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_589,camp_281,"Russia is engaged in geopolitical actions, including vaccine distribution claims and military strikes.",bm25_rag,euvsdisinfo,ARABIC|RU|UK,,,3
+nar_781,camp_282,Disinformation falsely links Serbian organizations to wartime atrocities and accuses individuals of spreading pro-Kremlin propaganda.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_598,camp_282,"Russian defense systems are capable of countering US threats, while political discourse involves past controversies and business influence.",bm25_rag,euvsdisinfo,GEORGIAN,,,3
+nar_528,camp_283,"Conflict and political actions are causing widespread humanitarian crises, cultural damage, and electoral manipulation.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_170,camp_283,The provided claims mix historical genocide allegations with unrelated vaccine development delays.,bm25_rag,euvsdisinfo,English|Ukrainian,,,3
+nar_948,camp_284,"External pressures and internal factors are complicating regional stability, development, and health outcomes.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_202,camp_284,Western efforts to discredit Russia are countered by accusations of Western hypocrisy and disinformation campaigns.,bm25_rag,euvsdisinfo,English|Georgian,,,3
+nar_543,camp_285,International scrutiny questions the impartiality of investigations into government-driven economic and chemical program shifts.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_90,camp_285,Global events are being manipulated by external actors through coordinated political and informational campaigns.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_821,camp_286,"NATO expansion is viewed by Russia as a threat, while the US is accused of promoting revisionist narratives about past conflicts.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_491,camp_286,Geopolitical tensions and domestic manipulation are hindering peace efforts and democratic processes.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_73,camp_287,"External actors are undermining Ukrainian, Georgian, and Syrian narratives through perceived betrayals and disinformation.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_741,camp_287,Polish support for Ukraine's energy independence is complicated by readiness issues and broader regional migration trends.,bm25_rag,euvsdisinfo,RU,,,3
+nar_118,camp_100,Russia and Belarus are increasing military strength to challenge NATO's eastern flank.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_367,camp_288,"The provided claims cover diverse, unrelated topics spanning regional politics, international human rights, and economic regulations.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_615,camp_288,Eastern European nations are building independent military capacity outside of established Western alliances.,bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_624,camp_289,The EU is criticized for selectively applying Western norms while undermining democratic principles in its dealings with Russia.,bm25_rag,euvsdisinfo,ARABIC|CS|RU,,,3
+nar_844,camp_289,"These disparate events highlight geopolitical tensions, social unrest, and international disputes across various regions.",bm25_rag,euvsdisinfo,English|Georgian|Spanish,,,4
+nar_708,camp_286,"Increased geopolitical tensions stem from NATO expansion, Russian claims over Crimea, and perceived political instability in the US.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_415,camp_182,"Geopolitical tensions involve allegations of poisoning, international health disputes, and strained EU-Russia relations.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_164,camp_290,"These claims suggest geopolitical maneuvering involving economic narratives, international pressure, and alleged foreign interference.",bm25_rag,euvsdisinfo,Arabic|Russian|Slovak,,,3
+nar_33,camp_290,"Geopolitical tensions involve disputes over energy, NATO's role, and the nature of alleged chemical attacks.",bm25_rag,euvsdisinfo,German|Russian,,,3
+nar_807,camp_291,Western pressure on Belarus is framed against the backdrop of internal Russian and Ukrainian regional instability.,bm25_rag,euvsdisinfo,RU,,,3
+nar_920,camp_291,Russia is preparing for a military offensive while Ukraine faces internal collapse amid global economic instability.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_908,camp_292,Western powers allegedly support authoritarian groups linked to conflict and human rights abuses.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_509,camp_292,External factors and instability complicate international oversight of the Zaporizhzhia NPP and travel advisories.,bm25_rag,euvsdisinfo,ARMENIAN|EN|RU,,,3
+nar_420,camp_293,"Various groups allege significant threats to established norms, whether through election fraud, regional conflict, or cultural ideology.",bm25_rag,euvsdisinfo,ITALIAN|RU,,,3
+nar_395,camp_293,"Advanced cyberattacks are persistently targeting private sector technology companies with sophisticated, selective threats.",bm25_rag,euvsdisinfo,EN,,,3
+nar_192,camp_294,"The EU faces internal divisions while Belarus distances itself amid tensions, and the Ukrainian regime uses historical figures for legitimacy.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_583,camp_294,NATO operates independently of the EU while sanctions against Russia fail to curb Moscow's growing global influence.,bm25_rag,euvsdisinfo,RU,,,3
+nar_548,camp_295,"Western entities are misrepresenting geopolitical events, including climate action and military aid, to unfairly target Russia.",bm25_rag,euvsdisinfo,EN|ES|RU,,,3
+nar_906,camp_286,Tensions are escalating due to perceived military threats and strategic maneuvers involving Russia and NATO allies.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_61,camp_295,"Disinformation narratives blend domestic events, infrastructure changes, and geopolitical conflicts to shape public perception.",bm25_rag,euvsdisinfo,Belarusian|Russian,,,4
+nar_993,camp_296,Russia uses disinformation about ISIS and accuses the US of border revisionism amid NATO expansion.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_427,camp_296,Geopolitical tensions suggest European expansion is unsustainable and that regional agreements are shifting influence dynamics.,bm25_rag,euvsdisinfo,DE|EN|RU,,,3
+nar_82,camp_297,Political pressure and scrutiny are delaying the EU's acceptance of the Sputnik V vaccine.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_926,camp_297,External forces are allegedly orchestrating a campaign to destroy Ukraine while European powers seek greater global influence.,bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_320,camp_298,Major international alliances are experiencing internal crises amid claims of conflict and alleged wartime atrocities.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_142,camp_2,"Misinformation circulates regarding Turkish military activity, Ukrainian election integrity, future pension crises, and alleged US biological warfare testing.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_636,camp_298,Russia is accused of using military force domestically and internationally while dismissing political opposition.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_716,camp_299,Global conflicts and internal societal issues are escalating risks of major power military confrontation.,bm25_rag,euvsdisinfo,CS|EN|RU,,,3
+nar_740,camp_299,Western powers are allegedly engineering chaos in Eastern Europe to destabilize nations and advance geopolitical agendas.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_768,camp_300,The claims question the legality of military summonses while noting unconfirmed diplomatic visits and varied international planning structures.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_312,camp_300,"Various unrelated topics include political challenges, historical allegations, technological limitations, and examination results.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_832,camp_301,Russian military actions are escalating regional tensions and posing a risk to NATO.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_102,camp_301,External pressures and political shifts are undermining Moldova's efforts against Russian influence in Transnistria.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_869,camp_302,Western entities are accused of using opposition figures to destabilize Russia while Russian journalists face rights abuses.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_49,camp_302,Russia is allegedly escalating threats while simultaneously engaging in political maneuvering regarding military aid and domestic assets.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_733,camp_303,Foreign actors are allegedly using disinformation to provoke conflict and undermine democratic processes in Eastern Europe.,bm25_rag,euvsdisinfo,DE|EN|RU,,,3
+nar_373,camp_303,"Various international events involve allegations of misconduct, disputed claims, and global disparities.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_246,camp_304,"Disputed chemical weapon incidents, regional educational updates, and Brexit poll data are disparate topics.",bm25_rag,euvsdisinfo,Arabic|English|Slovak,,,3
+nar_554,camp_304,Governments are increasingly altering legal frameworks to favor state interests over established norms and investments.,bm25_rag,euvsdisinfo,EN,,,3
+nar_747,camp_304,"Media suppressed election coverage, while geopolitical tensions involve Russian military buildup and Ukrainian negotiation disputes.",bm25_rag,euvsdisinfo,ARABIC|FINNISH,,,3
+nar_293,camp_305,These narratives frame current global events through lenses of geopolitical power struggles and strategic maneuvering.,bm25_rag,euvsdisinfo,Arabic|Azerbaijani,,,3
+nar_933,camp_305,"Global concerns include aggressive foreign actions, escalating national debt, and widening economic inequality.",bm25_rag,euvsdisinfo,English|Italian,,,3
+nar_910,camp_306,Russia denies election interference while private contractors operate in Syria with limited public oversight.,bm25_rag,euvsdisinfo,English,,,3
+nar_826,camp_306,International leaders condemned Russia's aggression while security concerns link migration and political instability.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_144,camp_307,Global political leaders are maneuvering for spheres of influence while domestic systems face scrutiny.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_809,camp_307,Foreign powers are allegedly pressuring the US to negotiate while simultaneously undermining diplomatic efforts.,bm25_rag,euvsdisinfo,ARABIC|CS|RU,,,3
+nar_10,camp_308,"Renewable energy and related technologies are often misrepresented as too expensive, unreliable, and harmful.",bm25_rag,euvsdisinfo,EN|English,,,6
+nar_875,camp_308,Authorities are allegedly suppressing truths about past events while current political tensions involve Crimea and detentions.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_877,camp_207,Russia accuses the West of pressuring nations while the EU expands sanctions over Ukraine's sovereignty.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_181,camp_308,"Ongoing international legal and diplomatic issues involve Russia, the Netherlands, and past conflicts.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_715,camp_257,"The conflict in Ukraine has caused immense suffering, while geopolitical tensions escalate between major powers.",bm25_rag,euvsdisinfo,EN|FR|RU,,,3
+nar_273,camp_3,"The provided claims cover diverse and unrelated topics, lacking a single central narrative.",bm25_rag,euvsdisinfo,English|Georgian,,,3
+nar_6,camp_309,"Experts estimate millions of Ukrainians are working abroad, exceeding official data reliability.",bm25_rag,euvsdisinfo,UK|Ukrainian,,,4
+nar_216,camp_309,NATO's actions and covert operations are framed as necessary provocations to support Ukraine against opposing forces.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_65,camp_310,"Accusations surround White Helmets' actions, while the threat of sophisticated nerve agents remains a serious concern.",bm25_rag,euvsdisinfo,English|Russian|Spanish,,,3
+nar_266,camp_310,"Political activism in Russia leads to legal repercussions, while European sanctions and threats endanger asylum seekers.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_450,camp_311,Misinformation narratives are used to frame geopolitical events and sow domestic distrust in democratic processes.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_207,camp_311,International aid and diplomatic efforts are underway to support Ukraine amidst ongoing conflict.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_746,camp_312,"Western influence and internal conflicts are blamed for societal upheaval, migration, and major incidents in Europe.",bm25_rag,euvsdisinfo,ES|FINNISH|UK,,,3
+nar_643,camp_312,"Global conflicts involve unfair trade, troop health risks, and limitations in military responses.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_368,camp_313,Russia disputes poisoning claims while geopolitical tensions drive military modernization among NATO allies.,bm25_rag,euvsdisinfo,RU,,,3
+nar_21,camp_313,"Disputed narratives surround chemical weapons elimination, territorial claims, historical atrocities, and weapon diversion.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_755,camp_314,Misinformation narratives falsely portray the EU as weak while alleging US involvement in biological warfare and organ trafficking.,bm25_rag,euvsdisinfo,ARABIC|EN|FR,,,3
+nar_219,camp_314,"Misinformation narratives link political repression, language dehumanization, and calls for radical political change.",bm25_rag,euvsdisinfo,Armenian|English|Georgian,,,3
+nar_916,camp_315,"Ukraine's situation involves military dangers, political controversies surrounding its leadership, and cultural restrictions against Russian symbols.",bm25_rag,euvsdisinfo,English|Polish|Russian,,,3
+nar_800,camp_315,"Various figures and sources are making unsubstantiated claims regarding political opposition, military escalation, and environmental funding.",bm25_rag,euvsdisinfo,ES|RU,,,3
+nar_163,camp_316,"Political narratives involve accusations of provocation, obscured events, partisan comparisons, and international energy disputes.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_983,camp_316,Heightened border tensions and politically motivated narratives are complicating perceptions of threats from Russia.,bm25_rag,euvsdisinfo,Finnish|Russian,,,3
+nar_126,camp_317,"Geopolitical tensions and alleged foreign interference are fueling domestic crises in Kosovo, Germany, and Ukraine.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_143,camp_317,"Western interventionism is failing, suggesting a need for geopolitical accommodation with Russia.",bm25_rag,euvsdisinfo,French|Russian|Serbian,,,3
+nar_319,camp_318,Geopolitical tensions require strong Western responses while economic integration faces internal and external pressures.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_150,camp_318,"Western unity against Russia is fracturing, while regional conflicts involve disputed human rights claims.",bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_481,camp_319,Political and societal instability is being leveraged to promote narratives questioning established energy policies and national unity.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_185,camp_319,"Russian forces committed atrocities and destruction in Ukrainian suburbs, causing civilian suffering.",bm25_rag,euvsdisinfo,English|Ukrainian,,,4
+nar_570,camp_320,International actors are concerned about Russian military actions while US election processes await official confirmation.,bm25_rag,euvsdisinfo,EN,,,3
+nar_323,camp_320,"External actions, whether sanctions or political pressure, are being framed as harmful campaigns against specific entities.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_671,camp_321,"Geopolitical factors, external interference, and policy decisions significantly impact global security, health, and economic stability.",bm25_rag,euvsdisinfo,ARABIC|DE|UK,,,3
+nar_277,camp_321,"These claims suggest hidden agendas, secret funding, and undisclosed political maneuvering in international affairs.",bm25_rag,euvsdisinfo,Arabic|Polish|Spanish,,,3
+nar_683,camp_322,"The provided claims cover diverse and unrelated topics spanning science, sports, finance, and crime.",bm25_rag,euvsdisinfo,ARABIC|GEORGIAN,,,4
+nar_351,camp_322,Russian narratives suggest NATO's failure and highlight discrimination against Russian speakers.,bm25_rag,euvsdisinfo,DE|RU,,,3
+nar_206,camp_280,Russia is actively undermining Western influence through political and economic actions in Europe and globally.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_381,camp_322,Political and infrastructural changes are occurring amid calls for fair elections and regional tensions.,bm25_rag,euvsdisinfo,BELARUSIAN|RU,,,3
+nar_382,camp_323,Some narratives downplay Western claims about Navalny's poisoning while highlighting geopolitical tensions and vaccine use.,bm25_rag,euvsdisinfo,EN|PL|RU,,,3
+nar_795,camp_3,"The provided claims cover unrelated topics, making a single central narrative claim impossible to form.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_557,camp_323,Misinformation links Ukraine to extremist groups while promoting unverified claims about advanced threats and political narratives.,bm25_rag,euvsdisinfo,EN|RU|UK,,,5
+nar_111,camp_324,"Russian forces allegedly shelled central Kyiv, causing residential damage and casualties.",bm25_rag,euvsdisinfo,English|Ukrainian,,,3
+nar_459,camp_324,"Allegations involve mishandling of dangerous biological materials, vaccine controversies, and historical cover-ups.",bm25_rag,euvsdisinfo,ARABIC|ES|RU,,,3
+nar_665,camp_325,US military labs in Ukraine are allegedly developing pathogens while political praise suggests a potential agreement with Putin.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_452,camp_264,Religious leaders are actively engaged in community and diplomatic efforts while upholding core Christian values of dignity and courage.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_580,camp_325,"External powers dictate Ukrainian policy and military efforts, while vaccine information is subject to misinformation.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_103,camp_326,Western actions are framed as attempts to suppress Russia while ignoring alleged abuses and political resistance.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_612,camp_326,"Russia views NATO expansion as a threat, driving its complex strategic goals and current geopolitical tensions.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_823,camp_327,Attacks on critical infrastructure and geopolitical conflicts carry significant risks of escalation.,bm25_rag,euvsdisinfo,EN|HUNGARIAN,,,3
+nar_70,camp_125,"Misinformation narratives involve geopolitical conflict, unsubstantiated origins of the coronavirus, and state support for specific vaccines.",bm25_rag,euvsdisinfo,Arabic|English|Ukrainian,,,3
+nar_613,camp_327,"Elites are allegedly censoring historical narratives and dissent, leading to the removal of traditional symbols.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_88,camp_328,"Russian aggression in Ukraine is destabilizing Europe, prompting nations like Poland to assert their sovereignty.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_552,camp_328,The government is actively managing public information while advancing key national infrastructure and social projects.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_561,camp_93,Geopolitical tensions persist across Eastern Europe regarding disputed territories and internal societal pressures.,bm25_rag,euvsdisinfo,ARABIC|ES|RU,,,3
+nar_516,camp_328,Various actors are accused of provocative actions and deliberate destruction in international conflicts.,bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_187,camp_329,The Russian state enforces strict control over public expression while allegedly engaging in aggressive actions abroad.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_430,camp_329,Allegations suggest Russian interference and surveillance practices were involved in political activities.,bm25_rag,euvsdisinfo,EN,,,3
+nar_833,camp_330,Russian political interference is alleged in Ukraine's history and recent elections.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_60,camp_3,"The provided claims cover unrelated topics, making a single central claim impossible to formulate.",bm25_rag,euvsdisinfo,Arabic,,,4
+nar_408,camp_330,A coordinated negative PR campaign is targeting a political party amid allegations of illicit funding and Nazism glorification.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_384,camp_331,Russia claims Western actions and NATO expansion are escalating toward conflict while downplaying provocations.,bm25_rag,euvsdisinfo,RU,,,3
+nar_727,camp_331,"Misinformation mixes unrelated personal, legal, and social issues concerning life in the Czech Republic.",bm25_rag,euvsdisinfo,ARABIC|CS,,,3
+nar_971,camp_332,"Global economic and social shifts are creating financial strain across energy, humanitarian aid, and dietary trends.",bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_136,camp_332,"Brexit-related logistical issues are causing fuel shortages in the UK, despite political statements against Nord Stream 2.",bm25_rag,euvsdisinfo,Russian|Spanish,,,3
+nar_304,camp_333,"These disparate claims cover historical politics, geopolitical conflict escalation, and specific political figures.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_914,camp_333,Russia accuses the US and EU of imposing totalitarianism while other nations face geopolitical pressures.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_141,camp_11,"Misinformation narratives link geopolitical events, alleged biological warfare, and cultural discrimination.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_197,camp_334,"External forces are allegedly influencing political events in Belarus, while US policy regarding Ukraine and drug cartels remains uncertain.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_783,camp_334,"Western actions and lack of response enabled Russian aggression, while Russia denies accusations against it.",bm25_rag,euvsdisinfo,ARABIC|EN|HUNGARIAN,,,3
+nar_646,camp_335,The provided claims are too disparate to form a single central narrative.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_217,camp_338,Online casinos attract players with bonuses and promotions while needing local payment support.,bm25_rag,euvsdisinfo,Ukrainian,,,3
+nar_471,camp_335,"Western unity against Russia has weakened, allowing Russia and China to navigate sanctions while framing conflict as externally provoked.",bm25_rag,euvsdisinfo,RU,,,3
+nar_318,camp_336,Misinformation narratives falsely link Russian actors to domestic incidents and deny Kremlin involvement in cyberattacks.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_611,camp_336,"Misinformation narratives link Trump's actions, geopolitical shifts, and vaccine debates to broader global power struggles.",bm25_rag,euvsdisinfo,ARABIC|AZERBAIJANI,,,3
+nar_358,camp_337,Russia's strategic actions are jeopardizing its reputation as a reliable energy supplier while military incidents raise geopolitical concerns.,bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_764,camp_337,"The provided claims cover diverse topics, including genetic modification, political parties, Moldovan politics, visa policies, and Crimean Tatar issues.",bm25_rag,euvsdisinfo,EN|RU,,,5
+nar_221,camp_338,Western support for Ukraine and regional political dynamics are influenced by diverse international opinions.,bm25_rag,euvsdisinfo,Hungarian|Russian,,,3
+nar_688,camp_339,Health officials advise caution regarding travel to Georgia due to potential infectious disease risks.,bm25_rag,euvsdisinfo,GEORGIAN|RU,,,3
+nar_80,camp_339,"Geopolitical events involve alleged manipulation, diplomatic tensions, and international incidents with complex origins.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_756,camp_340,"Misinformation surrounds missing Brazilian children, with claims suggesting mafia involvement in smuggling.",bm25_rag,euvsdisinfo,EN,,,3
+nar_623,camp_340,"Evidence suggests a military-grade nerve agent was involved in an incident, possibly linked to a server error or crash.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_315,camp_341,Foreign interference and surveillance are allegedly being used to discredit political figures and processes.,bm25_rag,euvsdisinfo,Arabic|Russian|Slovak,,,3
+nar_371,camp_341,External military activity and economic shifts are creating unpredictable risks and forcing local changes.,bm25_rag,euvsdisinfo,RU,,,3
+nar_220,camp_342,"International conflicts involve disputed borders, language mandates, and allegations of war crimes.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_470,camp_342,"Global South nations question Western actions against Russia, citing perceived hypocrisy and differing views on the conflict.",bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_989,camp_343,"Geopolitical dynamics involve election concerns, Russian foreign policy shifts, and regional tensions in the Mediterranean.",bm25_rag,euvsdisinfo,Arabic|German|Russian,,,3
+nar_260,camp_49,"Geopolitical tensions are escalating, marked by military conflicts and domestic political challenges.",bm25_rag,euvsdisinfo,English|Hungarian|Russian,,,3
+nar_209,camp_343,"A series of unrelated incidents, including a flight landing, an assault, and alleged election fraud, are being linked together.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_724,camp_344,Authoritarian regimes in Eastern Europe are using political repression and manufactured narratives to control their populations.,bm25_rag,euvsdisinfo,DE|EN|GEORGIAN|RU,,,4
+nar_245,camp_244,External actors are manipulating regional conflicts and political events for strategic gain.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_172,camp_184,"Misinformation narratives link political figures to alleged misconduct, foreign interference, and domestic unrest.",bm25_rag,euvsdisinfo,English,,,4
+nar_563,camp_344,"Saudi Arabia extended its Tax Disputes Law, while the UK held a referendum on its future.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_259,camp_344,"Various nations are making assertions regarding military actions, human rights abuses, and disarmament commitments.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_253,camp_345,US military aid to Ukraine has been frozen amid ongoing hybrid warfare and disputed casualty figures.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_166,camp_345,"Governments are facing scrutiny over military actions, election integrity, and the use of state power.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_562,camp_346,External powers exploit border crises and past conflicts to justify actions and sanctions.,bm25_rag,euvsdisinfo,RU|SK,,,3
+nar_690,camp_194,Misinformation narratives falsely exaggerate events and misrepresent geopolitical alignments to shape public perception.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_626,camp_86,Global elites are using crises to undermine national sovereignty through control and migration agendas.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_501,camp_302,"Russia is pursuing a geopolitical shift while various events involve disputed evidence, coercion claims, and military tension.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_497,camp_346,"Narratives are being shaped by conflicting expert opinions, geopolitical justifications, and external pressures on policy.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_16,camp_347,"Sudden heavy rainfall caused rapid street flooding, trapping people inside city establishments.",bm25_rag,euvsdisinfo,RU|Russian,,,4
+nar_91,camp_347,"Global issues span religious advocacy, international sports achievements, geopolitical tensions, and calls to curb hate speech.",bm25_rag,euvsdisinfo,Arabic,,,4
+nar_478,camp_348,"European populations increasingly view Russia as a primary threat, questioning regional alliances and diplomatic actions.",bm25_rag,euvsdisinfo,EN|GEORGIAN|RU,,,4
+nar_951,camp_348,Geopolitical tensions and contested narratives are being amplified alongside challenges to key testimonies.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_520,camp_349,"Governments are investing in national security, economic stability, and media literacy to manage domestic challenges.",bm25_rag,euvsdisinfo,EN|GEORGIAN|ROMANIAN,,,3
+nar_289,camp_349,"Russian actions, including military presence and port blockades, threaten global stability and food security.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_504,camp_350,Ukrainian authorities are accused of escalating conflict while suppressing domestic opposition amid ongoing military strikes.,bm25_rag,euvsdisinfo,ARMENIAN|RU|UK,,,3
+nar_883,camp_190,Western powers are allegedly pressuring Russia while Ukrainian forces utilize radical nationalists in foreign military operations.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_743,camp_350,Russia maintains a modern military presence near Europe while Ukrainian political actions are questioned.,bm25_rag,euvsdisinfo,PL|RU,,,3
+nar_28,camp_351,The provided sub-claims lack a discernible shared central narrative topic.,bm25_rag,euvsdisinfo,Czech|English|Russian,,,3
+nar_116,camp_351,"Political narratives manipulate public perception regarding pandemic origins, territorial disputes, and international alliances.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_298,camp_352,Conflicting reports suggest Ukrainian military actions and internal incidents are escalating the conflict in Donbas.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_56,camp_352,Russia is facing international scrutiny over alleged political violence and diplomatic tensions.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_350,camp_49,Disputed geopolitical conflicts and territorial claims drive narratives about international relations and political alignments.,bm25_rag,euvsdisinfo,RU,,,3
+nar_68,camp_353,"Belarus views US actions as hostile, complicating diplomacy despite aid reception and evidence contradicting Russian denials.",bm25_rag,euvsdisinfo,English|Italian|Russian,,,3
+nar_630,camp_353,"These claims touch upon nuclear threats, geopolitical grievances, and domestic political opposition in Russia.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_537,camp_253,"These claims suggest geopolitical narratives involving strategic caution, historical revisionism, and political repression.",bm25_rag,euvsdisinfo,ARMENIAN|EN|RU,,,3
+nar_303,camp_354,International actors and regional groups dispute legitimacy while military actions violate established agreements.,bm25_rag,euvsdisinfo,Arabic|Ukrainian,,,3
+nar_242,camp_94,Political maneuvering and external pressures complicate Ukraine's path amid internal resistance and criticism.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_625,camp_354,Russia denies involvement in the Malaysian Boeing crash while past US officials acknowledged its historical perspective.,bm25_rag,euvsdisinfo,RU,,,3
+nar_710,camp_355,"Radical groups are responsible for atrocities, demanding an end to military provocations in Ukraine.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_20,camp_146,"Political instability and internal conflict are driving significant geopolitical shifts in Syria, Ukraine, and the US.",bm25_rag,euvsdisinfo,English|Hungarian|Russian,,,4
+nar_345,camp_355,"Evidence suggests the official narrative regarding the MH17 downing is flawed, prompting calls for further sanctions.",bm25_rag,euvsdisinfo,RU,,,3
+nar_495,camp_356,"Sanctions against Belarus are undermined by Russian support, while media censorship and misinformation remain contested issues.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_265,camp_356,NATO's influence is allegedly being used to direct or manipulate political movements within Georgia.,bm25_rag,euvsdisinfo,Georgian|Russian,,,3
+nar_802,camp_357,"These claims present a mix of national sovereignty assertions, election integrity disputes, alleged arms diversion, and demands for cultural conformity.",bm25_rag,euvsdisinfo,EN|LITHUANIAN|RU,,,4
+nar_27,camp_357,"Evidence suggests Russian claims about Bucha staging are false, while international disputes surround chemical weapons and Ukraine targets Donbas residents.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_15,camp_378,Contact the sales department to inquire about pricing for the product or service.,bm25_rag,euvsdisinfo,EN|English,,,3
+nar_928,camp_358,Mafia smuggling and alleged police complicity are subjects of disputed or investigated claims.,bm25_rag,euvsdisinfo,English,,,3
+nar_418,camp_358,Western powers are accused of ignoring Russian aggression while internal Ukrainian debates focus on war and land reform.,bm25_rag,euvsdisinfo,EN|FR|RU,,,3
+nar_956,camp_359,Russian public trust in Putin is declining amid geopolitical disputes and questions about international narratives.,bm25_rag,euvsdisinfo,Azerbaijani|Russian,,,3
+nar_388,camp_49,"Geopolitical tensions are evident in strained international relations, military actions, and contested citizenship claims.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_392,camp_11,"Misinformation narratives involve alleged secret actions, weapon misuse, and geopolitical distrust across various global events.",bm25_rag,euvsdisinfo,CS|EN|RU,,,4
+nar_937,camp_93,Geopolitical instability and economic vulnerabilities are creating significant crises across Eastern Europe.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_48,camp_359,Russian officials dispute German claims regarding the poisoning of Alexei Navalny with Novichok.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_596,camp_360,Ukrainian instability is linked to internal corruption and external manipulation by Western powers.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_19,camp_360,"Hezbollah's potential use of AI drones mirrors regional military tech, while geopolitical disputes persist over Ukraine and Western territories.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_553,camp_361,"Global economic trends are characterized by fluctuating investment, trade tensions, and evolving government industrial policies.",bm25_rag,euvsdisinfo,EN,,,3
+nar_26,camp_361,"Misinformation circulates regarding Iranian weapons in Syria, US election integrity, and new COVID-19 drug developments.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_590,camp_362,Misinformation promotes unproven remedies for illness while political and economic issues surround global health and energy.,bm25_rag,euvsdisinfo,ARABIC|RU,,,4
+nar_693,camp_362,International agreements and political instability are undermining stability in Eastern Europe.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_793,camp_179,Russia is using geopolitical disputes and sanctions to advance its strategic interests while navigating international relations.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_566,camp_363,"Political power struggles involve hidden agendas, strategic maneuvering, and allegations of electoral fraud.",bm25_rag,euvsdisinfo,RU|SERBIAN,,,4
+nar_526,camp_363,Russian actors actively sought to influence US politics through cyber operations and information warfare.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_966,camp_3,"The provided claims cover unrelated topics, making a single central narrative claim impossible to form.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_655,camp_364,Political actions in Europe are being framed as either supporting Russian interests or driving domestic political shifts.,bm25_rag,euvsdisinfo,EN|ES|PL|RU,,,4
+nar_155,camp_364,European political narratives are being challenged by skepticism regarding official events and economic pressures.,bm25_rag,euvsdisinfo,Italian|Russian,,,3
+nar_609,camp_365,"Geopolitical tensions involve militant threats, military reluctance, and political maneuvering across Europe and the US.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_678,camp_365,"Different events are being framed by various groups to suggest underlying issues of mismanagement, distress, or provocation.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_986,camp_366,Russia faces military challenges while facing increased US aerial threats near its northern territories.,bm25_rag,euvsdisinfo,English|Romanian|Ukrainian,,,3
+nar_667,camp_366,"Investigations into the MH17 crash are shifting blame, suggesting innocence despite sanctions impacting airlines.",bm25_rag,euvsdisinfo,EN,,,3
+nar_159,camp_367,"Disputed pandemic severity, disease control measures, and accelerating climate change are major contemporary global concerns.",bm25_rag,euvsdisinfo,English,,,3
+nar_333,camp_367,"Global crises, including economic collapse and pandemic management, are being framed by political and financial forces.",bm25_rag,euvsdisinfo,German|Russian,,,3
+nar_393,camp_368,External forces are manipulating geopolitical events to undermine the sovereignty of nations like Georgia and Venezuela.,bm25_rag,euvsdisinfo,RU,,,3
+nar_884,camp_368,"Radical groups are blamed for violence and alleged chemical attacks, while Russia frames its military actions as a response to NATO.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_467,camp_369,Russian influence operations are allegedly targeting US politics while promoting questionable vaccine science.,bm25_rag,euvsdisinfo,EN|RU|UK,,,3
+nar_633,camp_369,The claims link increased surveillance of the Muslim Brotherhood with strengthening Arab solidarity and a specific origin story.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_301,camp_370,Russian officials are scrutinizing US claims while political tensions involve historical accountability and threats to critics.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_676,camp_370,"Military exercises successfully fostered international cooperation, while other claims involve social media and app promotion.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_226,camp_371,International tensions surround investigations into war crimes and territorial claims in Ukraine and Syria.,bm25_rag,euvsdisinfo,Arabic|English|Hungarian,,,3
+nar_250,camp_371,Political deception and hidden government actions undermine democratic processes in various nations.,bm25_rag,euvsdisinfo,Russian|Serbian,,,3
+nar_766,camp_372,"Global instability, including war and health crises, is being managed by political actors while official data remains questionable.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_17,camp_372,"Global geopolitical tensions involve covert operations, diplomatic defiance, and vaccine distribution concerns.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_339,camp_373,"Conflicting narratives portray the conflict as a struggle for regime change, territorial integrity, and internal civil breakdown.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_145,camp_373,"Political tensions are rising in Europe, involving EU sanctions, US foreign policy leverage, and calls for Czech departure from the EU.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_238,camp_374,Foreign interference and local instability are allegedly compromising the integrity of regional political and security situations.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_936,camp_374,Various geopolitical and economic events are being framed by specific narratives regarding international relations and domestic changes.,bm25_rag,euvsdisinfo,English|Russian,,,6
+nar_550,camp_375,"Global instability is characterized by military conflict, domestic crises, and unrelated chaotic events.",bm25_rag,euvsdisinfo,ARABIC|EN,,,4
+nar_291,camp_375,Political and military figures in various nations are expressing skepticism or resistance regarding current geopolitical conflicts.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_773,camp_376,"Russia's actions threaten Ukraine's independence, necessitating a careful balance between partnership and defense.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_661,camp_376,Security forces successfully thwarted multiple terrorist plots while the Strait of Hormuz remains open for oil tankers.,bm25_rag,euvsdisinfo,RU,,,3
+nar_425,camp_377,"Geopolitical actors are signaling shifts in international alignments, including regarding European integration and regional conflicts.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_748,camp_377,Internal divisions and external pressures are driving the unsustainable collapse of Ukraine.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_538,camp_378,Disparate global events range from political demands and international disputes to regulatory changes and promotional offers.,bm25_rag,euvsdisinfo,ARABIC|GEORGIAN|RU|UK,,,4
+nar_901,camp_379,"Geopolitical conflict and Western actions are linked to regional instability, including questionable university admissions in Yemen.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_154,camp_379,"Global political and energy dynamics involve vaccine discussions, geopolitical tensions, and increased LNG supply.",bm25_rag,euvsdisinfo,Czech|English,,,3
+nar_441,camp_380,Russia's geopolitical and economic motives drive cyber operations aimed at influencing Western political outcomes.,bm25_rag,euvsdisinfo,EN|ES|RU,,,4
+nar_354,camp_380,"International political and administrative hurdles, including lack of UN approval and varied national pressures, impede mission success.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_904,camp_381,Global elites are allegedly manipulating financial systems to cause economic collapse through restrictive measures.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_179,camp_381,"Russia is accused of involvement in international incidents, including pipeline sabotage and the downing of MH17.",bm25_rag,euvsdisinfo,English|German|Ukrainian,,,3
+nar_513,camp_382,"Political actions and disinformation campaigns are undermining global narratives regarding vaccination, elections, and past tragedies.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_34,camp_382,"International actions involve complex geopolitical disputes over Syria, Iran's nuclear program, and mission access.",bm25_rag,euvsdisinfo,English,,,3
+nar_215,camp_383,"Global events, including conflicts and domestic incidents, are being framed as interconnected narratives.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_941,camp_383,Russia and its allies claim Western actions threaten peace in Donbas while seeking international forums against Ukraine's policies.,bm25_rag,euvsdisinfo,Arabic|English|Spanish,,,3
+nar_704,camp_384,EU sanctions are expanding due to actions undermining Ukraine's sovereignty amidst regional crises.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_290,camp_384,"Major global powers are engaged in geopolitical tensions, using military and political pressure while facing internal strain.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_124,camp_385,"Misinformation campaigns are undermining public trust in political figures, scientific progress, and global health initiatives.",bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_212,camp_385,"Western influence is allegedly driving ideological restructuring in Ukraine, potentially destabilizing the region.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_435,camp_386,Geopolitical tensions are influencing decisions regarding Russian infrastructure and vaccine approvals in Ukraine.,bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,3
+nar_915,camp_386,Political disputes over insurrection claims intersect with border migration and Eastern European defense strategies.,bm25_rag,euvsdisinfo,English|Lithuanian|Polish,,,3
+nar_66,camp_387,"Western actions are allegedly hindering effective countermeasures against Russian influence in health, sports, and military aid.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_152,camp_387,European nations exhibit internal divisions regarding vaccine policies and geopolitical tensions with Russia.,bm25_rag,euvsdisinfo,English,,,3
+nar_634,camp_388,"Egypt is actively engaging in international diplomacy to boost governance, economy, and global presence.",bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_121,camp_388,Disinformation campaigns and legal disputes are complicating narratives surrounding US foreign policy and military involvement.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_776,camp_389,Disparate events highlight issues ranging from severe weather and political delays to public health opportunities.,bm25_rag,euvsdisinfo,RU,,,3
+nar_484,camp_389,"Various political and health narratives involve alleged secret planning, geopolitical maneuvering, and public health advice.",bm25_rag,euvsdisinfo,ARABIC|EN|RU|SK,,,4
+nar_637,camp_390,Specific events challenge broad assumptions about historical interconnectedness and geopolitical actions.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,4
+nar_871,camp_390,The provided sub-claims lack a unified narrative thread connecting them.,bm25_rag,euvsdisinfo,Arabic|English|Italian|Russian,,,5
+nar_867,camp_391,"Russian actions are framed by conflicting narratives, ranging from global warnings to allegations of war crimes and disinformation.",bm25_rag,euvsdisinfo,English|Hungarian|Russian,,,3
+nar_853,camp_391,Ukraine's defense success contrasts with geopolitical shifts and the implications of Russian annexation tactics.,bm25_rag,euvsdisinfo,English|Italian,,,3
+nar_177,camp_392,"The provided claims cover unrelated topics of political controversy, online gambling, and journalistic persecution.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_893,camp_392,"These disparate claims involve political controversy, policy shifts, and alleged public misconduct.",bm25_rag,euvsdisinfo,English|Lithuanian|Russian,,,3
+nar_827,camp_393,"The provided claims discuss Russian influence, Belarusian foreign policy, and military action against Russia.",bm25_rag,euvsdisinfo,RU,,,3
+nar_101,camp_393,"Russia's actions in the region threaten stability, escalating violence and geopolitical instability across Eastern Europe.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_660,camp_394,"Western military actions and global politics are characterized by hypocrisy, instability, and manipulation.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_822,camp_394,NATO's post-Cold War restructuring and denials regarding chemical weapons suggest geopolitical shifts and disputed historical narratives.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_123,camp_395,"Russian investment in Crimea has failed to deliver promised development, fueling disillusionment amid geopolitical tensions.",bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_127,camp_395,Ukraine seeks peace talks while narratives suggest US involvement in pipeline attacks and Ukraine's democratic alignment.,bm25_rag,euvsdisinfo,Armenian|English,,,3
+nar_133,camp_396,Russia is escalating tensions with Ukraine while neighboring countries assist migrants fleeing the conflict.,bm25_rag,euvsdisinfo,English|Ukrainian,,,3
+nar_796,camp_396,"Misinformation narratives often distort historical events, economic realities, and political funding claims.",bm25_rag,euvsdisinfo,RU,,,3
+nar_165,camp_396,Western powers allegedly seek to divide Ukraine and exploit its conflict for geopolitical and financial gain.,bm25_rag,euvsdisinfo,Georgian|Russian,,,3
+nar_620,camp_397,Various actors are accused of manipulating narratives and concealing evidence regarding political events in Russia and Ukraine.,bm25_rag,euvsdisinfo,DE|EN|RU,,,3
+nar_604,camp_397,NATO's actions and historical framing are criticized for selectively portraying threats while altering geopolitical realities.,bm25_rag,euvsdisinfo,RU,,,3
+nar_619,camp_398,"Russia disputes sanctions legality, while regional political tensions involve military claims and historical accountability.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_356,camp_398,"US missile tests, Ukrainian desertions, and regional nuclear tensions highlight escalating geopolitical instability.",bm25_rag,euvsdisinfo,RU,,,3
+nar_383,camp_326,"Western actions, including media campaigns and energy policies, are framed as provocative containment against Russia.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_805,camp_399,"Allegations involve staged provocations, international diplomatic gestures, and accusations of chemical warfare.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_419,camp_399,Putin is accused of rewriting history while Russia seeks military alliances to counter Turkish influence in Eastern Donbas.,bm25_rag,euvsdisinfo,ARABIC|AZERBAIJANI|RU,,,3
+nar_544,camp_400,"The provided claims cover unrelated topics of war crimes, military readiness, and evolving consent laws.",bm25_rag,euvsdisinfo,EN|HUNGARIAN,,,3
+nar_74,camp_400,Global powers are actively manipulating crises while geopolitical tensions persist between major world actors.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_446,camp_25,"Misinformation campaigns target political figures, military events, and international alliances with fabricated narratives.",bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_475,camp_401,Russian state-sponsored poisonings are linked to geopolitical maneuvering affecting EU sanctions and environmental policy.,bm25_rag,euvsdisinfo,EN|ITALIAN|RU,,,3
+nar_876,camp_401,"Savchenko's public persona shifted to a militant figure, reflecting survival and power dynamics in a tense political climate.",bm25_rag,euvsdisinfo,Russian,,,3
+nar_213,camp_402,"Some narratives suggest US foreign policy, including military aid and international oversight, is driven by self-serving political or military interests.",bm25_rag,euvsdisinfo,Arabic|German|Serbian,,,3
+nar_593,camp_402,"Italian political efforts, declining child welfare needs, and Ukrainian aid corruption represent diverse current global issues.",bm25_rag,euvsdisinfo,EN|NORWEGIAN|RU,,,3
+nar_135,camp_403,"Political and international dynamics involve accusations of bias, strategic alliances, and electoral pressures.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_203,camp_403,"Global events are influenced by powerful, often hidden actors and geopolitical maneuvering.",bm25_rag,euvsdisinfo,Arabic|French|Hungarian,,,3
+nar_594,camp_404,Western powers are accused of using media and military actions to advance political agendas against adversaries.,bm25_rag,euvsdisinfo,ARABIC|ES|RU,,,3
+nar_398,camp_404,"A secretive elite is allegedly manipulating global events, including regional conflicts, for hidden agendas.",bm25_rag,euvsdisinfo,HUNGARIAN|RU,,,3
+nar_799,camp_405,Livestock farming contributes to pollution while displaced persons face struggles accessing social support.,bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_390,camp_125,"Misinformation narratives involve geopolitical conflict, unsubstantiated origins of the coronavirus, and vaccine promotion.",bm25_rag,euvsdisinfo,ARABIC|EN|UK,,,3
+nar_322,camp_80,Russia uses disinformation and cyberwarfare while political actors in Eastern Europe face accusations of destabilization.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_378,camp_405,"Political survival and potential conflict surround Poroshenko, while peace talks and religious efforts continue.",bm25_rag,euvsdisinfo,ARABIC|RU|UK,,,3
+nar_8,camp_406,Authorities are installing balance meters in Mestia to combat illegal cryptocurrency mining via electricity monitoring.,bm25_rag,euvsdisinfo,GEORGIAN|Georgian,,,4
+nar_510,camp_406,EU tensions with Belarus rise amid claims of Ukrainian protection for past political figures and EU internal weakness.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_79,camp_407,"Geopolitical conflicts and economic policies are framed as having significant, uneven global impacts.",bm25_rag,euvsdisinfo,Arabic|English|Russian,,,4
+nar_460,camp_11,Misinformation narratives often recycle footage and fabricate claims across diverse geopolitical conflicts.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_825,camp_407,Military operations involve risks from contractor incidents and the use of banned munitions.,bm25_rag,euvsdisinfo,EN,,,3
+nar_370,camp_408,"The status of Donbas under the Minsk Agreements is disputed, with aid provision lacking full international confirmation.",bm25_rag,euvsdisinfo,RU,,,3
+nar_608,camp_408,Global powers are escalating military and nuclear tensions while facing coordinated Western disinformation campaigns.,bm25_rag,euvsdisinfo,EN,,,3
+nar_158,camp_409,"Perceptions of geopolitical threats are shifting, with regional views questioning established alliances and power dynamics.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_923,camp_409,"Russian and Ukrainian narratives involve accusations of atrocities, cyber warfare, and domestic economic threats.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_1,camp_411,"Authorities are implementing price stabilization measures, including a ""family basket"" and GMO feed restrictions.",bm25_rag,euvsdisinfo,GEORGIAN|Georgian|RU|Russian,,,5
+nar_336,camp_364,Political actions in Europe are framed by concerns over Russian influence and national sovereignty.,bm25_rag,euvsdisinfo,English|Polish|Russian|Spanish,,,6
+nar_37,camp_410,"Various actors are accused of military aggression, treaty violations, and internal deception in the region.",bm25_rag,euvsdisinfo,German|Russian,,,4
+nar_302,camp_397,Western and Ukrainian authorities are accused of manipulating historical events and evidence to serve political agendas.,bm25_rag,euvsdisinfo,English|German|Russian,,,3
+nar_407,camp_229,"Misinformation narratives blend technical failures, false health claims, and fabricated criminal events.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_169,camp_410,"Current geopolitical shifts present a severe military challenge to Russia, requiring international cooperation.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_2,camp_411,"The claims cover diverse, unrelated topics across various domains.",bm25_rag,euvsdisinfo,ARABIC|Arabic|EN|English|FR|GEORGIAN|Georgian|ITALIAN|Italian|RU|Russian|UK|Ukrainian,,,83
+nar_699,camp_411,"The claims cover diverse topics including vehicle models, regional Italian cuisine, and medical procedures.",bm25_rag,euvsdisinfo,ITALIAN,,,3
+nar_129,camp_412,Political actors are using manufactured crises and internal distrust to undermine public confidence in democratic processes.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_817,camp_412,"Reports detail widespread election irregularities, military violence, and official administrative updates.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_653,camp_413,"Geopolitical conflicts and military actions are driving global events, overshadowing public health concerns.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,5
+nar_330,camp_413,"Misinformation spreads across various domains, including economics, political events, and public health.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_232,camp_414,The narrative mixes violent conflict imagery with unrelated domestic observations and claims of severe internal societal crises.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_188,camp_414,Geopolitical tensions and alleged threats are driving strategic shifts while misinformation circulates about health risks and foreign intelligence operations.,bm25_rag,euvsdisinfo,English|Finnish|Russian,,,3
+nar_838,camp_415,"Climate change impacts are occurring despite low climate sensitivity, while solar energy offers a proven power solution.",bm25_rag,euvsdisinfo,English,,,3
+nar_565,camp_415,"Geopolitical tensions involve military posturing, nuclear threats, and cultural outreach across Russia, Belarus, and Israel.",bm25_rag,euvsdisinfo,RU,,,3
+nar_959,camp_415,"US foreign policy aims to build democratic alliances against global threats, while other claims involve secret biological experiments and political controversies.",bm25_rag,euvsdisinfo,English|Polish|Spanish,,,3
+nar_631,camp_416,Allegations of human remains in construction and technical setbacks are being disputed or reported across various domains.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_735,camp_416,"Evidence suggests ground shelling caused damage, while poisoning claims lack proof and sanctions are permanent.",bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_403,camp_417,Russia is publicly criticizing the EU over sanctions and vaccine registration delays while maintaining its stance on climate issues.,bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_256,camp_417,"External powers and political maneuvering are influencing European affairs, including vaccine distribution and regional politics.",bm25_rag,euvsdisinfo,English|Lithuanian|Russian,,,5
+nar_234,camp_418,The government is actively managing public information while advancing key national development projects.,bm25_rag,euvsdisinfo,Arabic,,,3
+nar_722,camp_418,Kazakhstan's instability highlights the need for collective security while military movements in Ukraine remain strategically opaque.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_423,camp_419,"Geopolitical instability is evident in Xinjiang, Donbas, and Moldova due to external influences.",bm25_rag,euvsdisinfo,ES|RU,,,3
+nar_765,camp_419,"Poland faces persistent economic hardship, failing public services, and multiple community crises.",bm25_rag,euvsdisinfo,EN,,,3
+nar_980,camp_420,Geopolitical interests influence international support and military production in regions like Ukraine.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_922,camp_420,Russia's actions and geopolitical maneuvers are framed by narratives questioning international transparency and asserting defensive justifications.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_416,camp_421,Authorities used force against protesters while Russian media controlled the narrative of the Skripal poisoning.,bm25_rag,euvsdisinfo,ARMENIAN|EN,,,3
+nar_421,camp_421,Russia claims external forces and NATO are escalating tensions while the central bank may raise rates despite falling inflation.,bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_984,camp_422,"International scrutiny and political pressures are shaping state actions, particularly concerning Russia and Belarus.",bm25_rag,euvsdisinfo,English|Russian,,,4
+nar_261,camp_422,"The COVID-19 crisis is framed as a manufactured event, potentially involving US military interests, to serve economic and geopolitical agendas.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_571,camp_116,"Regional tensions are escalating due to disputed actions by Ukraine, Serbia, and questions about nuclear material.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_675,camp_423,"Geopolitical tensions involve Ukraine's energy choices, EU aid negotiations, and the political fallout surrounding Navalny.",bm25_rag,euvsdisinfo,ARABIC|EN|RU,,,3
+nar_254,camp_286,"Geopolitical tensions involve Russia's demands, NATO concerns over military buildup, and US election certification processes.",bm25_rag,euvsdisinfo,English,,,3
+nar_236,camp_423,"Nations are updating laws and treaties to favor state interests, potentially impacting groups like Russian populations.",bm25_rag,euvsdisinfo,English,,,3
+nar_957,camp_424,"Regional conflicts, such as in Syria and Ukraine, raise concerns about misinformation, escalation, and environmental safety.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_201,camp_424,"Governments and institutions are focusing on education, national stability, and military/agricultural modernization.",bm25_rag,euvsdisinfo,English|Georgian|Romanian,,,4
+nar_35,camp_425,"European inaction, threats against journalists, and the need for unified sanctions highlight international failures regarding Russia.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_524,camp_93,Geopolitical tensions and external pressures are driving significant events in Eastern Europe.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_42,camp_425,"Russia frames its invasion as necessary to neutralize threats, while Ukraine remains committed to defending itself.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_434,camp_426,Russian military actions and international sanctions are linked to civilian harm and vaccine scrutiny.,bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_887,camp_426,Western nations selectively enforce standards while criticizing Russia's discriminatory policies.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_787,camp_427,Global actors are allegedly weaponizing the COVID-19 pandemic while nuclear site communication remains unclear.,bm25_rag,euvsdisinfo,ARMENIAN|EN,,,3
+nar_43,camp_427,"US actions and rising tensions are fueling international conflict concerns, alongside unusual wildlife observations.",bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_607,camp_428,"Global instability, including supply chain disruptions and political dissent, poses significant threats to populations.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_327,camp_428,"The provided claims are unrelated and lack a single, coherent central narrative.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_774,camp_429,Local authorities are allegedly influenced by diaspora groups while regional identities align with Russia and European integration.,bm25_rag,euvsdisinfo,FINNISH|RU,,,3
+nar_709,camp_190,Western nations are allegedly pressuring Russia while Ukrainian authorities utilize foreign conflicts to manage domestic political factions.,bm25_rag,euvsdisinfo,ARABIC|RU,,,3
+nar_199,camp_429,Russian influence operations and geopolitical maneuvering are shaping the current political landscape in Ukraine.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_120,camp_430,Russian and Belarusian authorities are suppressing dissent while restricting international oversight in the conflict zone.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_157,camp_430,Western sources are allegedly using disinformation to discredit Russia regarding its actions in Ukraine and Libya.,bm25_rag,euvsdisinfo,Arabic|English|Hungarian,,,3
+nar_905,camp_431,Global entities are allegedly using the pandemic to exert control and undermine national sovereignty worldwide.,bm25_rag,euvsdisinfo,Russian,,,3
+nar_311,camp_431,Geopolitical conflicts and regional tensions are intertwined with claims of advanced weaponry and foreign policy failures.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_40,camp_432,Russia is publicly dismissing Western warnings while other nations question the legitimacy of Ukrainian political events.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_87,camp_432,Foreign actors are allegedly funding political campaigns and orchestrating movements to influence elections and territorial claims.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_666,camp_49,"Geopolitical tensions involve regional dialogues, violent political unrest, and accusations of historical revisionism between major powers.",bm25_rag,euvsdisinfo,ARABIC|EN,,,3
+nar_114,camp_433,Authorities violently suppressed protests in Russia while questioning the legitimacy of its political processes.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_321,camp_433,"Massive, coordinated violence involving Ukrainian nationalists against Poles occurred in Volhynia during World War II.",bm25_rag,euvsdisinfo,Russian|Ukrainian,,,3
+nar_63,camp_434,Western pressure and media campaigns are impacting Russia while energy flows shift in Eastern Europe.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_965,camp_434,Russia engages in geopolitical interference globally while facing international criticism for its actions.,bm25_rag,euvsdisinfo,Arabic|English,,,3
+nar_331,camp_435,External forces and internal actors are manipulating events in Eastern Europe to achieve political goals.,bm25_rag,euvsdisinfo,English|Russian|Spanish,,,4
+nar_939,camp_435,"The ""Dignity and Truth Platform"" party, known as Nastase, is linked to mandatory mobilization and scrutiny by various global bodies.",bm25_rag,euvsdisinfo,English,,,3
+nar_355,camp_44,Ukraine's political stability and military modernization are hindered by unresolved conflict and international restrictions.,bm25_rag,euvsdisinfo,RU|UK,,,3
+nar_444,camp_436,"These claims cover unrelated geopolitical events, a celebrity gesture, and Ukrainian military legislation.",bm25_rag,euvsdisinfo,ARABIC|UK,,,3
+nar_248,camp_436,Gates is allegedly promoting specific energy and dietary changes while unrelated website issues are being reported.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_235,camp_437,Global FDI flows are declining due to economic volatility and evolving government industrial policies.,bm25_rag,euvsdisinfo,English,,,3
+nar_239,camp_437,Russian disinformation falsely claimed Ukrainian nuclear surrender while NATO supports Ukraine's defense and training efforts.,bm25_rag,euvsdisinfo,English|Russian|Ukrainian,,,3
+nar_824,camp_438,Geopolitical tensions are causing divided international support and questionable adherence to global agreements.,bm25_rag,euvsdisinfo,CS|EN,,,3
+nar_864,camp_438,"Western influence and Russian aggression are driving conflict, causing widespread fear and trauma in the region.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_558,camp_439,"African manufacturing faces long-term challenges despite major industry deals, while other geopolitical narratives involve dismissed claims and failed projects.",bm25_rag,euvsdisinfo,EN|RU,,,4
+nar_703,camp_439,"International bodies rejected Donetsk referendums, while unrelated personal incidents involved a past arrest and funeral attendance.",bm25_rag,euvsdisinfo,RU,,,3
+nar_606,camp_440,"Internal corruption and government overreach are the primary threats to Ukraine, overshadowing external military concerns.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_692,camp_93,"Geopolitical tensions involve military actions, technology restrictions, and ongoing conflict in Eastern Ukraine.",bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_523,camp_440,Some nations are accused of anti-Russian sentiment while authorities allegedly used violence against residents.,bm25_rag,euvsdisinfo,EN|HUNGARIAN|RU,,,3
+nar_994,camp_441,NATO's narrative of Russian threat overlooks its own historical actions and disputed chemical evidence.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_857,camp_441,Global powers are heavily investing in advanced military and space technologies through government budgets.,bm25_rag,euvsdisinfo,Georgian,,,4
+nar_1001,camp_441,"Western policies are allegedly designed to destabilize regions and exert undue influence, while simultaneously promoting harmful narratives.",bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_115,camp_1,"Russia is accused of military buildup near Ukraine, while the US fleet faces restrictions in Russian waters.",bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_896,camp_442,Regional security crises highlight the necessity of organizations like the OДКБ amid opaque military aid and aggressive actions.,bm25_rag,euvsdisinfo,Arabic|English|Russian,,,3
+nar_680,camp_3,"The provided claims cover disparate topics, making a single unifying central claim impossible.",bm25_rag,euvsdisinfo,EN|ITALIAN,,,3
+nar_117,camp_442,External actors and specific regimes are being blamed for various international incidents and investigations.,bm25_rag,euvsdisinfo,English|Polish|Russian,,,3
+nar_329,camp_443,A shared narrative is linking a prominent figure's health crisis with airline operational issues.,bm25_rag,euvsdisinfo,Arabic,,,4
+nar_647,camp_443,A prominent figure's health crisis and airline issues are being linked to broader political and religious narratives.,bm25_rag,euvsdisinfo,ARABIC,,,3
+nar_411,camp_444,"Child protection measures are declining overall, though they remain more prevalent among immigrant youth.",bm25_rag,euvsdisinfo,ARABIC|NORWEGIAN NYNORSK,,,3
+nar_560,camp_49,Geopolitical tensions are rising due to sovereignty disputes and international interference claims.,bm25_rag,euvsdisinfo,EN|RU,,,3
+nar_334,camp_444,Russia frames its actions as humanitarian responses to perceived Ukrainian aggression and violations.,bm25_rag,euvsdisinfo,Arabic|Russian,,,3
+nar_243,camp_49,Geopolitical tensions are rising globally due to competing territorial claims and international interference.,bm25_rag,euvsdisinfo,English|Russian,,,3
+nar_247,camp_445,International actions and geopolitical tensions are creating significant humanitarian and diplomatic challenges globally.,bm25_rag,euvsdisinfo,English|French|Russian,,,3
+nar_812,camp_445,European governments must jointly investigate Belarus's actions to uphold human rights and ensure state accountability.,bm25_rag,euvsdisinfo,EN,,,3
