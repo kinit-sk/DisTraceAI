@@ -51,8 +51,6 @@ from pathlib import Path
 
 import numpy as np
 from rich.console import Console
-from rich import box
-from rich.table import Table
 from rich.terminal_theme import MONOKAI
 from rich.progress import (
     Progress, SpinnerColumn, BarColumn, TextColumn,
@@ -193,77 +191,24 @@ def _vote(
 # ---------------------------------------------------------------------------
 # Metric helpers
 # ---------------------------------------------------------------------------
+# Metric math and the per-language table layout live in core.eval.metrics so
+# this file and eval_claim_detection.py stay in sync. Sub-narrative eval uses
+# the "correctness" flavour: y_true is all-True (every annotated item is a
+# target), y_pred[i] is True iff the HyDE vote matched a ground-truth label.
 
-def _metrics(y_true: list[bool], y_pred: list[bool]) -> dict:
-    tp      = sum(1 for t, p in zip(y_true, y_pred) if t and p)
-    fp      = sum(1 for t, p in zip(y_true, y_pred) if not t and p)
-    fn      = sum(1 for t, p in zip(y_true, y_pred) if t and not p)
-    correct = sum(1 for t, p in zip(y_true, y_pred) if t == p)
-    prec    = tp / (tp + fp) if (tp + fp) else 0.0
-    rec     = tp / (tp + fn) if (tp + fn) else 0.0
-    f1      = 2 * prec * rec / (prec + rec) if (prec + rec) else 0.0
-    acc     = correct / len(y_true) if y_true else 0.0
-    return {"precision": prec, "recall": rec, "f1": f1, "accuracy": acc,
-            "n": len(y_true)}
-
-
-def _per_language_metrics(
-    langs: list[str], y_true: list[bool], y_pred: list[bool]
-) -> dict[str, dict]:
-    buckets: dict[str, tuple[list, list]] = defaultdict(lambda: ([], []))
-    for lang, t, p in zip(langs, y_true, y_pred):
-        buckets[lang][0].append(t)
-        buckets[lang][1].append(p)
-    return {lang: _metrics(yt, yp) for lang, (yt, yp) in sorted(buckets.items())}
+from core.eval.metrics import (
+    correctness_metrics as _metrics,
+    per_language_correctness as _per_language_metrics,
+    print_prf_table,
+)
 
 
 # ---------------------------------------------------------------------------
 # Rich display
 # ---------------------------------------------------------------------------
-
-def _score_style(v: float) -> str:
-    return "bold green" if v >= 0.70 else ("yellow" if v >= 0.40 else "red")
-
-
-def _fmt(v: float) -> str:
-    return f"{v:.3f}"
-
-
-def _print_results(
-    detector_slug: str, overall: dict, per_lang: dict[str, dict]
-) -> None:
-    console.print()
-    console.rule(
-        f"[bold cyan]Sub-narrative Evaluation — {detector_slug}[/bold cyan]"
-    )
-    console.print()
-
-    t = Table(box=box.SIMPLE_HEAVY, show_header=True, header_style="bold white")
-    t.add_column("Scope",  style="bold", min_width=10)
-    t.add_column("P",      justify="right", min_width=7)
-    t.add_column("R",      justify="right", min_width=7)
-    t.add_column("F1",     justify="right", min_width=7)
-    t.add_column("Acc",    justify="right", min_width=7)
-    t.add_column("N",      justify="right", min_width=6)
-
-    def _row(label, m, style=""):
-        t.add_row(
-            label,
-            f"[{_score_style(m['precision'])}]{_fmt(m['precision'])}[/]",
-            f"[{_score_style(m['recall'])}]{_fmt(m['recall'])}[/]",
-            f"[{_score_style(m['f1'])}]{_fmt(m['f1'])}[/]",
-            f"[{_score_style(m['accuracy'])}]{_fmt(m['accuracy'])}[/]",
-            str(m["n"]),
-            style=style,
-        )
-
-    _row("OVERALL", overall, style="bold")
-    t.add_section()
-    for lang, m in per_lang.items():
-        _row(lang, m)
-
-    console.print(t)
-    console.print()
+# (Rich display now lives in core.eval.metrics.print_prf_table — same table
+# layout is shared with eval_claim_detection.)
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -426,7 +371,10 @@ def main(cfg=None) -> None:
         overall  = _metrics(y_true, y_pred)
         per_lang = _per_language_metrics(langs, y_true, y_pred)
 
-        _print_results(detector_slug, overall, per_lang)
+        print_prf_table(
+            console,
+            f"Sub-narrative Evaluation — {detector_slug}",
+            overall, per_lang)
         _save_csv(detector_slug, overall, per_lang)
 
         try:
@@ -439,8 +387,10 @@ def main(cfg=None) -> None:
                         "n": overall["n"]},
                 det_slug=detector_slug,
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # Stats sidecar failures must not abort an eval run — but surface
+            # the cause instead of swallowing it (code-review note E.6).
+            logger.warning("[eval_sub_nar] save_eval_stats failed: %s", exc)
 
         # One structured HTML report per detector.
         from core.eval.report_paths import report_path

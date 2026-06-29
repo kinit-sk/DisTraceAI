@@ -34,7 +34,9 @@ from rich.progress import (
     MofNCompleteColumn, TimeElapsedColumn,
 )
 
-from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
+from core.knowledge_base import (
+    KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI, DATASET_EUVSDISINFO,
+)
 from core.models import make_embedder, make_generator, encode_with_backoff, close_generator
 from core.structures import SubNarrative
 
@@ -58,9 +60,41 @@ _USER_CENTRAL_TMPL = (
     "Claims:\n{claims}"
 )
 
+# Cap on how many canonized claims are concatenated into the central-claim
+# synthesis prompt. With Gemma-4-E4B's 16 384-token context window, a single
+# long EUvsDisinfo article that forms one dense cluster can easily exceed
+# the window when every claim is bullet-listed verbatim. 40 representative
+# claims (≤ ~5 000 prompt tokens incl. instructions on canonized inputs)
+# leaves plenty of headroom and does not materially change the quality of
+# the summary — these claims are already all above the similarity threshold,
+# so any 40 of them sample the same semantic region. Mirrors the cap in
+# core/hierarchy/grouper.py.
+MAX_CLAIMS_FOR_SYNTH = 40
 
-def _synthesize_central_claim(llm, claims: list[str]) -> str:
-    """Ask the LLM to synthesize a single central claim from a list of claims."""
+
+def _synthesize_central_claim(llm,
+                              claims: list[str],
+                              similarities: list[float] | None = None) -> str:
+    """Ask the LLM to synthesize a single central claim from a list of claims.
+
+    When ``len(claims) > MAX_CLAIMS_FOR_SYNTH`` the list is trimmed to the
+    top-N most representative claims; representativeness is taken from
+    ``similarities`` if provided (cosine similarity to the cluster seed),
+    otherwise the original input order wins.
+    """
+    if len(claims) > MAX_CLAIMS_FOR_SYNTH:
+        if similarities is not None and len(similarities) == len(claims):
+            ranked = sorted(
+                zip(claims, similarities), key=lambda t: t[1], reverse=True)
+            trimmed = [c for c, _ in ranked[:MAX_CLAIMS_FOR_SYNTH]]
+        else:
+            trimmed = claims[:MAX_CLAIMS_FOR_SYNTH]
+        logger.debug(
+            "[sub_nar] _synthesize_central_claim: trimmed cluster from %d "
+            "to %d claims (cap=MAX_CLAIMS_FOR_SYNTH) to fit the LLM context.",
+            len(claims), MAX_CLAIMS_FOR_SYNTH)
+        claims = trimmed
+
     bullet_list = "\n".join(f"- {c}" for c in claims)
     user   = _USER_CENTRAL_TMPL.format(claims=bullet_list)
     result = llm(_SYSTEM_CENTRAL, user, max_tokens=80)
@@ -138,9 +172,14 @@ def extract_sub_narratives(
             break
 
         cluster_claims = [claims[i] for i in assigned_global]
+        cluster_sims   = [float(seed_sims[i]) for i in assigned_local]
 
         # --- synthesize central claim ---
-        central = _synthesize_central_claim(llm, cluster_claims)
+        # Pass per-claim seed similarities so that if the cluster is larger
+        # than MAX_CLAIMS_FOR_SYNTH (long article, single dense topic), the
+        # synthesizer keeps the most representative claims rather than the
+        # first 40 in iteration order.
+        central = _synthesize_central_claim(llm, cluster_claims, cluster_sims)
 
         sn_id = f"{article_name}_sn{sn_counter}"
         sub_narratives.append(SubNarrative(
@@ -302,7 +341,13 @@ def generate(
     llm = make_generator(generator_key)
 
     summary: dict = {}
-    for dataset_slug in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:
+    # Plan: process every dataset that exists in the KB so EUvsDisinfo's
+    # interim sub-narratives are visible to the user. _process_dataset is
+    # idempotent and a no-op when the dataset has no canonized claims yet.
+    dataset_slugs = [DATASET_POLYNARRATIVE, DATASET_FAKECTI]
+    if kb.articles(DATASET_EUVSDISINFO):
+        dataset_slugs.append(DATASET_EUVSDISINFO)
+    for dataset_slug in dataset_slugs:
         for detector_slug in detector_slugs:
             console.print(
                 f"\n[bold]{dataset_slug}[/bold]  [dim](detector: {detector_slug})[/dim]"

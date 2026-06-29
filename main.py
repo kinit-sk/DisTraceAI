@@ -1,27 +1,34 @@
 """DisTraceAI — entry point.
 
-Main menu
----------
+Main menu (order matches the Project Implementation Plan §2)
+------------------------------------------------------------
 1. Claim detection
 2. Claim canonization
-3. Claim veracity estimation
-4. Sub-narratives extraction
+3. Sub-narratives extraction
+4. Claim veracity estimation
 5. Narrative extraction
 6. Campaigns extraction
 7. Settings
 
-Steps 1-5 expose two sub-menu actions:
+Steps 1-3 and 5 expose two sub-menu actions:
   • Evaluation  — run the evaluation module for that step
   • Generate    — run the generation / extraction module for that step
 
-Campaigns extraction (6) has a four-item sub-menu instead:
-  • Verify hierarchy  — verify central claims of the existing hierarchy
-  • Deep verify       — verify central + underlying claims
+Step 4 (claim veracity) has NO Generate action of its own — by design (plan
+§4.4: "Generate is not part of 4.4 … the same logic is added to 4.6 Campaign
+Extraction"). The step exposes only Evaluation; the actual hierarchy
+verification lives under the Campaigns submenu.
+
+Campaigns extraction (6) has a two-item sub-menu:
   • Evaluation        — clustering metrics against FakeCTI ground truth
-  • Generate Dataset  — run the full pipeline on EUvsDisinfo and export CSVs
+  • Generate Dataset  — run the full pipeline on EUvsDisinfo and export CSVs.
+                        Verification of the extracted hierarchy is chained
+                        in this action and controlled by the
+                        ``camp_veracity_mode`` setting (plan §4.6):
+                        off / verify_hierarchy / deep_verify.
 
 Settings (7) exposes three sub-menus:
-  • LLM Backend       — switch between vLLM and llama-cpp + GGUF quant
+  • LLM Backend       — switch between vLLM and llama-cpp
   • Embedder & Memory — embedder device, precision, batching, sequence length
   • Advanced / Env    — all remaining OS environment-variable overrides
 """
@@ -30,8 +37,69 @@ from __future__ import annotations
 import os
 import argparse
 import logging
+import subprocess
+import shutil
 
 from config import Config
+
+logger = logging.getLogger(__name__)
+
+
+def _try_module_load() -> None:
+    """Attempt to load HPC environment modules (GCC + CUDA) at startup.
+
+    Some HPC nodes ship CUDA / libcuda only inside an Lmod / Environment
+    Modules toolchain — without ``module load CUDA/12.4.0`` (and a matching
+    GCC), llama-cpp-python's CUDA backend fails to link and vLLM cannot
+    find ``libcuda.so``. Trying the loads here, before any backend imports,
+    means the user gets a working environment by default.
+
+    Mechanism:
+      * Check that the ``module`` shell function (or the ``modulecmd`` /
+        ``lmod`` binary) is reachable. On a non-HPC machine none of these
+        exist and the function returns silently.
+      * Run ``modulecmd python load <mod>``; it prints Python code that
+        mutates os.environ to make the module's binaries / libs visible.
+      * ``exec`` that code in our process so the change persists for
+        subprocess.Popen etc.
+
+    Failures are logged at DEBUG; the function never raises.
+    """
+    # MODULESHOME (Environment Modules) or LMOD_CMD (Lmod) are the canonical
+    # hints that a module system is present.
+    modulecmd = (os.environ.get("LMOD_CMD")
+                 or shutil.which("lmod")
+                 or shutil.which("modulecmd"))
+    if not modulecmd:
+        logger.debug("[startup] no Lmod / Environment Modules present; "
+                     "skipping `module load` step.")
+        return
+
+    for mod in ("GCC/13.2.0", "CUDA/12.4.0"):
+        try:
+            # `<modulecmd> python load <mod>` emits Python on stdout that
+            # patches os.environ; the recommended Lmod integration pattern.
+            res = subprocess.run(
+                [modulecmd, "python", "load", mod],
+                capture_output=True, text=True, timeout=10,
+            )
+            if res.returncode != 0:
+                logger.debug("[startup] module load %s exited %d: %s",
+                             mod, res.returncode, (res.stderr or "").strip())
+                continue
+            code = res.stdout or ""
+            if code.strip():
+                exec(code, {"os": os})  # patches os.environ in this process
+                logger.debug("[startup] module load %s — OK", mod)
+        except FileNotFoundError:
+            logger.debug("[startup] modulecmd %s not executable; aborting "
+                         "module-load attempts.", modulecmd)
+            return
+        except subprocess.TimeoutExpired:
+            logger.debug("[startup] module load %s timed out — skipping.", mod)
+        except Exception as exc:
+            logger.debug("[startup] module load %s raised %s — skipping.",
+                         mod, exc)
 
 # Environment defaults are now managed by Config.load() / Config._apply_env_fields().
 # We keep the two most critical ones here so they fire before any heavy import
@@ -57,6 +125,10 @@ STEPS = [
     "campaigns",
 ]
 
+# Sub-narratives is step 3 in the plan, veracity step 4 (after sub-narratives,
+# before narratives). The earlier ordering had veracity at position 3, which
+# disagreed with the plan and confused users running steps in TUI order.
+
 STEP_LABELS = {
     "claim-detection":    "Claim detection",
     "claim-canonization": "Claim canonization",
@@ -68,28 +140,43 @@ STEP_LABELS = {
 
 STEP_PARAMS: dict[str, list[str]] = {
     "claim-detection":    ["detector"],
-    "claim-canonization": ["canon_detector", "canon_generator", "canon_precision"],
+    "claim-canonization": ["canon_detector", "canon_generator"],
     "sub-narratives":     ["subnar_detector", "subnar_embedder", "subnar_generator",
-                           "subnar_precision", "subnar_min_similarity",
-                           "subnar_min_claims"],
+                           "subnar_min_similarity", "subnar_min_claims"],
+    # Veracity is Eval-only per plan §4.4.
     "claim-veracity":     [],
     "narratives":         ["nar_detector", "nar_extractor", "nar_dense_repr",
-                           "nar_embedder", "nar_generator", "nar_precision",
+                           "nar_embedder", "nar_generator",
                            "nar_assign_threshold", "nar_min_new_size",
-                           "nar_new_threshold", "nar_recluster_cadence",
+                           "nar_new_threshold", "nar_clustering_linkage",
+                           "nar_recluster_cadence",
                            "nar_specfi_hypotheticals", "nar_context1_max_turns",
                            "nar_context1_token_budget"],
-    "campaigns":          [],
+    # Campaigns standalone Generate (CLI --generate campaigns). The TUI's
+    # Campaigns submenu uses "campaigns-generate" from tui.py RELEVANT, which
+    # also drives Generate Dataset and exposes the whole pipeline.
+    "campaigns":          ["camp_detector", "camp_generator", "camp_extractor",
+                           "camp_embedder",
+                           "camp_assign_threshold", "camp_min_new_size",
+                           "camp_new_threshold", "camp_clustering_linkage",
+                           "camp_recluster_cadence",
+                           "camp_sample_size",
+                           "camp_re_extract", "camp_apply_coordination",
+                           "camp_veracity_mode"],
 }
 
 STEP_EVAL_PARAMS: dict[str, list[str]] = {
     "sub-narratives": ["subnar_detector", "subnar_embedder", "subnar_generator",
-                       "subnar_precision", "subnar_min_similarity",
-                       "subnar_min_claims", "subnar_hypotheticals"],
+                       "subnar_min_similarity", "subnar_min_claims",
+                       "subnar_hypotheticals"],
     "narratives":     ["nar_detector", "nar_extractor", "nar_dense_repr",
-                       "nar_embedder", "nar_generator", "nar_precision",
+                       "nar_embedder", "nar_generator",
                        "nar_specfi_hypotheticals", "nar_context1_max_turns",
                        "nar_context1_token_budget", "nar_eval_split"],
+    "claim-veracity": ["ver_generator", "ver_paraphrase_generator",
+                       "ver_max_turns", "ver_token_budget",
+                       "ver_confidence_threshold",
+                       "ver_n_samples", "ver_n_paraphrases"],
 }
 
 EVAL_MODULES: dict[str, str] = {
@@ -177,8 +264,8 @@ def run_generate(step: str, cfg: Config) -> None:
     elif step == "claim-canonization":
         from core.gen.gen_canonize import canonize
         console.print(f"\n[bold cyan]Claim canonization — Generate[/bold cyan]")
-        console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}  Precision: {cfg.canon_precision}[/dim]\n")
-        summary = canonize(cfg.canon_detector, cfg.canon_generator, cfg.canon_precision, kb)
+        console.print(f"[dim]Detector: {cfg.canon_detector}  Generator: {cfg.canon_generator}[/dim]\n")
+        summary = canonize(cfg.canon_detector, cfg.canon_generator, kb)
         console.print("\n[bold]Summary:[/bold]")
         for dataset, counts in summary.items():
             console.print(f"  {dataset}: {counts}")
@@ -234,21 +321,30 @@ def run_generate(step: str, cfg: Config) -> None:
                 console.print(f"  {dataset}/{detector}: {counts}")
         save_generate_stats(step, summary)
     elif step == "claim-veracity":
-        from core.gen.gen_veracity import verify_hierarchy
-        console.print(f"\n[bold cyan]Claim veracity — Verify hierarchy[/bold cyan]")
+        # Plan §4.4: claim veracity has no Generate of its own. Verification
+        # against the hierarchy is part of step 6 (Campaigns) and is reachable
+        # via the Campaigns submenu's "Verify hierarchy" / "Deep verify"
+        # actions. We keep this elif so a stray --generate claim-veracity
+        # exits cleanly with an explanation rather than crashing.
         console.print(
-            f"[dim]Sources: {cfg.ver_sources}  Generator: {cfg.ver_generator}[/dim]\n")
-        summary = verify_hierarchy(kb, cfg, deep=False)
-        save_generate_stats(step, summary)
+            "[yellow]Claim veracity has no standalone Generate step.[/yellow]\n"
+            "Run hierarchy verification via:  "
+            "[green]Campaigns → Verify hierarchy[/green] (TUI), or use the\n"
+            "campaigns submenu directly. See Project Implementation Plan §4.4.")
     elif step == "campaigns":
         from core.gen.gen_campaigns import generate as gen_camp
-        from core.knowledge_base import DATASET_FAKECTI, DATASET_POLYNARRATIVE
+        from core.knowledge_base import (
+            DATASET_FAKECTI, DATASET_POLYNARRATIVE, DATASET_EUVSDISINFO,
+        )
         console.print(f"\n[bold cyan]Campaigns — Generate[/bold cyan]")
         console.print(
             f"[dim]Detector: {cfg.camp_detector}  Extractor: {cfg.camp_extractor}  "
             f"Embedder: {cfg.camp_embedder}[/dim]\n")
         summary = {}
-        for dataset in (DATASET_FAKECTI, DATASET_POLYNARRATIVE):
+        datasets = [DATASET_FAKECTI, DATASET_POLYNARRATIVE]
+        if kb.articles(DATASET_EUVSDISINFO):
+            datasets.append(DATASET_EUVSDISINFO)
+        for dataset in datasets:
             result = gen_camp(
                 dataset=dataset,
                 detector_path=cfg.camp_detector,
@@ -265,43 +361,31 @@ def run_generate(step: str, cfg: Config) -> None:
 
 
 def _campaigns_submenu(cfg: Config) -> None:
-    """4-item campaigns submenu: Verify / Deep Verify / Evaluation / Generate Dataset."""
+    """Two-item Campaigns submenu: Evaluation / Generate Dataset.
+
+    Plan §4.6: campaign verification ('Verify hierarchy' / 'Deep verify') is no
+    longer a standalone submenu action — it is chained from Generate Dataset
+    via the ``camp_veracity_mode`` setting (off / verify_hierarchy /
+    deep_verify). This keeps the workflow consistent with the plan, which
+    describes verification as part of the campaign-extraction Generate flow.
+    """
     from core.ui import tui as ui
     from pathlib import Path
     from core.knowledge_base import KnowledgeBase
 
-    items = ["Verify hierarchy", "Deep verify", "Evaluation",
-             "Generate Dataset", "← Back"]
+    items = ["Evaluation", "Generate Dataset", "← Back"]
     while True:
         choice = ui.arrow_menu("Campaigns extraction", items)
-        if choice < 0 or choice == 4:
+        if choice < 0 or choice == 2:
             return
 
         if choice == 0:
-            if ui.prelaunch_review(cfg, "campaigns-verify"):
-                from core.gen.gen_veracity import verify_hierarchy
-                kb = KnowledgeBase(Path("knowledge"))
-                summary = verify_hierarchy(kb, cfg, deep=False)
-                from core.ui.stats import save_generate_stats
-                save_generate_stats("claim-veracity", summary)
-                input("\n[done] press Enter to continue…")
-
-        elif choice == 1:
-            if ui.prelaunch_review(cfg, "campaigns-deep-verify"):
-                from core.gen.gen_veracity import verify_hierarchy
-                kb = KnowledgeBase(Path("knowledge"))
-                summary = verify_hierarchy(kb, cfg, deep=True)
-                from core.ui.stats import save_generate_stats
-                save_generate_stats("claim-veracity", {"deep": summary})
-                input("\n[done] press Enter to continue…")
-
-        elif choice == 2:
             if ui.prelaunch_review(cfg, "campaigns-eval"):
                 from core.eval.eval_campaigns import main as eval_camp
                 eval_camp(cfg)
                 input("\n[done] press Enter to continue…")
 
-        elif choice == 3:
+        elif choice == 1:
             if ui.prelaunch_review(cfg, "campaigns-generate"):
                 from core.gen.gen_dataset import generate_dataset
                 summary = generate_dataset(cfg)
@@ -349,13 +433,18 @@ def _settings_backend(cfg: Config, ui) -> None:
         allow_launch=False,
         save_on_exit=True,
     )
-    # Inform the user they may need to switch conda envs
+    # The backend choice is persisted to config.json; activate_distrace.sh
+    # reads it and `conda activate`s the matching env automatically. Anyone
+    # not using the helper still gets a hand-typed reminder.
     from rich.console import Console
     from rich.panel import Panel
     Console().print(Panel(
         f"[bold]Active backend set to:[/bold] [cyan]{cfg.llm_backend}[/cyan]\n\n"
-        "If you changed the backend, remember to activate the matching conda env "
-        "before running any pipeline step:\n\n"
+        "[bold]Recommended:[/bold] exit DisTraceAI and re-launch via the helper, "
+        "which reads [italic]config.json[/italic] and activates the right env:\n\n"
+        "  [green]source ./activate_distrace.sh[/green]\n"
+        "  [green]./activate_distrace.sh python main.py[/green]\n\n"
+        "Or activate manually:\n\n"
         "  [dim]vLLM:[/dim]      [green]conda activate distrace-vllm[/green]\n"
         "  [dim]llama-cpp:[/dim] [green]conda activate distrace-llama[/green]",
         title="[bold yellow]⚠  Conda environment reminder[/bold yellow]",
@@ -475,6 +564,12 @@ def main() -> None:
                         help="run full pipeline on EUvsDisinfo and export CSVs")
     Config.add_cli_arguments(parser)
     args = parser.parse_args()
+
+    # Try to load HPC modules BEFORE anything imports vLLM / llama-cpp;
+    # those backends look up libcuda / libcudart at import time and the
+    # Lmod-only nodes won't have them on the default LD_LIBRARY_PATH.
+    # Silent on non-HPC machines.
+    _try_module_load()
 
     cfg = Config.load()
     cfg.apply_cli(args)

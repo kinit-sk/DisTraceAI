@@ -35,6 +35,7 @@ import os
 from collections import defaultdict
 from pathlib import Path
 
+import numpy as np
 from rich.console import Console
 from rich.progress import (
     Progress, SpinnerColumn, BarColumn, TextColumn,
@@ -48,8 +49,6 @@ from core.models import make_embedder, make_generator, close_generator
 
 logger  = logging.getLogger(__name__)
 console = Console()
-
-_MASSIVESUMM_DATASET = "massivesumm"   # dataset slug for MassiveSumm runs
 
 
 # ---------------------------------------------------------------------------
@@ -221,20 +220,30 @@ def compute_coordination(campaign: Campaign, kb: KnowledgeBase,
 
 
 # ---------------------------------------------------------------------------
-# Campaign assigner (mirrors narrative assigner one level up)
+# Campaign assigner (mirrors AgglomerativeGrouper one level up)
 # ---------------------------------------------------------------------------
 
 class CampaignAssigner:
-    """Assign narratives to campaigns using the same mechanism as the narrative
-    assigner, but operating on Narrative objects rather than SubNarrative."""
+    """Streaming narrative→campaign assigner using AgglomerativeClustering.
+
+    Same merge-or-pool semantics as ``AgglomerativeGrouper`` but at the
+    Narrative→Campaign level. The pool of unassigned narratives is
+    re-clustered (sklearn ``AgglomerativeClustering`` with cosine distance)
+    every time a miss grows the pool; any cluster with ≥ ``min_new_size``
+    members becomes a new Campaign. A final ``flush_pool()`` lifts stragglers
+    after the last narrative streams through.
+
+    The earlier ``_try_form_new`` required ``min_new_size`` items pairwise
+    above a high cosine bound — almost never satisfied on diverse corpora and
+    a contributing cause of the "0 campaigns" failure mode.
+    """
 
     def __init__(self, backend, corpus, kb, llm,
                  dataset: str, det_slug: str,
                  threshold: float,
                  min_new_size: int = 2,
-                 new_threshold: float = 0.70) -> None:
-        # Reuse RetrievalAssigner — it works on any object with .id and .central_claim
-        # We wrap Narrative objects to look like SubNarrative for the assigner
+                 new_threshold: float = 0.50,
+                 linkage: str = "average") -> None:
         self._kb = kb
         self._dataset = dataset
         self._det_slug = det_slug
@@ -244,6 +253,7 @@ class CampaignAssigner:
         self._threshold = threshold
         self._min_new = min_new_size
         self._new_thr = new_threshold
+        self._linkage = linkage
         self._campaigns: dict[str, Campaign] = {
             c.id: c for c in kb.campaigns(dataset, backend.name)
         }
@@ -251,11 +261,12 @@ class CampaignAssigner:
             self._corpus.add_cluster(c.id, [c.central_claim])
         self._seq = self._max_seq()
         self._unassigned: dict[str, Narrative] = {}
-        # Cache all narratives across backends for O(1) lookup in assign/synthesize
+        # Cache all narratives across backends so the o(1) member-claim lookup
+        # used during synthesize doesn't hit the KB on every merge.
         self._nar_index: dict[str, Narrative] = {}
-        for backend in ("dense", "bm25-rag", "bm25_rag",
-                        "specfi-cs", "cspecfi", "context-1"):
-            for n in kb.narratives(dataset, backend):
+        for be in ("dense", "bm25-rag", "bm25_rag",
+                   "specfi-cs", "specfi-ccs", "cspecfi", "context-1"):
+            for n in kb.narratives(dataset, be):
                 self._nar_index.setdefault(n.id, n)
 
     def _max_seq(self) -> int:
@@ -263,21 +274,45 @@ class CampaignAssigner:
                 if cid.startswith("camp_") and cid.split("_")[1].isdigit()]
         return max(seqs) + 1 if seqs else 0
 
+    # Match AgglomerativeGrouper.MAX_CLAIMS_FOR_SYNTH: same context-overflow
+    # risk applies one level up (campaigns of many narratives). See the
+    # 16385-token crash analysed in core/hierarchy/grouper.py.
+    _MAX_CLAIMS_FOR_SYNTH = 40
+    _RESYNTH_MILESTONES = frozenset({2, 3, 4, 5, 10, 25, 50, 100, 250, 500,
+                                     1000, 2500, 5000, 10000})
+
     def _synthesize(self, claims: list[str]) -> str:
         if not claims or self._llm is None:
             return max(claims, key=len) if claims else ""
+
+        sample = claims
+        if len(sample) > self._MAX_CLAIMS_FOR_SYNTH:
+            sample = sorted(claims, key=len, reverse=True)[: self._MAX_CLAIMS_FOR_SYNTH]
+
         system = (
             "You are a precise analytical assistant. Given a list of related "
             "disinformation narrative claims, produce a single concise campaign "
             "central claim (one sentence, <=25 words). Output only the claim. "
             "/no_think"
         )
-        user = "\n".join(f"- {c}" for c in claims)
+        user = "\n".join(f"- {c}" for c in sample)
         try:
             out = (self._llm(system, user, max_tokens=60) or "").strip()
         except TypeError:
             out = (self._llm(system, user) or "").strip()
         return out or (claims[0] if claims else "")
+
+    @staticmethod
+    def _conf_mean(pairs: list[tuple[float, float]]) -> tuple[float, float]:
+        if not pairs:
+            return 0.5, 0.5
+        num = sum(v * c for v, c in pairs)
+        den = sum(c for _, c in pairs)
+        return (num / den if den > 0 else 0.5), (den / len(pairs))
+
+    def _find_nar(self, nar_id: str) -> Narrative | None:
+        """O(1) lookup via the pre-built index; keeps KB round-trips minimal."""
+        return self._nar_index.get(nar_id)
 
     def _create_campaign(self, narratives: list[Narrative]) -> Campaign:
         claims = [n.central_claim for n in narratives]
@@ -290,7 +325,7 @@ class CampaignAssigner:
             member_count=len(narratives),
             languages=sorted({l for n in narratives for l in n.languages}),
         )
-        # Propagate veracity from member narratives
+        # Propagate veracity from member narratives (conf-weighted).
         ver_pairs = [(n.veracity, n.veracity_confidence or 0.5)
                      for n in narratives if n.veracity is not None]
         if ver_pairs:
@@ -304,6 +339,52 @@ class CampaignAssigner:
         self._kb.save_campaign(camp)
         return camp
 
+    # ---- pool re-clustering ---------------------------------------------
+    def _cluster_pool(self, *, force: bool = False) -> list[Campaign]:
+        """Run agglomerative clustering over the unassigned narrative pool."""
+        pool = list(self._unassigned.values())
+        if len(pool) < self._min_new:
+            return []
+
+        vecs = np.stack([self._corpus.encode_query(n.central_claim) for n in pool])
+        distance_threshold = max(0.0, 1.0 - float(self._new_thr))
+
+        try:
+            from sklearn.cluster import AgglomerativeClustering
+        except ImportError as exc:                                  # pragma: no cover
+            logger.error("[camp] sklearn missing: %s", exc)
+            return []
+        try:
+            labels = AgglomerativeClustering(
+                n_clusters=None,
+                metric="cosine",
+                linkage=self._linkage,
+                distance_threshold=distance_threshold,
+            ).fit_predict(vecs)
+        except Exception as exc:                                    # pragma: no cover - runtime
+            logger.warning("[camp] agglomerative clustering failed (%s); skipping", exc)
+            return []
+
+        groups: dict[int, list[Narrative]] = {}
+        for n, lbl in zip(pool, labels):
+            groups.setdefault(int(lbl), []).append(n)
+
+        created: list[Campaign] = []
+        for members in groups.values():
+            if len(members) < self._min_new and not force:
+                continue
+            if len(members) < max(2, self._min_new) and force:
+                continue
+            camp = self._create_campaign(members)
+            created.append(camp)
+            for n in members:
+                self._unassigned.pop(n.id, None)
+        return created
+
+    def flush_pool(self) -> list[Campaign]:
+        """Final pass: promote any straggler clusters that meet the size floor."""
+        return self._cluster_pool(force=True)
+
     def assign(self, nar: Narrative) -> Campaign | None:
         ranked = self._backend.rank(nar.central_claim, self._corpus, k=1)
         if ranked and ranked[0][1] >= self._threshold:
@@ -311,13 +392,21 @@ class CampaignAssigner:
             if nar.id not in camp.narratives:
                 camp.narratives.append(nar.id)
                 camp.member_count = len(camp.narratives)
-                # Update central claim (all_claims was a dead variable; synthesize directly)
-                camp.central_claim = self._synthesize(
-                    [n.central_claim for n_id in camp.narratives
-                     if (n := self._find_nar(n_id)) is not None])
-                # Merge languages
+
+                # Only re-synthesize the campaign central claim at milestones
+                # (see _RESYNTH_MILESTONES); the cap inside _synthesize stops
+                # any single call from overflowing the context window anyway,
+                # but skipping calls saves real LLM time on large campaigns.
+                if camp.member_count in self._RESYNTH_MILESTONES:
+                    member_claims = [n.central_claim
+                                     for n_id in camp.narratives
+                                     if (n := self._find_nar(n_id)) is not None]
+                    camp.central_claim = self._synthesize(member_claims)
+                    self._corpus.remove_cluster(camp.id)
+                    self._corpus.add_cluster(camp.id, [camp.central_claim])
+
                 camp.languages = sorted(set(camp.languages) | set(nar.languages))
-                # Update veracity
+                # Conf-weighted veracity update.
                 if nar.veracity is not None:
                     existing_v = [(camp.veracity or 0.5,
                                    camp.veracity_confidence or 0.5)]
@@ -326,41 +415,16 @@ class CampaignAssigner:
                                        nar.veracity_confidence or 0.5)])
                     camp.veracity = merged
                     camp.veracity_confidence = mc
-                # Replace cluster in corpus
-                self._corpus.remove_cluster(camp.id)
-                self._corpus.add_cluster(camp.id, [camp.central_claim])
                 self._kb.save_campaign(camp)
             return camp
 
+        # No match → pool, then re-cluster.
         self._unassigned[nar.id] = nar
-        return self._try_form_new(nar)
-
-    def _find_nar(self, nar_id: str) -> Narrative | None:
-        """O(1) lookup via the pre-built index; keeps KB round-trips minimal."""
-        return self._nar_index.get(nar_id)
-
-    @staticmethod
-    def _conf_mean(pairs: list[tuple[float, float]]) -> tuple[float, float]:
-        if not pairs:
-            return 0.5, 0.5
-        num = sum(v * c for v, c in pairs)
-        den = sum(c for _, c in pairs)
-        return (num / den if den > 0 else 0.5), (den / len(pairs))
-
-    def _try_form_new(self, seed: Narrative) -> Campaign | None:
-        candidates = [seed]
-        q = self._corpus.encode_query(seed.central_claim)
-        for other in self._unassigned.values():
-            if other.id == seed.id:
-                continue
-            score = float(q @ self._corpus.encode_query(other.central_claim))
-            if score >= self._new_thr:
-                candidates.append(other)
-        if len(candidates) < self._min_new:
-            return None
-        for n in candidates:
-            self._unassigned.pop(n.id, None)
-        return self._create_campaign(candidates)
+        created = self._cluster_pool()
+        for camp in created:
+            if nar.id in camp.narratives:
+                return camp
+        return None
 
     @property
     def campaigns(self) -> dict[str, Campaign]:
@@ -489,6 +553,7 @@ def generate(
             threshold=cfg.camp_assign_threshold,
             min_new_size=cfg.camp_min_new_size,
             new_threshold=cfg.camp_new_threshold,
+            linkage=getattr(cfg, "camp_clustering_linkage", "average"),
         )
 
         cadence = max(0, int(cfg.camp_recluster_cadence))
@@ -510,13 +575,33 @@ def generate(
                 if cadence and i % cadence == 0:
                     sweeps += 1
 
-        # Compute coordination signals and classify
-        console.print(
-            f"  Computing coordination signals for "
-            f"{len(assigner.campaigns)} campaigns…")
-        for camp in assigner.campaigns.values():
-            compute_coordination(camp, kb, dataset, det_slug, cfg)
-            kb.save_campaign(camp)
+        # Final pool flush: lift any straggler clusters whose ≥ min_new_size
+        # was only satisfied at the very tail of the narrative stream. Without
+        # this, fast streams + a high cadence can silently drop campaigns.
+        final_created = assigner.flush_pool()
+        if final_created:
+            logger.info("[camp] flush_pool created %d additional campaign(s)",
+                        len(final_created))
+
+        # Compute coordination signals and classify (plan §4.6:
+        # "Apply coordination detection: on/off"). When 'off', we still
+        # persist the campaigns but skip the coord-signal pass — useful for
+        # fast iteration on extraction tuning.
+        apply_coord = str(getattr(cfg, "camp_apply_coordination", "on")).lower()
+        if apply_coord == "off":
+            console.print(
+                f"  [dim]Skipping coordination signals "
+                f"(camp_apply_coordination='off') for "
+                f"{len(assigner.campaigns)} campaigns.[/dim]")
+            for camp in assigner.campaigns.values():
+                kb.save_campaign(camp)
+        else:
+            console.print(
+                f"  Computing coordination signals for "
+                f"{len(assigner.campaigns)} campaigns…")
+            for camp in assigner.campaigns.values():
+                compute_coordination(camp, kb, dataset, det_slug, cfg)
+                kb.save_campaign(camp)
 
         counts = {
             "campaigns": len(assigner.campaigns),

@@ -9,7 +9,7 @@
 # own and llama-cpp is not involved anywhere.
 #
 # Usage:
-#   conda activate distrace
+#   conda activate distrace-vllm     # or distrace-llama / distrace
 #   ./install_noderag_local.sh [SRC_DIR]
 set -euo pipefail
 
@@ -20,14 +20,22 @@ PATCH="$HERE/noderag_compat.patch"
 SRC_DIR="${1:-$HERE/NodeRAG_local}"
 
 if [[ -z "${CONDA_PREFIX:-}" ]]; then
-  echo "ERROR: no active conda env. Run 'conda activate distrace' first." >&2
+  echo "ERROR: no active conda env. Run 'conda activate distrace-vllm' (or distrace-llama) first." >&2
   exit 1
 fi
-if [[ "${CONDA_DEFAULT_ENV:-}" != "distrace" ]]; then
-  echo "ERROR: the 'distrace' env is not active (got '${CONDA_DEFAULT_ENV:-none}')." >&2
-  echo "       Run 'conda activate distrace' first so NodeRAG installs into it." >&2
-  exit 1
-fi
+# Accept any of the distrace env names that setup.sh can create:
+#   distrace           — legacy single-env layout
+#   distrace-vllm      — vLLM branch (Python 3.12)
+#   distrace-llama     — llama-cpp branch (Python 3.11)
+case "${CONDA_DEFAULT_ENV:-}" in
+  distrace|distrace-vllm|distrace-llama) : ;;
+  *)
+    echo "ERROR: not in a distrace conda env (got '${CONDA_DEFAULT_ENV:-none}')." >&2
+    echo "       Expected one of: distrace | distrace-vllm | distrace-llama." >&2
+    echo "       Run e.g. 'conda activate distrace-vllm' first." >&2
+    exit 1
+    ;;
+esac
 echo ">> Target conda env: $CONDA_PREFIX"
 echo ">> NodeRAG source dir: $SRC_DIR"
 
@@ -252,7 +260,8 @@ else
   echo "       The real ImportError is printed below. If it's a missing module" >&2
   echo "       (NodeRAG under-declares some deps and we install it --no-deps)," >&2
   echo "       'python -m pip install <that-module>' and re-run this script." >&2
-  echo "       Otherwise confirm you are in the 'distrace' env. Diagnostics:" >&2
+  echo "       Otherwise confirm you are in a distrace env (distrace / distrace-vllm /" >&2
+  echo "       distrace-llama). Diagnostics:" >&2
   echo "         which python; python -c 'import sys; print(sys.executable)'" >&2
   python -c "import NodeRAG" || true   # surface the real ImportError
   exit 1

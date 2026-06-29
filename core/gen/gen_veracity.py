@@ -4,10 +4,10 @@ Automatically verifies the True / False / Disputed status of central claims
 from sub-narratives and narratives using a Context-1 agentic evidence-gathering
 harness over three evidence sources, followed by a Gemma4-e2b verdict synthesis.
 
-Evidence sources (controlled by ``ver_sources`` in Config):
-  * multiclaim  — local MultiClaim CSV (claims + human ratings). Always available.
-  * wikipedia   — online Wikipedia REST API. Degrades gracefully when offline.
-  * web         — online web search (DuckDuckGo). Optional, degrades gracefully.
+Evidence sources (fixed order, hard-coded — not a parameter):
+  1. multiclaim  — local MultiClaim CSV (claims + human ratings).
+  2. wikipedia   — online Wikipedia REST API. Degrades gracefully when offline.
+  3. web         — online web search (DuckDuckGo). Degrades gracefully when offline.
 
 The harness is shared with the Context-1 narrative retrieval llm_backends
 (``core.hierarchy.harness.AgenticSearchHarness``) — the only difference is the
@@ -157,7 +157,15 @@ class _MultiClaimTools:
         texts      = [f"{r['text']} [{r['label']}]" for r in self._records]
         self._ids  = [r["id"] for r in self._records]
 
-        # Encode in one batched call with a Rich progress bar
+        # Encode in chunks so the Rich bar shows real progress. The previous
+        # single-call `encode(texts)` finished as 0/1 → 1/1 with no visible
+        # progress over the 137k-claim MultiClaim corpus. 1024 is a chunk
+        # size that keeps vLLM / sentence-transformers throughput close to
+        # their best while giving the user a UI update roughly every couple
+        # of seconds on an A100.
+        _CHUNK = 1024
+        n_total = len(texts)
+        chunk_embs: list[np.ndarray] = []
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -165,13 +173,15 @@ class _MultiClaimTools:
             console=console,
         ) as prog:
             task = prog.add_task(
-                f"[cyan]Encoding MultiClaim corpus "
-                f"({len(texts)} claims)…[/cyan]",
-                total=1,
+                f"[cyan]Encoding MultiClaim corpus[/cyan]",
+                total=n_total,
             )
-            raw        = self._embedder.encode(texts)
-            prog.advance(task)
+            for start in range(0, n_total, _CHUNK):
+                batch = texts[start:start + _CHUNK]
+                chunk_embs.append(self._embedder.encode(batch))
+                prog.advance(task, advance=len(batch))
 
+        raw        = np.concatenate(chunk_embs, axis=0) if chunk_embs else np.zeros((0, 0))
         norms      = np.linalg.norm(raw, axis=1, keepdims=True)
         self._embs = raw / np.where(norms == 0, 1e-10, norms)
         self._embs = self._embs.astype(np.float32)
@@ -276,31 +286,47 @@ class _WikipediaTools:
 
 
 class _WebSearchTools:
-    """Evidence tool adapter over DuckDuckGo instant answer API (best-effort)."""
+    """Evidence tool adapter over real web search via duckduckgo-search.
 
-    _URL = "https://api.duckduckgo.com/"
+    The previous implementation hit DuckDuckGo's Instant Answer JSON API,
+    which only returns curated factbox snippets for very specific entities
+    and is empty for ~all fact-check queries. ``duckduckgo-search`` calls the
+    HTML SERP and returns actual search results — title + snippet + url —
+    making the web stage of the veracity cascade meaningful.
+
+    Failure modes (DDG rate-limiting, no internet, library absent) all
+    degrade gracefully to an empty result list; the cascade then records a
+    miss for the affected query rather than crashing.
+    """
 
     def __init__(self) -> None:
         self._cache: dict[str, str] = {}
 
     def search(self, query: str, seen: set, k: int) -> list[tuple[str, str]]:
         try:
-            import requests
-            r = requests.get(self._URL, params={"q": query, "format": "json",
-                                                "no_redirect": 1}, timeout=5)
-            data = r.json()
+            from duckduckgo_search import DDGS
+        except ImportError:
+            logger.warning(
+                "[web] duckduckgo-search not installed — web stage disabled. "
+                "Install with: pip install duckduckgo-search")
+            return []
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max(k * 2, 5)))
         except Exception as exc:
-            logger.debug("[web] search failed: %s", exc)
+            logger.debug("[web] DDG search failed: %s", exc)
             return []
         out = []
-        for item in data.get("Results", data.get("RelatedTopics", []))[:k * 2]:
-            url  = item.get("FirstURL", "")
-            text = item.get("Text", "")
-            if not text or not url:
+        for item in results:
+            url   = item.get("href") or item.get("url") or ""
+            title = item.get("title", "")
+            body  = item.get("body") or item.get("snippet") or ""
+            if not (url and (title or body)):
                 continue
             doc_id = f"web:{url}"
             if doc_id in seen:
                 continue
+            text = f"{title}: {body}".strip(": ").strip()
             self._cache[doc_id] = text
             out.append((doc_id, text))
             if len(out) >= k:
@@ -308,6 +334,7 @@ class _WebSearchTools:
         return out
 
     def grep(self, _p, _s) -> list:
+        # DDG doesn't expose a grep equivalent; rely on search().
         return []
 
     def get(self, doc_id: str) -> str | None:
@@ -369,8 +396,11 @@ def _parse_ratings_cell(val):
         parsed = _ast.literal_eval(val)
         if isinstance(parsed, (list, tuple)) and parsed:
             return str(parsed[0]).strip().lower()
-    except Exception:
-        pass
+    except Exception as exc:
+        # literal_eval rejects anything that isn't a valid Python literal —
+        # plenty of MultiClaim label cells aren't. Fall through to the regex
+        # path but log so a strange parse failure can still be inspected.
+        logger.debug("[ver] literal_eval(%r) failed: %s", val[:60], exc)
     # Fallback: strip brackets, take the first comma-delimited token.
     token = val.strip("[]").split(",")[0].strip()
     token = token.strip("'")
@@ -378,7 +408,18 @@ def _parse_ratings_cell(val):
     return token.lower()
 
 
-def _load_multiclaim(path, text_col, label_col):
+# Hard-coded schema for the published MultiClaim CSV (fact_checks.csv).
+# These were Config fields until they were promoted to constants — the
+# schema never changes between runs, so making them parameters was clutter.
+# The resolver below still tolerates alternate column names because earlier
+# pre-joined CSVs were sometimes shipped with `claim_en`, `text`, etc.
+_MULTICLAIM_TEXT_COL  = "claim"
+_MULTICLAIM_LABEL_COL = "ratings"
+_MULTICLAIM_TEXT_FALLBACKS  = ("claim", "claim_en", "text", "statement")
+_MULTICLAIM_LABEL_FALLBACKS = ("label", "verdict", "ratings", "rating")
+
+
+def _load_multiclaim(path):
     """Load and filter MultiClaim CSV to True/False/Disputed entries.
 
     Handles two layouts:
@@ -393,17 +434,16 @@ def _load_multiclaim(path, text_col, label_col):
         import pandas as pd
         df = pd.read_csv(path)
         df.columns = [c.strip().lower() for c in df.columns]
-        tc = text_col.lower()
-        lc = label_col.lower()
+        tc = _MULTICLAIM_TEXT_COL
+        lc = _MULTICLAIM_LABEL_COL
 
         if tc not in df.columns:
-            for alt in ("claim", "claim_en", "text", "statement"):
+            for alt in _MULTICLAIM_TEXT_FALLBACKS:
                 if alt in df.columns:
                     tc = alt; break
 
-        # ratings is the native column in fact_checks.csv.
         if lc not in df.columns:
-            for alt in ("label", "verdict", "ratings", "rating"):
+            for alt in _MULTICLAIM_LABEL_FALLBACKS:
                 if alt in df.columns:
                     lc = alt; break
 
@@ -458,40 +498,35 @@ def build_evidence_tools(cfg, embedder, *,
                          exclude_ids: set | None = None,
                          kb: KnowledgeBase | None = None,
                          embedder_name: str = "") -> _CompositeEvidenceTools:
-    """Build a CompositeEvidenceTools from the configured sources.
+    """Build a CompositeEvidenceTools spanning multiclaim + wikipedia + web.
+
+    The evidence-source order is fixed (multiclaim → wikipedia → web); this
+    helper returns a composite tool that pools all three. The cascade
+    behaviour (try one, then the next, …) is implemented by the caller in
+    ``eval_claim_veracity`` using ``build_single_source_tools`` per stage.
 
     ``kb`` and ``embedder_name`` are forwarded to ``_MultiClaimTools`` so it
     can read/write the pre-computed embedding cache in
     ``knowledge/veracity/multiclaim_embs.npz``.
     """
-    sources_str = getattr(cfg, "ver_sources", "multiclaim,wikipedia,web")
-    enabled = {s.strip().lower() for s in sources_str.split(",")}
-    sources = []
+    sources: list = []
 
-    if "multiclaim" in enabled:
-        multiclaim_path = Path("data") / "MultiClaim" / "fact_checks.csv"
-        if not multiclaim_path.exists():
-            for p in Path("data/MultiClaim").glob("*.csv") if Path("data/MultiClaim").exists() else []:
-                multiclaim_path = p
-                break
-        records = _load_multiclaim(
-            multiclaim_path,
-            getattr(cfg, "ver_multiclaim_text_col", "claim"),
-            getattr(cfg, "ver_multiclaim_label_col", "label"),
-        )
-        if records:
-            sources.append(_MultiClaimTools(
-                records, embedder,
-                exclude_ids=exclude_ids,
-                kb=kb,
-                embedder_name=embedder_name,
-            ))
+    multiclaim_path = Path("data") / "MultiClaim" / "fact_checks.csv"
+    if not multiclaim_path.exists():
+        for p in Path("data/MultiClaim").glob("*.csv") if Path("data/MultiClaim").exists() else []:
+            multiclaim_path = p
+            break
+    records = _load_multiclaim(multiclaim_path)
+    if records:
+        sources.append(_MultiClaimTools(
+            records, embedder,
+            exclude_ids=exclude_ids,
+            kb=kb,
+            embedder_name=embedder_name,
+        ))
 
-    if "wikipedia" in enabled:
-        sources.append(_WikipediaTools())
-
-    if "web" in enabled:
-        sources.append(_WebSearchTools())
+    sources.append(_WikipediaTools())
+    sources.append(_WebSearchTools())
 
     return _CompositeEvidenceTools(sources)
 
@@ -502,10 +537,9 @@ def build_single_source_tools(source: str, cfg, embedder, *,
                               embedder_name: str = "") -> _CompositeEvidenceTools:
     """Build evidence tools backed by exactly one source.
 
-    Mirrors ``build_evidence_tools`` but ignores ``cfg.ver_sources`` and
-    constructs the requested source only. Used by the veracity eval to run
-    the agentic harness against MultiClaim / Wikipedia / Web in sequence
-    rather than as a single composite pool.
+    Used by the veracity eval to run the agentic harness against MultiClaim
+    / Wikipedia / Web in sequence (confidence-gated cascade) rather than as
+    a single composite pool.
 
     ``source`` is one of ``"multiclaim"``, ``"wikipedia"``, ``"web"``.
     """
@@ -516,11 +550,7 @@ def build_single_source_tools(source: str, cfg, embedder, *,
             for p in Path("data/MultiClaim").glob("*.csv") if Path("data/MultiClaim").exists() else []:
                 multiclaim_path = p
                 break
-        records = _load_multiclaim(
-            multiclaim_path,
-            getattr(cfg, "ver_multiclaim_text_col", "claim"),
-            getattr(cfg, "ver_multiclaim_label_col", "label"),
-        )
+        records = _load_multiclaim(multiclaim_path)
         if not records:
             return _CompositeEvidenceTools([])
         return _CompositeEvidenceTools([_MultiClaimTools(
@@ -588,8 +618,16 @@ def synthesize_verdict(claim: str, evidence: list[tuple[str, str]],
     return _parse_verdict_response(raw)
 
 
-def verify_claim_cached(claim: str, tools, llm, kb: KnowledgeBase) -> tuple[str, float]:
-    """Verify a claim, using the KB cache to skip already-verified claims."""
+def verify_claim_cached(claim: str, tools, llm, kb: KnowledgeBase,
+                        cfg=None) -> tuple[str, float]:
+    """Verify a claim, using the KB cache to skip already-verified claims.
+
+    Harness parameters (token budget, agentic turns, top-k) are read from
+    ``cfg`` (``ver_token_budget`` / ``ver_max_turns``) so the TUI is the
+    single source of truth. ``cfg`` is optional only for backward-compat with
+    callers that haven't been migrated; missing values fall back to the
+    project defaults.
+    """
     from core.hierarchy.harness import AgenticSearchHarness
 
     h = _claim_hash(claim)
@@ -597,9 +635,11 @@ def verify_claim_cached(claim: str, tools, llm, kb: KnowledgeBase) -> tuple[str,
     if cached:
         return cached["verdict"], cached["confidence"]
 
+    token_budget = int(getattr(cfg, "ver_token_budget", 4096)) if cfg else 4096
+    max_turns    = int(getattr(cfg, "ver_max_turns",    6))    if cfg else 6
     harness = AgenticSearchHarness(
         tools, llm, _VERACITY_SYSTEM,
-        token_budget=4096, top_k=5, max_turns=6,
+        token_budget=token_budget, top_k=5, max_turns=max_turns,
     )
     evidence = harness.search(claim)
     verdict, confidence = synthesize_verdict(claim, evidence, llm)
@@ -645,7 +685,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
         f"\n[bold cyan]{'Deep v' if deep else 'V'}erify hierarchy "
         f"— FakeCTI[/bold cyan]")
     console.print(
-        f"[dim]Sources: {cfg.ver_sources}  "
+        f"[dim]Sources: multiclaim → wikipedia → web (fixed)  "
         f"Generator: {cfg.ver_generator} (bf16)[/dim]\n")
 
     # camp_embedder is intentionally reused here: sharing the embedding model
@@ -686,7 +726,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
             for text, _ in claims_to_verify:
                 if not text.strip():
                     continue
-                v, c = verify_claim_cached(text, tools, llm, kb)
+                v, c = verify_claim_cached(text, tools, llm, kb, cfg)
                 verdicts.append((v, c))
 
             if verdicts:
@@ -722,7 +762,7 @@ def verify_hierarchy(kb: KnowledgeBase, cfg, *, deep: bool = False) -> dict:
                 skipped_nar += 1
                 prog.advance(task)
                 continue
-            v, c = verify_claim_cached(nar.central_claim, tools, llm, kb)
+            v, c = verify_claim_cached(nar.central_claim, tools, llm, kb, cfg)
             nar.veracity = _VERDICT_SCORE.get(v, 0.5)
             nar.veracity_confidence = c
             # Blend central-claim verdict with member sub-narrative verdicts.

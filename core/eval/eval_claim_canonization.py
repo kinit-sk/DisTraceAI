@@ -375,8 +375,10 @@ def eval_claim_canonization_benchmark(project_root: Path, console=None) -> None:
                         "median_lat_s":  statistics.median(lat_vals),
                         "n":             len(rows_m)},
             )
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "[eval_canon] save_eval_stats failed: %s", exc)
 
 
 def main(cfg=None) -> None:

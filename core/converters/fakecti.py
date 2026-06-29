@@ -1,7 +1,8 @@
 """FakeCTI -> KB converter for the campaign-detection evaluation (README §9).
 
-Source: data/FakeCTI.csv (Cotroneo et al. 2025, arXiv:2505.03345), columns
-ID, URL, TITLE, SOURCE, TEXT, CAMPAIGN, THREAT ACTOR, TYPE.
+Source: data/FakeCTI/FakeCTI.csv (Cotroneo et al. 2025, arXiv:2505.03345),
+columns ID, URL, TITLE, SOURCE, TEXT, CAMPAIGN, THREAT ACTOR, TYPE.
+A flat data/FakeCTI.csv layout is also accepted as a fallback.
 
 Unlike the earlier converter, this one uses REAL article metadata so the N1-N4
 coordination signals read genuine structure rather than synthetic noise:
@@ -83,16 +84,39 @@ def source_domain(url: str, fallback: str = "") -> str:
     return fb or "unknown"
 
 
+def _resolve_src(path: Path) -> Path:
+    """Resolve the FakeCTI CSV path, trying the canonical layout first.
+
+    The pipeline expects ``data/FakeCTI/FakeCTI.csv`` (matches
+    ``gen_cw_detect.FAKECTI_CSV``); historical drops sometimes used a flat
+    ``data/FakeCTI.csv``. Accept both so users don't have to know which
+    layout is canonical.
+    """
+    candidates = [path]
+    # If the user passed the flat layout but the subfolder layout exists,
+    # prefer the subfolder one (matches what gen_cw_detect reads).
+    if path == Path("data/FakeCTI.csv"):
+        candidates.insert(0, Path("data/FakeCTI/FakeCTI.csv"))
+    elif path == Path("data/FakeCTI/FakeCTI.csv"):
+        candidates.append(Path("data/FakeCTI.csv"))
+    for c in candidates:
+        if c.exists():
+            return c
+    return path  # let the caller raise with the original (most-specific) path
+
+
 def convert(src: Path, out_root: Path, *,
             type_filter: str | None = None, min_campaign_size: int | None = None) -> int:
     src, out_root = Path(src), Path(out_root)
+    src = _resolve_src(src)
     type_filter = (type_filter or TYPE_FILTER).upper()
     min_campaign_size = MIN_CAMPAIGN_SIZE if min_campaign_size is None else int(min_campaign_size)
     if not src.exists():
         raise FileNotFoundError(
-            f"FakeCTI not found at {src}. Place FakeCTI.csv (columns ID, URL, TITLE, "
-            f"SOURCE, TEXT, CAMPAIGN, THREAT ACTOR, TYPE) in data/ — see Cotroneo et "
-            f"al. 2025, arXiv:2505.03345.")
+            f"FakeCTI not found. Tried data/FakeCTI/FakeCTI.csv and "
+            f"data/FakeCTI.csv. Place FakeCTI.csv (columns ID, URL, TITLE, "
+            f"SOURCE, TEXT, CAMPAIGN, THREAT ACTOR, TYPE) at either path — "
+            f"see Cotroneo et al. 2025, arXiv:2505.03345.")
     df = pd.read_csv(src)
     df.columns = [c.strip().upper() for c in df.columns]
     missing = {"URL", "TEXT", "CAMPAIGN", "TYPE"} - set(df.columns)
@@ -170,8 +194,11 @@ def convert(src: Path, out_root: Path, *,
 
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser()
-    p.add_argument("--src", type=Path, default=Path("data/FakeCTI.csv"))
+    p = argparse.ArgumentParser(
+        description="Convert FakeCTI.csv → KB articles + campaign ground truth.")
+    p.add_argument("--src", type=Path, default=Path("data/FakeCTI/FakeCTI.csv"),
+                   help="Path to FakeCTI.csv. Falls back to data/FakeCTI.csv "
+                        "if the default subfolder layout is absent.")
     p.add_argument("--out", type=Path, default=Path("knowledge/fakecti"))
     a = p.parse_args()
     convert(a.src, a.out)

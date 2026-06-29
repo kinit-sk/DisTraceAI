@@ -36,16 +36,38 @@ _STATS_KEY: dict[str, tuple[str, str]] = {
     "narratives-eval":         ("narratives",        "eval"),
     "narratives-generate":     ("narratives",        "generate"),
     "claim-veracity-eval":     ("claim-veracity",    "eval"),
-    "campaigns-verify":        ("claim-veracity",    "generate"),
-    "campaigns-deep-verify":   ("claim-veracity",    "generate"),
+    # campaigns-verify / campaigns-deep-verify were removed when the Campaigns
+    # submenu was collapsed to {Evaluation, Generate Dataset} per plan §4.6.
+    # Verification is now chained inside Generate Dataset and its stats are
+    # carried under the "campaigns" / "generate" sidecar by the gen_dataset
+    # wrapper, so no separate stats key is needed for it.
     "campaigns-eval":          ("campaigns",         "eval"),
     "campaigns-generate":      ("campaigns",         "generate"),
 }
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Parameter lists per action
+#
+# Design rule: each list below is the EXACT set of cfg fields the matching
+# step's code reads. Order within a panel is: identity (detector/extractor/
+# embedder/generator) → tuning (thresholds, sizes) → workflow toggles.
+# When a step depends on a nar_/camp_/sub-narrative produced upstream, the
+# Generate Dataset panel (campaigns-generate) ALSO exposes those upstream
+# params — because Generate Dataset is the only place the full pipeline
+# runs end-to-end and the user otherwise has no way to see/set them.
 # ---------------------------------------------------------------------------
 
+# --- Sub-narrative (used by both Eval and Generate panels) -----------------
+_SUBNAR_COMMON = [
+    "subnar_detector",
+    "subnar_embedder",
+    "subnar_generator",
+    "subnar_min_similarity",
+    "subnar_min_claims",
+]
+
+# --- Narrative -------------------------------------------------------------
 _NAR_COMMON = [
     "nar_detector",
     "nar_embedder",
@@ -66,8 +88,69 @@ _NAR_GENERATE_EXTRA = [
     "nar_assign_threshold",
     "nar_min_new_size",
     "nar_new_threshold",
+    "nar_clustering_linkage",
     "nar_recluster_cadence",
 ]
+
+# --- Campaign --------------------------------------------------------------
+_CAMP_METHOD_PARAMS: dict[str, list[str]] = {
+    "dense":     ["camp_dense_repr"],
+    "bm25-rag":  [],
+    "specfi-cs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "specfi-ccs": ["camp_generator", "camp_specfi_hypotheticals"],
+    "cspecfi":   ["camp_generator", "camp_specfi_hypotheticals"],
+    "context-1": ["camp_generator", "camp_context1_max_turns",
+                  "camp_context1_token_budget"],
+}
+
+_CAMP_COMMON = ["camp_detector", "camp_embedder", "camp_extractor"]
+
+# Plan §4.6 workflow knobs for Generate Dataset.
+_CAMP_WORKFLOW = [
+    "camp_sample_size",
+    "camp_re_extract",
+    "camp_apply_coordination",
+    "camp_veracity_mode",
+]
+
+_CAMP_GENERATE_EXTRA = [
+    "camp_assign_threshold",
+    "camp_min_new_size",
+    "camp_new_threshold",
+    "camp_clustering_linkage",
+    "camp_recluster_cadence",
+    "camp_coordination_threshold",
+    "camp_veracity_threshold",
+    "camp_n1_weight", "camp_n2_weight",
+    "camp_n3_weight", "camp_n4_weight",
+]
+
+# --- Veracity --------------------------------------------------------------
+_VER_COMMON = [
+    "ver_generator",
+    "ver_max_turns", "ver_token_budget",
+    "ver_confidence_threshold",
+]
+
+# --- Generate Dataset (campaigns-generate) full pipeline params ------------
+# The user cannot run Sub-narratives / Narratives Generate against EUvsDisinfo
+# without exposing the upstream params here, so this panel lists EVERY tunable
+# the EUvsDisinfo pipeline touches in canonical pipeline order. DYNAMIC_FOLLOWERS
+# below unfolds method-specific extras for nar_extractor / camp_extractor.
+_DATASET_PIPELINE = (
+    # 1. Claim detection
+    ["detector"]
+    # 2. Canonization
+    + ["canon_detector", "canon_generator"]
+    # 3. Sub-narrative extraction
+    + _SUBNAR_COMMON
+    # 4. Narrative extraction (identity + tuning)
+    + _NAR_COMMON + _NAR_GENERATE_EXTRA
+    # 5. Campaign extraction (identity + tuning) + plan §4.6 workflow knobs
+    + _CAMP_COMMON + _CAMP_WORKFLOW + _CAMP_GENERATE_EXTRA
+    # 6. Optional veracity chain (relevant when camp_veracity_mode != 'off')
+    + _VER_COMMON
+)
 
 _CAT_COLOR = {
     "detector":  "bright_cyan",
@@ -81,52 +164,31 @@ _CAT_COLOR = {
     "env_vllm":  "bright_magenta",
     "env_distr": "bright_green",
     "env_hf":    "bright_blue",
-    "env_":      "dark_orange",   # fallback for all env_ keys
+    "env_":      "dark_orange",
 }
-
-_CAMP_METHOD_PARAMS: dict[str, list[str]] = {
-    "dense":     ["camp_dense_repr"],
-    "bm25-rag":  [],
-    "specfi-cs": ["camp_generator", "camp_specfi_hypotheticals"],
-    "specfi-ccs": ["camp_generator", "camp_specfi_hypotheticals"],
-    "cspecfi":   ["camp_generator", "camp_specfi_hypotheticals"],
-    "context-1": ["camp_generator", "camp_context1_max_turns",
-                  "camp_context1_token_budget"],
-}
-
-_CAMP_COMMON = ["camp_detector", "camp_embedder", "camp_extractor"]
-
-_CAMP_GENERATE_EXTRA = [
-    "camp_assign_threshold", "camp_min_new_size", "camp_new_threshold",
-    "camp_recluster_cadence", "camp_coordination_threshold",
-    "camp_veracity_threshold", "camp_n1_weight", "camp_n2_weight",
-    "camp_n3_weight", "camp_n4_weight",
-]
-
-_VER_COMMON = [
-    "ver_sources", "ver_generator",
-    "ver_max_turns", "ver_token_budget",
-    "ver_multiclaim_text_col", "ver_multiclaim_label_col",
-]
 
 RELEVANT: dict[str, list[str]] = {
+    # ---- Step 1: Claim detection
     "claim-detection":         ["detector"],
-    "claim-canonization":      ["canon_detector", "canon_generator", "canon_precision"],
+    # ---- Step 2: Canonization
+    "claim-canonization":      ["canon_detector", "canon_generator"],
     "claim-canonization-eval": [],
-    "sub-narratives-eval":     ["subnar_detector", "subnar_embedder", "subnar_generator",
-                                "subnar_precision", "subnar_min_similarity",
-                                "subnar_min_claims", "subnar_hypotheticals"],
-    "sub-narratives-generate": ["subnar_detector", "subnar_embedder", "subnar_generator",
-                                "subnar_precision", "subnar_min_similarity",
-                                "subnar_min_claims"],
-    "narratives-eval":         _NAR_COMMON + ["nar_eval_split", "nar_eval_domain"],
+    # ---- Step 3: Sub-narratives
+    "sub-narratives-generate": _SUBNAR_COMMON,
+    "sub-narratives-eval":     _SUBNAR_COMMON + ["subnar_hypotheticals"],
+    # ---- Step 4: Narratives
     "narratives-generate":     _NAR_COMMON + _NAR_GENERATE_EXTRA,
-    "campaigns-verify":        _VER_COMMON,
-    "campaigns-deep-verify":   _VER_COMMON,
+    "narratives-eval":         _NAR_COMMON + ["nar_eval_split", "nar_eval_domain"],
+    # ---- Step 5: Claim veracity (Eval-only per plan §4.4)
     "claim-veracity-eval":     _VER_COMMON + ["ver_n_samples", "ver_n_paraphrases",
                                               "ver_paraphrase_generator"],
+    # ---- Step 6: Campaigns
     "campaigns-eval":          _CAMP_COMMON,
-    "campaigns-generate":      _CAMP_COMMON + _CAMP_GENERATE_EXTRA,
+    # Generate Dataset orchestrates the whole pipeline, so its panel exposes
+    # every upstream tunable. campaigns-verify / campaigns-deep-verify were
+    # removed when the submenu collapsed (plan §4.6): verification chains
+    # inside Generate Dataset via camp_veracity_mode.
+    "campaigns-generate":      _DATASET_PIPELINE,
 }
 
 DYNAMIC_FOLLOWERS: dict[str, object] = {
@@ -164,6 +226,9 @@ def _flush_stdin() -> None:
             import termios
             termios.tcflush(sys.stdin.fileno(), termios.TCIFLUSH)
         except Exception:
+            # termios is POSIX-only; on Windows the import itself fails.
+            # The flush is a UX nicety (drop any keypresses queued during
+            # a long-running step), so a silent skip is correct here.
             pass
 
 
@@ -519,8 +584,12 @@ def prelaunch_review(cfg, action: str) -> bool:
             from core.ui.stats import get_stats
             step, act = _STATS_KEY[action]
             stats_text = get_stats(step, act, cfg)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Stats panel is a nice-to-have; failing to render it must not
+            # block the user from navigating the menu.
+            import logging
+            logging.getLogger(__name__).debug(
+                "[tui] get_stats failed (panel will be empty): %s", exc)
 
     return edit_settings(
         cfg, base_keys,

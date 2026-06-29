@@ -333,8 +333,10 @@ class NodeRagGraph:
                 if callable(fn):
                     try:
                         return int(fn())
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug(
+                            "[noderag] embed-dim probe via %s() failed: %s",
+                            attr, exc)
         return int(os.getenv("DISTRACE_NODERAG_DIM", "1536"))
 
     def _config_dict(self) -> dict:
@@ -422,8 +424,10 @@ class NodeRagGraph:
             config.embedding_client = emb_client
             try:
                 config.client = llm_client          # alias used by some pipelines
-            except Exception:
-                pass
+            except Exception as exc:
+                # `client` is an optional alias; some NodeRAG branches don't
+                # accept the assignment. Debug-level because it's harmless.
+                logger.debug("[noderag] config.client alias skipped: %s", exc)
             # Also register in global state — some pipeline modules import the
             # client directly from LLM_state rather than via the config object.
             set_api_client(llm_client)

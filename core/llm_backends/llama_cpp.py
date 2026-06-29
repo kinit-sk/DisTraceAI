@@ -111,8 +111,8 @@ def encode_with_backoff(embedder, texts: Sequence[str],
                 raise
             try:
                 torch.cuda.empty_cache(); torch.cuda.synchronize()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("[llama_cpp] cuda cleanup mid-retry failed: %s", exc)
             if bs == min_batch_size:
                 break
             bs = max(min_batch_size, bs // 2)
@@ -123,8 +123,8 @@ def encode_with_backoff(embedder, texts: Sequence[str],
         gc.collect()
         try:
             import torch as _t; _t.cuda.empty_cache()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[llama_cpp] cuda.empty_cache (CPU fallback) failed: %s", exc)
     except Exception as move_exc:
         logger.debug("[llama_cpp] embedder.to(cpu) raised (ignored): %s", move_exc)
     return embedder.encode(list(texts), batch_size=min(16, initial_batch_size),
@@ -151,14 +151,22 @@ _CATALOGUE: dict[str, tuple[str, str]] = {
 _DEFAULT_CTX: dict[str, int] = {"context-1": 32768}
 
 
-def resolve_generator(model_key: str, quant: str) -> tuple[str, str]:
-    """Map a model key + quant to (repo_id, filename)."""
+_DEFAULT_QUANT = "Q8_0"  # plan §4: Q8_0 is the canonical llama-cpp precision.
+
+
+def resolve_generator(model_key: str, quant: str = "") -> tuple[str, str]:
+    """Map a model key + quant to (repo_id, filename).
+
+    When ``quant`` is empty, ``_DEFAULT_QUANT`` (Q8_0) is used — matching plan
+    §4's fixed-per-backend precision policy. Callers that want a different
+    GGUF tag can still pass one explicitly.
+    """
     key = model_key if model_key in _CATALOGUE else model_key.split("/")[-1]
     if key not in _CATALOGUE:
         raise ValueError(
             f"Unknown generator {model_key!r}. Available: {sorted(_CATALOGUE)}")
     repo, tmpl = _CATALOGUE[key]
-    return repo, tmpl.format(quant=quant)
+    return repo, tmpl.format(quant=quant or _DEFAULT_QUANT)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +178,11 @@ def _warn_if_cpu_only(llm, n_gpu: int, main_gpu: int) -> None:
         import llama_cpp
         supports = getattr(llama_cpp, "llama_supports_gpu_offload", None)
         gpu_built = bool(supports()) if callable(supports) else None
-    except Exception:
+    except Exception as exc:
+        # llama_cpp may be present but missing the symbol on very old wheels.
+        # We fall back to "unknown" rather than spamming a warning — the
+        # actual offload count check below will surface a real CPU-only case.
+        logger.debug("[gen] llama_cpp GPU-offload probe failed: %s", exc)
         gpu_built = None
 
     if gpu_built is False:
@@ -283,8 +295,8 @@ class LlamaGenerator:
             import torch
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[llama_cpp] cuda.empty_cache on close failed: %s", exc)
 
     def __enter__(self) -> "LlamaGenerator":
         return self
@@ -412,7 +424,8 @@ def _visible_gpus() -> list[int]:
     try:
         import torch
         return [0] if torch.cuda.is_available() else []
-    except Exception:
+    except Exception as exc:
+        logger.debug("[gen] torch probe failed in _visible_gpus: %s", exc)
         return []
 
 
@@ -420,7 +433,9 @@ def _gguf_size_bytes(model_key: str, quant: str) -> int:
     import fnmatch
     try:
         _, filename = resolve_generator(model_key, quant)
-    except Exception:
+    except Exception as exc:
+        logger.debug(
+            "[gen] resolve_generator(%s, %s) failed: %s", model_key, quant, exc)
         return 0
     best = 0
     for p in Path("models").rglob("*.gguf"):
@@ -436,7 +451,8 @@ def _free_vram_per_gpu(gpus: list[int]) -> dict[int, int]:
             return {}
         free, _ = torch.cuda.mem_get_info(0)
         return {0: int(free)}
-    except Exception:
+    except Exception as exc:
+        logger.debug("[gen] mem_get_info failed: %s", exc)
         return {}
 
 

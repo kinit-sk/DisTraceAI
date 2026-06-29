@@ -94,7 +94,8 @@ def _first_text(row: dict) -> str:
 
 
 def convert(src: Path, out_root: Path, *,
-            langs: list[str] | None = None) -> int:
+            langs: list[str] | None = None,
+            limit: int | None = None) -> int:
     """Convert EUvsDisinfo articles to KB Article records.
 
     Args:
@@ -102,6 +103,11 @@ def convert(src: Path, out_root: Path, *,
         out_root: KB root (knowledge/).
         langs:    ISO language codes to keep. ``None`` (default) keeps all
                   languages; pass e.g. ["sk", "cs"] to restrict.
+        limit:    Maximum number of articles to write. ``None`` (default) or
+                  0 = no limit; positive values stop ingestion once that many
+                  records have been persisted. Used by Generate Dataset to
+                  honour ``cfg.camp_sample_size`` at conversion time instead
+                  of paying for ingestion of records the pipeline will drop.
 
     Returns:
         Total number of articles written.
@@ -136,11 +142,19 @@ def convert(src: Path, out_root: Path, *,
     per_lang: dict[str, int] = {}
     seen_ids: set[str] = set()
     rows_total = textless = 0
+    # Plan §4.6 + cfg.camp_sample_size: cap articles converted at `limit`.
+    # `limit=None` or 0 means unbounded.
+    eff_limit = int(limit or 0) or None
+    n_written = 0
 
     for path in csvs:
+        if eff_limit is not None and n_written >= eff_limit:
+            break
         with path.open(encoding="utf-8", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
+                if eff_limit is not None and n_written >= eff_limit:
+                    break
                 rows_total += 1
                 lang = _norm_lang(row.get("article_language", ""))
                 if target is not None and lang not in target:
@@ -177,6 +191,7 @@ def convert(src: Path, out_root: Path, *,
                     author=publisher,
                 ), dataset=_DATASET_SLUG)
                 per_lang[lang] = per_lang.get(lang, 0) + 1
+                n_written += 1
 
     total = sum(per_lang.values())
     for lang, n in sorted(per_lang.items()):

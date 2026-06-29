@@ -29,7 +29,9 @@ from rich.progress import (
     MofNCompleteColumn, TimeElapsedColumn,
 )
 
-from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
+from core.knowledge_base import (
+    KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI, DATASET_EUVSDISINFO,
+)
 from core.models import make_generator, close_generator
 
 logger  = logging.getLogger(__name__)
@@ -167,6 +169,9 @@ def canonize(
         One of the six supported model keys:
         ``qwen3.5-2b`` / ``qwen3.5-4b`` / ``qwen3.5-9b`` /
         ``gemma4-e2b`` / ``gemma4-e4b`` / ``gemma4-12b``.
+
+        Precision is fixed by the active backend (BF16 on vLLM, Q8_0 on
+        llama-cpp) per plan §4 — no precision argument is exposed.
     kb:
         Knowledge-base instance.  Defaults to ``KnowledgeBase("knowledge")``.
 
@@ -186,12 +191,20 @@ def canonize(
         detector_slugs = [_detector_slug(detector_path)]
 
     console.print(
-        f"\n[bold]Loading[/bold] [cyan]{generator_key}[/cyan] "
+        f"\n[bold]Loading[/bold] [cyan]{generator_key}[/cyan]"
     )
+    # Backend picks precision: vLLM ignores quant; llama-cpp defaults to Q8_0.
     llm = make_generator(generator_key)
 
     summary: dict = {}
-    for dataset_slug in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:
+    # Plan: each per-step Generate runs over every dataset present in the KB,
+    # so the user can see interim EUvsDisinfo results without going through
+    # Generate Dataset's full pipeline. _process_dataset is idempotent and
+    # a no-op when the dataset+detector pair has nothing to canonize.
+    dataset_slugs = [DATASET_POLYNARRATIVE, DATASET_FAKECTI]
+    if kb.articles(DATASET_EUVSDISINFO):
+        dataset_slugs.append(DATASET_EUVSDISINFO)
+    for dataset_slug in dataset_slugs:
         for detector_slug in detector_slugs:
             console.print(f"\n[bold]{dataset_slug}[/bold]  [dim](detector: {detector_slug})[/dim]")
             ds_summary = _process_dataset(dataset_slug, detector_slug, llm, kb)

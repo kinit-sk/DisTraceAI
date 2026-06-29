@@ -9,8 +9,8 @@ TUI.
 Environment-variable settings
 ------------------------------
 Several pipeline behaviours are controlled by OS environment variables.  Rather
-than requiring users to manage them in their shell, they are exposed as first-
-class Config fields (prefix ``env_``).  On Config.load() the live environment
+than requiring users to manage them in their shell, they are exposed as first-class
+Config fields (prefix ``env_``).  On Config.load() the live environment
 is read as the default; on save() the values are written to the JSON and applied
 back to os.environ so that any subsequently loaded backend module sees them.
 """
@@ -21,6 +21,7 @@ import json
 import os
 from dataclasses import dataclass, field, fields, asdict
 from pathlib import Path
+from typing import ClassVar
 
 CONFIG_PATH = Path(__file__).parent / "config.json"
 
@@ -38,10 +39,13 @@ class Config:
     llm_backend: str = _f(
         "vllm",
         "LLM inference backend",
-        "Which LLM backend to use for all generator and embedder calls. "
-        "'vllm' requires the vllm conda environment; 'llama-cpp' requires the "
-        "llama-cpp conda environment. Switch here and manually activate the "
-        "corresponding conda environment before running pipeline steps.",
+        "Backend used for every generator and embedder call. "
+        "'vllm' → highest throughput on H100/H200/A100 GPUs (BF16 only, "
+        "CUDA 13.x). 'llama-cpp' → broader hardware support including "
+        "older toolchains (uses Q8_0 GGUF quants, CUDA 12.x). The two "
+        "live in separate conda envs (distrace-vllm / distrace-llama); "
+        "switching here without reactivating the right env will fail at "
+        "first import. Use ./activate_distrace.sh to keep both in sync.",
         choices=["vllm", "llama-cpp"],
     )
 
@@ -49,46 +53,71 @@ class Config:
     # Claim detection (step 1)
     # ------------------------------------------------------------------ #
     detector: str = _f(
-        "models/xlm-multicw",
+        "models/mdb-multicw",
         "Check-worthiness classifier",
-        "Fine-tuned check-worthiness classifier (mDeBERTa or XLM-R), under models/.",
+        "Fine-tuned check-worthiness classifier used in step 1. "
+        "'models/mdb-multicw' (mDeBERTa) is the stronger F1 on MultiCW; "
+        "'models/xlm-multicw' (XLM-R) is smaller / faster and broadly "
+        "comparable. The same choice should flow through downstream steps "
+        "(canon/subnar/nar/camp _detector) for a consistent pipeline.",
         choices=["models/xlm-multicw", "models/mdb-multicw"],
     )
 
     canon_detector: str = _f(
-        "models/xlm-multicw",
+        "models/mdb-multicw",
         "Canonization source detector",
-        "Which claim detector's output to canonize (must match a prior claim-detection run).",
+        "Which detector's KB output is canonized. Must match a detector "
+        "that already produced check-worthy claims. 'both' runs canonization "
+        "on the outputs of both detectors back-to-back (useful for "
+        "ablation; doubles canonization cost).",
         choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
     )
 
     canon_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Canonization generator",
-        "LLM used to decontextualize and translate check-worthy claims to English.",
+        "LLM used to decontextualize claims and translate them into "
+        "English. LARGER model → cleaner decontextualization and better "
+        "translation fidelity for low-resource languages, slower. SMALLER "
+        "→ faster, may leave residual context or mistranslate idioms.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
 
+    # NOTE: canon_precision / subnar_precision / nar_precision / camp_precision
+    # were intentionally removed. Per plan §4, the generator precision is fixed
+    # by the active backend: BF16 under vLLM, Q8_0 under llama-cpp. The
+    # backend layer (core/llm_backends/llama_cpp.py) hard-codes Q8_0 as its
+    # default quant; vLLM is BF16-only and silently ignores any quant arg.
+
     subnar_detector: str = _f(
-        "models/xlm-multicw",
+        "models/mdb-multicw",
         "Sub-narrative source detector",
-        "Which claim detector's canonized output to use for sub-narrative extraction.",
+        "Which detector's canonized output feeds sub-narrative extraction. "
+        "Must match a detector that already produced canonized claims. "
+        "'both' processes both detectors' outputs in one session.",
         choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
     )
 
     subnar_embedder: str = _f(
         "Qwen/Qwen3-Embedding-0.6B",
         "Sub-narrative embedder",
-        "SentenceTransformer model used to embed canonized claims for similarity clustering.",
+        "SentenceTransformer model that embeds canonized claims for the "
+        "similarity-clustering step. LARGER model (Qwen3-Embedding-4B, "
+        "multilingual-e5-large-instruct) → richer multilingual semantics, "
+        "tighter clusters, more VRAM. SMALLER (0.6B) → faster / lighter "
+        "but loses some cross-lingual nuance.",
         choices=["Qwen/Qwen3-Embedding-0.6B", "Qwen/Qwen3-Embedding-4B",
                  "intfloat/multilingual-e5-large-instruct"],
     )
 
     subnar_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Sub-narrative generator",
-        "LLM used to synthesize the central claim for each sub-narrative cluster.",
+        "LLM that synthesizes a single sub-narrative central claim from "
+        "each cluster of canonized claims. LARGER → more faithful and "
+        "concise summaries, slower. SMALLER → faster but more likely to "
+        "lose nuance in long clusters.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
@@ -96,45 +125,63 @@ class Config:
     subnar_min_similarity: float = _f(
         0.45,
         "Min claim similarity",
-        "Cosine similarity threshold: canonized claims at or above this value are "
-        "assigned to the current sub-narrative cluster.",
+        "Cosine similarity threshold for assigning a canonized claim to the "
+        "current sub-narrative. HIGHER → tighter clusters, more sub-narratives, "
+        "each more specific; risk of fragmentation. LOWER → larger, looser "
+        "clusters with broader themes; risk of merging unrelated claims. "
+        "Range 0.0-1.0.",
     )
 
     subnar_min_claims: int = _f(
         2,
         "Min claims per sub-narrative",
-        "Minimum number of claims required to form a sub-narrative. Remaining "
-        "claims are discarded when the pool falls below this threshold.",
+        "A cluster must contain at least this many claims to be promoted to a "
+        "sub-narrative; otherwise its claims are discarded. HIGHER → fewer, "
+        "more strongly evidenced sub-narratives; rare topics get dropped. "
+        "LOWER (down to 2) → captures niche topics but allows weakly evidenced "
+        "sub-narratives.",
     )
 
     subnar_hypotheticals: int = _f(
         3,
         "HyDE hypotheticals",
-        "Number of hypothetical sub-narrative descriptions generated per central "
-        "claim during evaluation retrieval (HyDE style).",
+        "Number of hypothetical sub-narrative descriptions generated per "
+        "central claim during EVALUATION retrieval (HyDE style — each one is "
+        "used as a query). HIGHER → richer retrieval recall and more stable "
+        "voting at the cost of slower eval and more LLM calls. LOWER → faster "
+        "eval but more variance per claim. Affects evaluation only, not "
+        "Generate.",
     )
 
     # ------------------------------------------------------------------ #
     # Narrative extraction (step 5)
     # ------------------------------------------------------------------ #
     nar_detector: str = _f(
-        "models/xlm-multicw",
+        "models/mdb-multicw",
         "Narrative source detector",
-        "Which detector's sub-narratives feed narrative extraction / retrieval.",
+        "Which detector's sub-narrative chain feeds narrative extraction / "
+        "retrieval. Must match a detector that already produced sub-"
+        "narratives. 'both' processes both detectors' sub-narrative chains "
+        "in one session.",
         choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
     )
 
     nar_extractor: str = _f(
-        "dense",
+        "cspecfi",
         "Narrative retrieval method",
-        "Retrieval method for the narrative eval and Generate step: "
-        "dense (embedding cosine, repr selected by nar_dense_repr), "
-        "bm25-rag (BM25+dense RRF hybrid, no LLM, strongest non-LLM baseline), "
-        "specfi-cs (reproduced original static SpecFi-CS, NodeRAG over article texts), "
-        "specfi-ccs (SpecFi-CCS, NodeRAG over per-article canonized claims), "
-        "cspecfi (our continuous variant, no NodeRAG, conditioned on sub-narrative claims), "
-        "context-1 (agentic multi-turn search harness), "
-        "all (Evaluation only: benchmark every method and print a summary table).",
+        "Retrieval method used by both narrative Eval and Generate. "
+        "dense → simple embedding cosine over the corpus item selected by "
+        "nar_dense_repr (fastest baseline). "
+        "bm25-rag → BM25 + dense RRF hybrid, no LLM, strong non-LLM "
+        "baseline. "
+        "specfi-cs → static SpecFi over article texts via NodeRAG (paper "
+        "reproduction). "
+        "specfi-ccs → SpecFi over per-article canonized claims. "
+        "cspecfi → continuous SpecFi variant conditioned on sub-narrative "
+        "claims (no NodeRAG; recommended). "
+        "context-1 → agentic multi-turn search harness (slowest, highest "
+        "accuracy on diverse phrasings). "
+        "all → EVAL ONLY: benchmark every method side-by-side.",
         choices=["dense", "bm25-rag", "specfi-cs", "specfi-ccs", "cspecfi",
                  "context-1", "all"],
     )
@@ -142,26 +189,33 @@ class Config:
     nar_dense_repr: str = _f(
         "subnar",
         "Dense representation",
-        "Only read when nar_extractor=dense. Which text represents an item: "
-        "article (raw article text), canonized (set of canonized claims), or "
-        "subnar (sub-narrative central claim).",
+        "Read only when nar_extractor=dense. Which text represents each "
+        "item in the corpus: 'article' (raw article text — broad but noisy), "
+        "'canonized' (set of canonized claims — middle ground), "
+        "'subnar' (sub-narrative central claim — concise, recommended for "
+        "narrative-level retrieval).",
         choices=["article", "canonized", "subnar"],
     )
 
     nar_embedder: str = _f(
         "Qwen/Qwen3-Embedding-4B",
         "Narrative embedder",
-        "SentenceTransformer model used to embed queries and corpus items. "
-        "4B is the default for reproducibility with the SpecFi paper.",
+        "SentenceTransformer model that embeds narrative queries and corpus "
+        "items. LARGER model → better retrieval accuracy across phrasings "
+        "and languages, more VRAM and slower indexing. SMALLER → faster / "
+        "lighter, drops some retrieval quality.",
         choices=["Qwen/Qwen3-Embedding-4B", "Qwen/Qwen3-Embedding-0.6B",
                  "intfloat/multilingual-e5-large-instruct"],
     )
 
     nar_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Narrative generator",
-        "LLM used to synthesize narrative central claims (Generate) and HyDE "
-        "hypotheticals (specfi-cs / cspecfi / context-1).",
+        "LLM that (a) synthesizes narrative central claims during Generate "
+        "and (b) generates HyDE hypotheticals for specfi-cs / specfi-ccs / "
+        "cspecfi / context-1. LARGER → more concise / faithful central "
+        "claims and better HyDE coverage, slower. SMALLER → faster but "
+        "more likely to produce generic phrasings.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
@@ -169,92 +223,131 @@ class Config:
     nar_assign_threshold: float = _f(
         0.55,
         "Narrative assign threshold",
-        "Cosine score above which a sub-narrative merges into the top-ranked "
-        "existing narrative (Generate).",
+        "Cosine score above which a sub-narrative is merged into the best-"
+        "matching existing narrative. HIGHER → stricter merging, more "
+        "narratives, each more specific. LOWER → narratives accrete more "
+        "members and become broader (risk of merging unrelated angles). "
+        "Range 0.0-1.0.",
     )
 
     nar_min_new_size: int = _f(
-        3,
+        2,
         "Min new-narrative size",
-        "Minimum number of mutually similar unassigned sub-narratives required to "
-        "seed a brand-new narrative (Generate).",
+        "Minimum number of unassigned sub-narratives that must cluster "
+        "together before a new narrative is created. HIGHER → only well-"
+        "evidenced narratives are promoted; rare topics get dropped. LOWER "
+        "(down to 2) → preserves niche topics but allows weakly evidenced "
+        "narratives.",
     )
 
     nar_new_threshold: float = _f(
-        0.75,
+        0.55,
         "New-narrative similarity",
-        "Cosine threshold used while clustering the unassigned pool into new "
-        "narratives (Generate).",
+        "Cosine threshold the agglomerative grouper uses while clustering the "
+        "unassigned-sub-narrative pool into new narratives. HIGHER → very "
+        "tight clusters (few new narratives form on diverse corpora). LOWER "
+        "→ more narratives form (risk of merging loosely related angles). "
+        "Range 0.0-1.0.",
+    )
+
+    nar_clustering_linkage: str = _f(
+        "average",
+        "Agglomerative linkage",
+        "Linkage criterion the agglomerative grouper uses to decide pool-"
+        "cluster boundaries. 'average' → robust default, clusters by mean "
+        "pairwise distance. 'single' → permissive (any close pair merges, "
+        "chains form quickly). 'complete' → strict (every pair must be "
+        "close, only very tight clusters form).",
+        choices=["average", "single", "complete"],
     )
 
     nar_recluster_cadence: int = _f(
         0,
-        "Recluster / rebuild cadence",
-        "Run the periodic sweep (and, for specfi, rebuild the NodeRAG graph) every "
-        "N processed articles. 0 disables periodic sweeps (build once up front).",
+        "Re-cluster cadence",
+        "Run a periodic re-clustering sweep over the unassigned-pool every N "
+        "processed sub-narratives during Generate. 0 disables periodic sweeps "
+        "(the grouper still re-clusters whenever a sub-narrative misses an "
+        "existing narrative). HIGHER N → less expensive but stragglers can "
+        "linger longer in the pool. LOWER N → faster cluster discovery at "
+        "the cost of extra recompute.",
     )
 
     nar_specfi_hypotheticals: int = _f(
         10,
         "SpecFi hypotheticals",
-        "Number of hypothetical texts generated per query for specfi-cs and "
-        "cspecfi. Default 10 matches the paper's generate_hypotheticals(n=10).",
+        "Number of hypothetical texts generated per query for specfi-cs / "
+        "specfi-ccs / cspecfi retrieval. HIGHER → broader query coverage, "
+        "higher recall on diverse phrasings, at the cost of extra LLM calls "
+        "per query. LOWER → faster but more sensitive to the exact wording of "
+        "the seed claim.",
     )
 
     nar_context1_context_size: int = _f(
         32768,
         "Context-1 model context size",
-        "llama.cpp context window size when loading the Context-1 model. "
-        "Context-1 is trained on 128K context; 32768 is a practical minimum.",
+        "llama.cpp context window when loading the Context-1 retrieval model. "
+        "HIGHER → more evidence and longer turns fit per query at the cost of "
+        "VRAM and per-token speed. LOWER → cheaper but the harness may "
+        "truncate evidence on long retrieval chains. Context-1 is trained on "
+        "128K; 32768 is a practical minimum.",
     )
 
     nar_context1_max_turns: int = _f(
         8,
         "Context-1 max turns",
-        "Hard cap on agentic search turns per query (nar_extractor=context-1).",
+        "Hard cap on agentic search turns per query when nar_extractor="
+        "context-1. HIGHER → more chances to refine the query / explore "
+        "different evidence; slower. LOWER → faster but the harness may "
+        "stop before finding the best evidence.",
     )
 
     nar_context1_token_budget: int = _f(
         8192,
         "Context-1 evidence token budget",
-        "Maximum tokens of retrieved cluster evidence the agentic harness "
-        "accumulates before terminating. This is NOT the model context size "
-        "(see nar_context1_context_size for that). 8192 ≈ half the default ctx.",
+        "Cap on the total tokens of retrieved cluster evidence the agentic "
+        "harness accumulates before terminating. NOT the model context size "
+        "(see nar_context1_context_size). HIGHER → richer evidence pools, "
+        "better retrieval at cost of memory + decoding time. LOWER → "
+        "faster but may truncate useful evidence.",
     )
 
     nar_eval_split: str = _f(
         "test",
         "Narrative eval query split",
-        "Which held-out PolyNarrative split supplies query sub-narratives; the "
-        "corpus is always built from train.",
+        "PolyNarrative split that supplies the held-out query sub-narratives "
+        "for the narrative-retrieval eval. The retrieval CORPUS is always "
+        "built from train. 'test' → official held-out evaluation. 'dev' → "
+        "use the smaller dev split for fast iteration; results are not "
+        "directly comparable to published numbers.",
         choices=["dev", "test"],
     )
 
     nar_eval_domain: str = _f(
         "all",
         "Narrative eval domain",
-        "Restrict the narrative eval to one PolyNarrative domain: CC (climate "
-        "change), URW (Ukraine-Russia war), or all (both). Filters both the "
-        "query split and the train corpus to the chosen domain.",
+        "Restrict the narrative-retrieval eval to a single PolyNarrative "
+        "domain. 'all' → both domains (most directly comparable to the "
+        "paper). 'CC' → Climate Change only. 'URW' → Ukraine-Russia War "
+        "only. Filters apply to both the query split AND the train corpus, "
+        "so accuracy figures are per-domain.",
         choices=["all", "CC", "URW"],
     )
 
     # ------------------------------------------------------------------ #
     # Claim veracity estimation (step 3)
     # ------------------------------------------------------------------ #
-    ver_sources: str = _f(
-        "multiclaim,wikipedia,web",
-        "Veracity evidence sources",
-        "Comma-separated list of evidence sources for the agentic harness. "
-        "Omit any to disable: multiclaim (local CSV), wikipedia (online API), "
-        "web (online search). Sources degrade gracefully when offline.",
-    )
+    # NOTE: ``ver_sources`` was removed. The evidence cascade is hard-coded
+    # in ``core.eval.eval_claim_veracity`` and ``core.gen.gen_veracity`` to
+    # multiclaim → wikipedia → web (in that order); the order is part of the
+    # method, not a user choice.
 
     ver_generator: str = _f(
         "gemma4-e2b",
         "Veracity verdict generator",
-        "LLM used to synthesize the True/False/Disputed verdict from gathered "
-        "evidence snippets.",
+        "LLM that synthesizes the True / False / Disputed verdict from "
+        "gathered evidence. LARGER model → better long-evidence reasoning "
+        "and higher per-verdict accuracy, slower. SMALLER → faster but "
+        "more likely to commit to Disputed under conflicting evidence.",
         choices=["gemma4-e2b", "gemma4-e4b", "gemma4-12b",
                  "qwen3.5-2b", "qwen3.5-4b"],
     )
@@ -262,8 +355,12 @@ class Config:
     ver_paraphrase_generator: str = _f(
         "gemma4-12b",
         "Paraphrase generator",
-        "LLM used to generate paraphrased test queries from MultiClaim for the "
-        "veracity evaluation benchmark. Cached to knowledge/veracity/ after "
+        "LLM that generates English-only meaning-preserving paraphrases of "
+        "MultiClaim entries to build the veracity-eval test queries. "
+        "LARGER → more diverse, more faithful paraphrases (the eval is "
+        "harder but more realistic). SMALLER → faster paraphrase-cache "
+        "build but paraphrases may drift in meaning. Output is cached to "
+        "knowledge/veracity/ so changing this only costs LLM time on the "
         "first run.",
         choices=["gemma4-12b", "gemma4-e4b", "qwen3.5-9b"],
     )
@@ -271,86 +368,112 @@ class Config:
     ver_max_turns: int = _f(
         6,
         "Veracity max turns",
-        "Maximum agentic search turns per claim verification.",
+        "Cap on agentic search turns per claim verification. HIGHER → more "
+        "thorough evidence gathering and a better chance the harness reaches "
+        "decisive evidence; slower. LOWER → faster but the harness may "
+        "commit to a verdict before locating strong evidence.",
     )
 
     ver_token_budget: int = _f(
         4096,
         "Veracity evidence token budget",
-        "Maximum evidence tokens the agentic harness accumulates per claim. "
-        "Not the model context size.",
+        "Cap on evidence tokens the agentic harness accumulates per claim "
+        "(NOT the model context size). HIGHER → more evidence reasoned over "
+        "per verdict, slower decoding. LOWER → faster but earlier evidence "
+        "wins by default.",
+    )
+
+    ver_confidence_threshold: float = _f(
+        0.65,
+        "Veracity cascade confidence threshold",
+        "Confidence floor for accepting a True/False verdict from one stage "
+        "of the multiclaim → wikipedia → web cascade. If the verdict is "
+        "Disputed OR below this confidence, the next stage is tried. "
+        "HIGHER → more queries reach Wikipedia / Web (broader evidence, "
+        "slower, more online dependence). LOWER → the cascade accepts "
+        "shallow verdicts early (faster, but harder claims may be answered "
+        "from weak MultiClaim evidence). Range 0.0-1.0.",
     )
 
     ver_n_paraphrases: int = _f(
         3,
         "Paraphrases per claim",
-        "How many paraphrase variants to generate per MultiClaim entry for the "
-        "veracity evaluation benchmark.",
+        "Number of paraphrase variants generated per MultiClaim entry to "
+        "build the evaluation test queries. HIGHER → more robust per-claim "
+        "estimates and richer test set; more LLM time at paraphrase-cache "
+        "build. LOWER → faster but more variance per claim.",
     )
 
     ver_n_samples: int = _f(
-        200,
+        100,
         "MultiClaim sample size",
-        "Number of claims to randomly draw from MultiClaim before stratification. "
-        "The sample is filtered to True/False only, then balanced to equal counts "
-        "of each class (so the final stratified set is at most ver_n_samples total, "
-        "split evenly between True and False). A different value invalidates the "
-        "paraphrase cache.",
+        "Target size of the balanced True/False evaluation test set. The "
+        "pipeline first filters MultiClaim to True/False rows (Disputed "
+        "dropped), then samples ver_n_samples // 2 from each class. HIGHER "
+        "→ tighter per-class accuracy estimate; longer eval. LOWER → faster "
+        "but per-class results have wider confidence intervals. Changing "
+        "this value invalidates the paraphrase cache. 0 → use everything "
+        "available.",
     )
 
-    ver_multiclaim_text_col: str = _f(
-        "claim",
-        "MultiClaim text column",
-        "Column name in the MultiClaim CSV that contains the claim text.",
-    )
-
-    ver_multiclaim_label_col: str = _f(
-        "ratings",
-        "MultiClaim label column",
-        "Column name in the MultiClaim CSV that contains the verdict label "
-        "(filtered to True/False/Disputed). When the configured column is not "
-        "found, the loader tries label, verdict, ratings, rating in order. "
-        "The published fact_checks.csv uses a ratings column with Python-repr "
-        "lists (e.g. ['true']) which the loader parses automatically.",
-    )
+    # NOTE: ``ver_multiclaim_text_col`` / ``ver_multiclaim_label_col`` were
+    # removed. The published MultiClaim CSV uses ``claim`` for the claim text
+    # and ``ratings`` for the verdict label (Python-repr list of votes). Those
+    # are now hard-coded constants in ``core.eval.eval_claim_veracity`` and
+    # ``core.gen.gen_veracity``; the schema does not change between runs.
 
     # ------------------------------------------------------------------ #
     # Campaigns extraction (step 6)
     # ------------------------------------------------------------------ #
     camp_detector: str = _f(
-        "models/xlm-multicw",
+        "models/mdb-multicw",
         "Campaign source detector",
-        "Which detector's narrative hierarchy feeds campaign extraction.",
+        "Which detector's narrative hierarchy feeds campaign extraction. "
+        "Must match a detector that already produced narratives. 'both' "
+        "processes both detectors' narrative chains in one session.",
         choices=["models/xlm-multicw", "models/mdb-multicw", "both"],
     )
 
     camp_extractor: str = _f(
         "dense",
         "Campaign retrieval method",
-        "Retrieval method for campaign extraction: same choices as nar_extractor.",
+        "Retrieval method used by Campaigns Generate. Same trade-offs as "
+        "nar_extractor: dense → cheapest, bm25-rag → strong non-LLM "
+        "baseline, specfi-* → NodeRAG-based variants, cspecfi → continuous "
+        "SpecFi (no NodeRAG), context-1 → agentic multi-turn (slowest, "
+        "best on diverse phrasings).",
         choices=["dense", "bm25-rag", "specfi-cs", "specfi-ccs", "cspecfi", "context-1"],
     )
 
     camp_dense_repr: str = _f(
         "subnar",
         "Campaign dense representation",
-        "Text representation for dense retrieval; repurposed as narrative central "
-        "claim here (subnar is the correct choice for narrative→campaign).",
+        "Read only when camp_extractor=dense. Text used to represent each "
+        "narrative in the corpus: 'article' (raw article text — noisy at "
+        "this level), 'canonized' (set of canonized claims), 'subnar' "
+        "(sub-narrative central claim — recommended for narrative → "
+        "campaign retrieval).",
         choices=["article", "canonized", "subnar"],
     )
 
     camp_embedder: str = _f(
         "Qwen/Qwen3-Embedding-4B",
         "Campaign embedder",
-        "Embedding model for campaign retrieval.",
+        "SentenceTransformer model that embeds narrative central claims "
+        "and campaign queries. LARGER → better retrieval across phrasings "
+        "and languages, more VRAM. SMALLER → faster / lighter, drops some "
+        "retrieval quality.",
         choices=["Qwen/Qwen3-Embedding-4B", "Qwen/Qwen3-Embedding-0.6B",
                  "intfloat/multilingual-e5-large-instruct"],
     )
 
     camp_generator: str = _f(
-        "qwen3.5-2b",
+        "gemma4-e4b",
         "Campaign generator",
-        "LLM for synthesizing campaign central claims.",
+        "LLM that synthesizes campaign central claims from member "
+        "narratives, and (for specfi-* / context-1) generates HyDE "
+        "hypotheticals. LARGER → more concise / faithful summaries, "
+        "slower. SMALLER → faster but more generic phrasings.",
         choices=["qwen3.5-2b", "qwen3.5-4b", "qwen3.5-9b",
                  "gemma4-e2b", "gemma4-e4b", "gemma4-12b"],
     )
@@ -358,84 +481,191 @@ class Config:
     camp_assign_threshold: float = _f(
         0.50,
         "Campaign assign threshold",
-        "Cosine score above which a narrative merges into the top-ranked "
-        "existing campaign.",
+        "Cosine score above which a narrative is merged into the best-"
+        "matching existing campaign. HIGHER → stricter merging, more "
+        "campaigns each on a tighter theme. LOWER → campaigns accrete more "
+        "narratives and become broader (risk of merging loosely related "
+        "narratives). Range 0.0-1.0.",
     )
 
     camp_min_new_size: int = _f(
         2,
         "Min new-campaign size",
-        "Minimum number of mutually similar unassigned narratives to seed a "
-        "new campaign cluster.",
+        "Minimum number of unassigned narratives that must cluster together "
+        "before a new campaign is created. HIGHER → only multi-narrative "
+        "campaigns survive; single-narrative angles are dropped. LOWER "
+        "(down to 2) → preserves emerging campaigns at the cost of more "
+        "noise.",
     )
 
     camp_new_threshold: float = _f(
-        0.70,
+        0.50,
         "New-campaign similarity",
-        "Cosine threshold for clustering unassigned narratives into new campaigns.",
+        "Cosine threshold the agglomerative grouper uses when clustering "
+        "unassigned narratives into new campaigns. HIGHER → tight clusters, "
+        "few campaigns form on diverse corpora. LOWER → more campaigns "
+        "form but each may pool loosely related narratives. Range 0.0-1.0.",
+    )
+
+    camp_clustering_linkage: str = _f(
+        "average",
+        "Campaign linkage",
+        "Linkage criterion the agglomerative grouper uses to decide pool-"
+        "cluster boundaries at the campaign level. 'average' → robust "
+        "default. 'single' → permissive (chains form quickly). 'complete' "
+        "→ strict (only very tight clusters become campaigns).",
+        choices=["average", "single", "complete"],
     )
 
     camp_recluster_cadence: int = _f(
         0,
         "Campaign recluster cadence",
-        "Run periodic sweep every N processed narratives. 0 disables.",
+        "Run a periodic re-clustering sweep over the unassigned-narrative "
+        "pool every N processed narratives. 0 disables periodic sweeps "
+        "(the grouper still re-clusters whenever a narrative misses every "
+        "campaign). HIGHER N → less recompute, slower cluster discovery. "
+        "LOWER N → faster discovery but extra work.",
     )
 
     camp_specfi_hypotheticals: int = _f(
         10,
         "Campaign SpecFi hypotheticals",
-        "Hypothetical texts per query for specfi-cs / cspecfi campaign retrieval.",
+        "Number of hypothetical texts generated per query for specfi-cs / "
+        "specfi-ccs / cspecfi campaign retrieval. HIGHER → richer recall "
+        "across diverse narrative phrasings at the cost of more LLM calls. "
+        "LOWER → faster but more sensitive to the exact wording of the "
+        "seed narrative.",
     )
 
     camp_context1_max_turns: int = _f(
         8,
         "Campaign Context-1 max turns",
-        "Max agentic turns per query for context-1 campaign retrieval.",
+        "Cap on agentic search turns per query when camp_extractor="
+        "context-1. HIGHER → more refinement of the search query, slower. "
+        "LOWER → faster but may stop before finding decisive evidence.",
     )
 
     camp_context1_token_budget: int = _f(
         8192,
         "Campaign Context-1 token budget",
-        "Evidence token budget for context-1 campaign retrieval.",
+        "Cap on retrieved evidence tokens accumulated per query during "
+        "context-1 campaign retrieval. HIGHER → richer evidence per "
+        "campaign decision; slower decoding. LOWER → faster but the "
+        "harness may truncate useful evidence.",
     )
 
     camp_coordination_threshold: float = _f(
         0.40,
         "Coordination threshold",
-        "Coordination score above which a campaign is classified as coordinated "
-        "(Information or Disinformation Campaign) rather than Organic Trend.",
+        "Coordination score above which a campaign is classified as a "
+        "coordinated campaign (Information / Disinformation Campaign) "
+        "rather than Organic Trend. HIGHER → stricter, only strongly "
+        "synchronized campaigns are flagged as coordinated. LOWER → more "
+        "campaigns are flagged as coordinated, including weakly "
+        "synchronized ones. Range 0.0-1.0.",
     )
 
     camp_veracity_threshold: float = _f(
         0.45,
         "Veracity threshold",
-        "Veracity score below which a coordinated campaign is classified as "
-        "Disinformation Campaign rather than Information Campaign. "
-        "Campaigns with no veracity verdict default to Information Campaign.",
+        "Veracity score below which a coordinated campaign is classified "
+        "as Disinformation Campaign rather than Information Campaign. "
+        "HIGHER → more coordinated campaigns are tagged Disinformation "
+        "(stricter information standard). LOWER → only campaigns with "
+        "strongly negative veracity are tagged Disinformation. Campaigns "
+        "with no veracity verdict default to Information Campaign. "
+        "Range 0.0-1.0.",
+    )
+
+    # ------------------------------------------------------------------ #
+    # Workflow parameters (Campaigns › Generate Dataset)
+    # ------------------------------------------------------------------ #
+
+    camp_sample_size: int = _f(
+        100,
+        "Target dataset sample size",
+        "Cap on EUvsDisinfo articles processed during Generate Dataset. "
+        "0 → process all available articles. HIGHER → broader coverage at "
+        "the cost of compute (whole pipeline scales linearly in article "
+        "count). LOWER → faster end-to-end runs but smaller, less stable "
+        "extracted hierarchy.",
+    )
+
+    camp_re_extract: str = _f(
+        "off",
+        "Re-Extract campaign candidates",
+        "Controls whether Generate Dataset re-runs the extraction pipeline "
+        "when results/EUDisinfoAtlas/{campaigns,narratives,sub-narratives}"
+        ".csv already exist. 'off' → reuse the existing CSVs (fast — only "
+        "re-runs the optional veracity chain). 'on' → force a full "
+        "re-extraction from scratch.",
+        choices=["on", "off"],
+    )
+
+    camp_apply_coordination: str = _f(
+        "on",
+        "Apply coordination detection",
+        "Whether to compute the four coordination signals (temporal burst, "
+        "co-amplification, content reuse, cross-lingual co-occurrence) and "
+        "combine them into a coordination score for each campaign. 'on' → "
+        "campaigns are classified Organic / Information / Disinformation "
+        "(see camp_coordination_threshold + camp_veracity_threshold). "
+        "'off' → no coordination scores computed; campaigns are persisted "
+        "without classification (faster, useful while iterating on "
+        "extraction tuning).",
+        choices=["on", "off"],
+    )
+
+    camp_veracity_mode: str = _f(
+        "off",
+        "Veracity estimation",
+        "Whether Generate Dataset chains veracity verification after "
+        "extraction. 'off' → no verification (fastest). 'verify_hierarchy' "
+        "→ verify central claims at each level (sub-narrative → narrative "
+        "→ campaign), propagating verdicts upward. 'deep_verify' → also "
+        "verify every supporting claim under each central claim before "
+        "propagation (slowest, most accurate veracity at the campaign "
+        "level).",
+        choices=["off", "verify_hierarchy", "deep_verify"],
     )
 
     camp_n1_weight: float = _f(
         0.30,
         "N1 burst weight",
-        "Weight of the burst/time-synchrony signal in the coordination score.",
+        "Weight of the temporal-burst / time-synchrony signal in the "
+        "coordination score (campaigns with publications clustered in "
+        "time score higher on N1). HIGHER → coordination is driven more "
+        "by synchronized timing. LOWER → timing matters less. Weights "
+        "N1+N2+N3+N4 should sum to ~1.0.",
     )
 
     camp_n2_weight: float = _f(
         0.25,
         "N2 co-amplification weight",
-        "Weight of the co-amplification (shared outlets) signal.",
+        "Weight of the co-amplification signal in the coordination score "
+        "(campaigns whose articles appear across the same outlets / "
+        "publishers score higher on N2). HIGHER → coordination is driven "
+        "more by shared distribution networks. LOWER → outlet overlap "
+        "matters less.",
     )
 
     camp_n3_weight: float = _f(
         0.25,
         "N3 content-reuse weight",
-        "Weight of the near-identical content reuse signal.",
+        "Weight of the near-identical-content-reuse signal in the "
+        "coordination score (campaigns whose articles share large textual "
+        "fragments score higher on N3). HIGHER → coordination is driven "
+        "more by text-level repetition. LOWER → exact reuse matters less.",
     )
 
     camp_n4_weight: float = _f(
         0.20,
         "N4 cross-lingual weight",
-        "Weight of the cross-lingual co-occurrence signal.",
+        "Weight of the cross-lingual co-occurrence signal in the "
+        "coordination score (campaigns whose narratives surface "
+        "simultaneously in multiple languages score higher on N4). "
+        "HIGHER → coordination is driven more by multilingual reach. "
+        "LOWER → multilingual coverage matters less.",
     )
 
     # ================================================================== #
@@ -655,7 +885,7 @@ class Config:
     # ---- env-field → os.environ sync --------------------------------- #
 
     # Mapping: config field name -> os.environ key
-    _ENV_FIELD_MAP: dict[str, str] = {
+    _ENV_FIELD_MAP: ClassVar[dict[str, str]] = {
         "env_vllm_deep_gemm_warmup":            "VLLM_DEEP_GEMM_WARMUP",
         "env_vllm_use_deep_gemm":               "VLLM_USE_DEEP_GEMM",
         "env_use_flashinfer_sampler":           "DISTRACE_USE_FLASHINFER_SAMPLER",
@@ -711,8 +941,12 @@ class Config:
                 for f in fields(cls):
                     if f.name in data:
                         object.__setattr__(cfg, f.name, data[f.name])
-            except Exception:
-                pass
+            except Exception as exc:
+                # Surface, don't swallow — if config.json is malformed the
+                # user must know rather than silently get defaults.
+                import logging
+                logging.getLogger(__name__).warning(
+                    "[config] could not load %s: %s — using defaults", path, exc)
         object.__setattr__(cfg, "_locked", set())
         cfg._apply_env_fields()
         return cfg

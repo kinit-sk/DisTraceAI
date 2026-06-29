@@ -39,10 +39,12 @@ from rich.progress import (
     MofNCompleteColumn, TimeElapsedColumn,
 )
 
-from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
+from core.knowledge_base import (
+    KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI, DATASET_EUVSDISINFO,
+)
 from core.models import make_embedder, make_generator, close_generator
 from core.hierarchy.corpus import FactCheckCorpus
-from core.hierarchy.assigner import RetrievalAssigner
+from core.hierarchy.grouper import AgglomerativeGrouper
 from core.hierarchy.reclustering import ReclusteringSweep
 
 logger = logging.getLogger(__name__)
@@ -158,12 +160,13 @@ def _process_dataset(dataset, detector, method, embedder, llm, kb, cfg,
         method, embedder, llm, cfg,
         dataset=dataset, detector=detector, index_root=index_root)
 
-    assigner = RetrievalAssigner(
+    assigner = AgglomerativeGrouper(
         backend, corpus, kb, llm,
         dataset=dataset, detector=detector,
         threshold=cfg.nar_assign_threshold,
         min_new_narrative_size=cfg.nar_min_new_size,
-        new_narrative_threshold=cfg.nar_new_threshold)
+        new_narrative_threshold=cfg.nar_new_threshold,
+        linkage=getattr(cfg, "nar_clustering_linkage", "average"))
     sweep = ReclusteringSweep(
         kb, assigner, embedder,
         cohesion_threshold=cfg.nar_assign_threshold)
@@ -196,6 +199,14 @@ def _process_dataset(dataset, detector, method, embedder, llm, kb, cfg,
                 result = sweep.run()
                 sweeps += 1
                 logger.info("[gen_nar] sweep after %d articles: %s", i, result)
+
+    # Final pass: clusters that only became eligible *after* the last article
+    # streamed through would otherwise be silently lost. flush_pool() lifts
+    # them into narratives in a one-shot agglomerative call.
+    final_created = assigner.flush_pool()
+    if final_created:
+        logger.info("[gen_nar] flush_pool created %d additional narrative(s)",
+                    len(final_created))
 
     result = {
         "articles": len(articles),
@@ -256,7 +267,13 @@ def generate(
             "DISTRACE_NAR_NO_LLM=1 is set.")
 
     summary: dict = {}
-    for dataset in [DATASET_POLYNARRATIVE, DATASET_FAKECTI]:
+    # Plan: process every dataset that exists in the KB. _process_dataset
+    # silently no-ops when the dataset has no sub-narratives to group yet,
+    # so an empty EUvsDisinfo just adds nothing.
+    datasets = [DATASET_POLYNARRATIVE, DATASET_FAKECTI]
+    if kb.articles(DATASET_EUVSDISINFO):
+        datasets.append(DATASET_EUVSDISINFO)
+    for dataset in datasets:
         for detector in detector_slugs:
             console.print(
                 f"\n[bold]{dataset}[/bold]  [dim](detector: {detector}, "

@@ -33,6 +33,7 @@ from core.structures import (
 # Canonical dataset slug names used as top-level KB folders.
 DATASET_POLYNARRATIVE = "polynarrative"
 DATASET_FAKECTI       = "fake-cti"
+DATASET_EUVSDISINFO   = "euvsdisinfo"
 
 
 class KnowledgeBase:
@@ -147,6 +148,24 @@ class KnowledgeBase:
         d = self.root / "narratives" / dataset / backend
         return [Narrative.from_dict(self._read(p))
                 for p in d.glob("*.json")] if d.is_dir() else []
+
+    def narrative_by_id(self, dataset: str, backend: str,
+                        nar_id: str) -> Narrative | None:
+        """Direct path lookup — O(1) vs scanning all narratives for one id.
+
+        Used wherever code previously did
+            ``next((n for n in kb.narratives(...) if n.id == nar_id), None)``
+        per item, which is O(N) per query and O(N×M) over a loop of M queries.
+        Cached lookups for hot loops should still build an in-memory dict.
+        """
+        path = self.root / "narratives" / dataset / backend / f"{nar_id}.json"
+        return Narrative.from_dict(self._read(path)) if path.exists() else None
+
+    def sub_narrative_by_id(self, dataset: str, detector: str,
+                            sn_id: str) -> SubNarrative | None:
+        """Alias of ``get_sub_narrative`` with a parallel name to
+        ``narrative_by_id`` for symmetry across call sites that handle both."""
+        return self.get_sub_narrative(dataset, detector, sn_id)
 
     def delete_narrative(self, dataset: str, backend: str, narrative_id: str) -> None:
         path = self.root / "narratives" / dataset / backend / f"{narrative_id}.json"

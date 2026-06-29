@@ -52,7 +52,14 @@ console = Console()
 # meaningful here.
 _EUVSDISINFO_DATA = Path("data/EUvsDisinfo")
 _DATASET_SLUG     = "euvsdisinfo"
-_OUTPUT_DIR       = Path("knowledge/dataset")
+# Plan §4.6: "stored in results/EUDisinfoAtlas in campaigns.csv,
+# narratives.csv and sub-narratives.csv". Previously knowledge/dataset/ —
+# functionally fine but off the plan-mandated path.
+_OUTPUT_DIR       = Path("results/EUDisinfoAtlas")
+# CSV files produced by export_csvs (subnarratives.csv keeps the no-hyphen
+# spelling matched in export_csvs below). The full triple must exist for
+# camp_re_extract='off' to short-circuit Generate Dataset.
+_OUTPUT_FILES     = ("campaigns.csv", "narratives.csv", "subnarratives.csv")
 
 
 def _resolve_data_dir(canonical: Path) -> Path | None:
@@ -81,7 +88,8 @@ def _resolve_data_dir(canonical: Path) -> Path | None:
 # KB-backed article iterator (consumed by gen_cw_detect._process_dataset)
 # ---------------------------------------------------------------------------
 
-def _articles_from_kb(kb: KnowledgeBase, dataset_slug: str = _DATASET_SLUG):
+def _articles_from_kb(kb: KnowledgeBase, dataset_slug: str = _DATASET_SLUG,
+                      *, limit: int | None = None):
     """Yield ``(article_name, text, source_path, meta)`` for each KB article.
 
     Built once the EUvsDisinfo converter has populated
@@ -93,8 +101,15 @@ def _articles_from_kb(kb: KnowledgeBase, dataset_slug: str = _DATASET_SLUG):
     The article's KB id (already prefixed ``article_``) is reused as the
     per-article filename so canonization / sub-narratives / narratives can
     re-find the same record across pipeline steps.
+
+    ``limit``: when truthy, caps the number of yielded articles. Used by
+    Generate Dataset to honour ``camp_sample_size`` post-conversion when the
+    converter itself didn't accept a limit (older signature).
     """
+    yielded = 0
     for art in kb.articles(dataset_slug):
+        if limit is not None and limit > 0 and yielded >= limit:
+            break
         text = (art.content or "").strip()
         if not text:
             continue
@@ -109,6 +124,7 @@ def _articles_from_kb(kb: KnowledgeBase, dataset_slug: str = _DATASET_SLUG):
                 "published_at":    art.published_at,
             },
         }
+        yielded += 1
         yield article_name, text, source_path, meta
 
 
@@ -133,9 +149,10 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     from core.gen.gen_campaigns import generate as gen_camp_entry
     from core.models import make_embedder, make_generator, close_generator
 
-    # Downstream helpers (gen_campaigns, gen_narratives) pull precision
-    # directly from cfg for NodeRAG build paths. Shadow all precision fields
-    # on a lightweight wrapper so bf16 is used consistently.
+    # Shadow cfg so the downstream helpers (gen_campaigns, gen_narratives)
+    # cannot mutate the caller's config by accident. Precision shadowing —
+    # which the old code did here — is gone: precision is now fixed by the
+    # active backend (BF16 vLLM / Q8_0 llama-cpp) at the backend layer.
     import copy as _copy
     cfg = _copy.copy(cfg)
 
@@ -145,9 +162,11 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
     # instance, not a path string. The earlier wiring passed cfg.detector
     # (a str) directly and tripped detector.slug → AttributeError.
     detector = CheckWorthinessDetector(cfg.detector)
+    # camp_sample_size caps the article count post-conversion (plan §4.6).
+    sample_limit = int(getattr(cfg, "camp_sample_size", 0) or 0) or None
     cw_process(
         _DATASET_SLUG,
-        _articles_from_kb(kb, _DATASET_SLUG),
+        _articles_from_kb(kb, _DATASET_SLUG, limit=sample_limit),
         detector, kb,
     )
 
@@ -210,11 +229,20 @@ def run_pipeline(kb: KnowledgeBase, cfg) -> dict:
 # CSV export
 # ---------------------------------------------------------------------------
 
+# Backend names whose narratives/campaigns should appear in the exported
+# CSVs. Kept as a single tuple so adding a new retrieval method only requires
+# one edit. `bm25-rag` and `bm25_rag` are both listed to cover earlier runs
+# that used the underscored spelling.
+_EXPORT_BACKENDS = (
+    "dense", "bm25-rag", "bm25_rag",
+    "specfi-cs", "specfi-ccs", "cspecfi", "context-1",
+)
+
+
 def _build_campaign_lookup(kb: KnowledgeBase) -> dict[str, str]:
     """Build narrative_id → campaign_id lookup across all backends."""
     nar_to_camp: dict[str, str] = {}
-    for backend in ("dense", "bm25-rag", "bm25_rag",
-                    "specfi-cs", "cspecfi", "context-1"):
+    for backend in _EXPORT_BACKENDS:
         for camp in kb.campaigns(_DATASET_SLUG, backend):
             for nar_id in camp.narratives:
                 nar_to_camp[nar_id] = camp.id
@@ -224,8 +252,7 @@ def _build_campaign_lookup(kb: KnowledgeBase) -> dict[str, str]:
 def _build_sub_to_nar_lookup(kb: KnowledgeBase, det_slug: str) -> dict[str, str]:
     """Build sub_narrative_id → narrative_id lookup."""
     sn_to_nar: dict[str, str] = {}
-    for backend in ("dense", "bm25-rag", "bm25_rag",
-                    "specfi-cs", "cspecfi", "context-1"):
+    for backend in _EXPORT_BACKENDS:
         for nar in kb.narratives(_DATASET_SLUG, backend):
             for sn_id in nar.sub_narratives:
                 sn_to_nar[sn_id] = nar.id
@@ -280,8 +307,7 @@ def export_csvs(kb: KnowledgeBase, cfg, out_dir: Path) -> dict:
         w.writerow(["id", "campaign_id", "central_claim", "llm_backends", "dataset",
                     "languages", "veracity", "veracity_confidence",
                     "member_count"])
-        for backend in ("dense", "bm25-rag", "bm25_rag",
-                        "specfi-cs", "cspecfi", "context-1"):
+        for backend in _EXPORT_BACKENDS:
             for nar in kb.narratives(_DATASET_SLUG, backend):
                 camp_id = nar_to_camp.get(nar.id, "")
                 w.writerow([nar.id, camp_id, nar.central_claim,
@@ -302,8 +328,7 @@ def export_csvs(kb: KnowledgeBase, cfg, out_dir: Path) -> dict:
                     "languages", "veracity", "veracity_confidence",
                     "coordination_score", "n1_burst", "n2_coamp",
                     "n3_reuse", "n4_crosslingual", "member_count"])
-        for backend in ("dense", "bm25-rag", "bm25_rag",
-                        "specfi-cs", "cspecfi", "context-1"):
+        for backend in _EXPORT_BACKENDS:
             for camp in kb.campaigns(_DATASET_SLUG, backend):
                 coord = camp.coordination or {}
                 w.writerow([
@@ -331,15 +356,58 @@ def export_csvs(kb: KnowledgeBase, cfg, out_dir: Path) -> dict:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _outputs_already_exist() -> bool:
+    """True iff all three plan §4.6 CSVs already exist under _OUTPUT_DIR."""
+    return all((_OUTPUT_DIR / fname).is_file() for fname in _OUTPUT_FILES)
+
+
 def generate_dataset(cfg=None) -> dict:
-    """Convert EUvsDisinfo, run the full pipeline, export CSVs."""
+    """Convert EUvsDisinfo, run the full pipeline, export CSVs.
+
+    Honours the four plan §4.6 workflow parameters set in cfg:
+
+    * ``camp_sample_size``        — cap on EUvsDisinfo articles to ingest
+                                    (0 = all).
+    * ``camp_re_extract``         — 'on' forces re-extraction even when the
+                                    output CSVs already exist; 'off' skips
+                                    the extraction pipeline and re-uses them.
+    * ``camp_apply_coordination`` — 'off' skips the coordination-signal pass
+                                    after extraction. (The pass is run by
+                                    gen_campaigns; we forward the flag to it
+                                    via cfg.)
+    * ``camp_veracity_mode``      — 'off' / 'verify_hierarchy' / 'deep_verify'.
+                                    On any non-'off' value, ``verify_hierarchy``
+                                    is invoked once the hierarchy exists, with
+                                    ``deep=True`` iff mode is 'deep_verify'.
+    """
     from config import Config
     cfg = cfg or Config.load()
+
+    re_extract        = str(getattr(cfg, "camp_re_extract", "off")).lower()
+    veracity_mode     = str(getattr(cfg, "camp_veracity_mode", "off")).lower()
+    apply_coord       = str(getattr(cfg, "camp_apply_coordination", "on")).lower()
+    sample_size       = int(getattr(cfg, "camp_sample_size", 100) or 0)
 
     kb_root = Path("knowledge")
     kb = KnowledgeBase(kb_root)
 
-    # 1) Convert EUvsDisinfo → KB articles
+    # ---- Plan §4.6 short-circuit: skip extraction if outputs already exist
+    if re_extract == "off" and _outputs_already_exist():
+        console.print(
+            f"\n[bold cyan]Generate Dataset — EUvsDisinfo[/bold cyan]")
+        console.print(
+            f"[yellow]Existing CSVs found under {_OUTPUT_DIR}:[/yellow] "
+            + ", ".join(_OUTPUT_FILES) + "\n"
+            f"[dim]camp_re_extract={re_extract!r} → skipping extraction "
+            f"pipeline. Set 'Re-Extract campaign candidates' to 'on' to "
+            f"force a full re-run.[/dim]")
+        # Still honour camp_veracity_mode against the existing hierarchy.
+        summary: dict = {"articles": 0, "reused_csvs": True}
+        if veracity_mode != "off":
+            summary["veracity"] = _run_veracity_chain(kb, cfg, veracity_mode)
+        return summary
+
+    # ---- Convert EUvsDisinfo → KB articles
     data_dir = _resolve_data_dir(_EUVSDISINFO_DATA)
     if data_dir is None:
         console.print(
@@ -351,9 +419,26 @@ def generate_dataset(cfg=None) -> dict:
 
     console.print(f"\n[bold cyan]Generate Dataset — EUvsDisinfo[/bold cyan]")
     console.print(
+        f"[dim]sample_size={sample_size or 'all'}  "
+        f"re_extract={re_extract}  apply_coordination={apply_coord}  "
+        f"veracity_mode={veracity_mode}[/dim]")
+    console.print(
         f"[bold]Converting EUvsDisinfo[/bold] [cyan]{data_dir}[/cyan]…")
     from core.converters.euvsdisinfo import convert
-    n_articles = convert(data_dir, kb_root)
+    # The converter takes an optional ``limit`` arg in newer revisions; pass
+    # it via kwargs to stay backward-compatible with older converter sigs.
+    try:
+        n_articles = convert(data_dir, kb_root, limit=sample_size or None)
+    except TypeError:
+        # Older converter signature without limit support → convert all, then
+        # warn that sample_size was ignored at the source layer. Pipeline
+        # still respects it via _articles_from_kb (see run_pipeline).
+        n_articles = convert(data_dir, kb_root)
+        if sample_size:
+            console.print(
+                "[yellow]Note: EUvsDisinfo converter does not support an "
+                "article-count limit; sample_size will be applied "
+                "post-conversion when reading from the KB.[/yellow]")
     console.print(f"  {n_articles} articles loaded into KB")
 
     if n_articles == 0:
@@ -364,12 +449,33 @@ def generate_dataset(cfg=None) -> dict:
             "euvsdisinfo_base.csv is URL-only and must be reconstructed first.")
         return {"articles": 0}
 
-    # 2) Run pipeline
+    # ---- Run pipeline
     console.print("\n[bold]Running pipeline…[/bold]")
     run_pipeline(kb, cfg)
 
-    # 3) Export CSVs
+    # ---- Export CSVs
     console.print("\n[bold]Exporting dataset CSVs…[/bold]")
     counts = export_csvs(kb, cfg, _OUTPUT_DIR)
 
-    return {"articles": n_articles, **counts}
+    summary = {"articles": n_articles, "reused_csvs": False, **counts}
+
+    # ---- Optional veracity chain
+    if veracity_mode != "off":
+        summary["veracity"] = _run_veracity_chain(kb, cfg, veracity_mode)
+
+    return summary
+
+
+def _run_veracity_chain(kb: KnowledgeBase, cfg, mode: str) -> dict:
+    """Plan §4.6: chain ``verify_hierarchy`` after extraction.
+
+    ``mode`` is one of 'verify_hierarchy' / 'deep_verify' (any 'off' value is
+    filtered upstream). Returns the verifier's per-level summary so the caller
+    can persist it into the run-stats sidecar.
+    """
+    from core.gen.gen_veracity import verify_hierarchy
+    deep = (mode == "deep_verify")
+    console.print(
+        f"\n[bold]Veracity chain[/bold]  "
+        f"[dim](camp_veracity_mode={mode!r}, deep={deep})[/dim]")
+    return verify_hierarchy(kb, cfg, deep=deep)

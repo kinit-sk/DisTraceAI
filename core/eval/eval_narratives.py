@@ -884,8 +884,8 @@ def main(cfg=None):
                             "n": n_scored},
                     det_slug=detector_slug,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("[eval_nar] save_eval_stats failed: %s", exc)
 
             if not benchmark:
                 # Single-method run: one structured HTML report per detector × method.

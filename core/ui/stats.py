@@ -76,8 +76,13 @@ def _write(path: Path, data: dict) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2),
                         encoding="utf-8")
-    except Exception:
-        pass   # stats are display-only; never crash the main flow
+    except Exception as exc:
+        # Stats sidecars are display-only; never crash the main flow.
+        # Surface at debug level so a real bug (e.g. disk full) can still be
+        # diagnosed by re-running with --log-level=DEBUG.
+        import logging
+        logging.getLogger(__name__).debug(
+            "[stats] write to %s failed: %s", path, exc)
 
 
 def _ts() -> str:
@@ -167,8 +172,10 @@ def save_eval_stats(step: str, param_key: str, params: dict,
     kb = {}
     try:
         kb = _kb_counts(step, det_slug or params.get("detector", ""))
-    except Exception:
-        pass
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "[stats] _kb_counts(%s) failed: %s", step, exc)
     data[param_key] = {"params": params, "ts": _ts(), "scores": scores, "kb": kb}
     _write(_eval_path(step), data)
 
@@ -284,6 +291,47 @@ def _fmt_kb(kb: dict) -> str:
     return "  |  ".join(parts)
 
 
+def _last_run_block(step: str) -> str:
+    """Return a Rich-markup '[bold]Last run[/bold]' block for ``step``.
+
+    Reads the per-step Generate stats sidecar (``_gen_path(step)``) and
+    formats one line per detector with kb counts + timestamp. When no
+    Generate has been run yet, returns an empty string so callers can
+    decide whether to skip the section entirely or render a placeholder.
+    """
+    data = _read(_gen_path(step))
+    if not data:
+        return ""
+    lines = ["[bold]Last run[/bold]"]
+    for key, rec in sorted(data.items(), key=lambda x: x[1].get("ts", "")):
+        kb  = rec.get("kb", {})
+        ts  = rec.get("ts", "")
+        det = rec.get("params", {}).get("detector", key)
+        det_label = f"[dim]{det}[/dim]" if det != "_all" else ""
+        if det_label:
+            lines.append(det_label)
+        if not kb:
+            lines.append("  [dim](no KB counts recorded)[/dim]")
+        for ds, counts in kb.items():
+            if isinstance(counts, dict):
+                total   = counts.get("total_in_kb")
+                new_c   = counts.get("new_cw_claims") or counts.get("new_sub_narratives")
+                skipped = counts.get("skipped")
+                frags = []
+                if total is not None:
+                    frags.append(f"{total} in KB")
+                if new_c is not None:
+                    frags.append(f"+{new_c} new")
+                if skipped:
+                    frags.append(f"{skipped} skipped")
+                lines.append(f"  [dim]{ds}:[/dim] {'  '.join(frags) or str(counts)}")
+            else:
+                lines.append(f"  [dim]{ds}:[/dim] {counts}")
+        if ts:
+            lines.append(f"  [dim]{ts}[/dim]")
+    return "\n".join(lines)
+
+
 def _eval_panel(step: str, cfg) -> str:
     data = _read(_eval_path(step))
     if not data:
@@ -314,37 +362,9 @@ def _eval_panel(step: str, cfg) -> str:
 
 
 def _generate_panel(step: str, cfg) -> str:
-    data = _read(_gen_path(step))
-    if not data:
-        return _NOT_YET
-
-    lines = ["[bold]Last Generate[/bold]"]
-    for key, rec in sorted(data.items(), key=lambda x: x[1].get("ts", "")):
-        kb  = rec.get("kb", {})
-        ts  = rec.get("ts", "")
-        det = rec.get("params", {}).get("detector", key)
-        det_label = f"[dim]{det}[/dim]" if det != "_all" else ""
-        if det_label:
-            lines.append(det_label)
-        for ds, counts in kb.items():
-            if isinstance(counts, dict):
-                total   = counts.get("total_in_kb")
-                new_c   = counts.get("new_cw_claims") or counts.get("new_sub_narratives")
-                skipped = counts.get("skipped")
-                frags = []
-                if total is not None:
-                    frags.append(f"{total} in KB")
-                if new_c is not None:
-                    frags.append(f"+{new_c} new")
-                if skipped:
-                    frags.append(f"{skipped} skipped")
-                lines.append(f"  [dim]{ds}:[/dim] {'  '.join(frags) or str(counts)}")
-            else:
-                lines.append(f"  [dim]{ds}:[/dim] {counts}")
-        if ts:
-            lines.append(f"  [dim]{ts}[/dim]")
-
-    return "\n".join(lines)
+    """Generate-action panel: just the Last run block."""
+    block = _last_run_block(step)
+    return block if block else _NOT_YET
 
 
 # ---------------------------------------------------------------------------
@@ -403,28 +423,23 @@ def _load_eval_campaigns() -> str:
 def get_stats(step: str, action: str, cfg) -> str:
     """Return Rich-markup stats for the TUI Launch-row description.
 
-    Eval   → eval scores (overall, per param-combo) + KB counts.
-    Generate → KB counts only.
+    Eval     → eval scores + a 'Last run' block sourced from the per-step
+               Generate stats sidecar (so the user always sees what was
+               produced last). Custom eval renderers (claim-veracity,
+               campaigns) get the same Last run appendage.
+    Generate → 'Last run' block only.
     """
     if action == "eval":
         if step == "claim-veracity":
-            return _load_eval_veracity()
-        if step == "campaigns":
-            return _load_eval_campaigns()
-        eval_part = _eval_panel(step, cfg)
-        gen_data  = _read(_gen_path(step))
-        if gen_data:
-            kb_lines = ["[bold]KB contents[/bold]"]
-            for key, rec in sorted(gen_data.items(),
-                                   key=lambda x: x[1].get("ts", "")):
-                kb_str = _fmt_kb(rec.get("kb", {}))
-                det = rec.get("params", {}).get("detector", key)
-                if det != "_all":
-                    kb_lines.append(f"[dim]{det}:[/dim]  {kb_str or '(empty)'}")
-                else:
-                    kb_lines.append(kb_str or "(empty)")
-            sep = "\n\n"
-            return eval_part + sep + "\n".join(kb_lines)
+            eval_part = _load_eval_veracity()
+        elif step == "campaigns":
+            eval_part = _load_eval_campaigns()
+        else:
+            eval_part = _eval_panel(step, cfg)
+
+        last_run = _last_run_block(step)
+        if last_run:
+            return f"{eval_part}\n\n{last_run}"
         return eval_part
 
     if action == "generate":

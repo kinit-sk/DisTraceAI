@@ -69,18 +69,20 @@ if os.environ.get("DISTRACE_SHOW_TQDM", "0") != "1":
         try:
             import tqdm.auto as _tqdm_auto
             _tqdm_auto.tqdm = _SilentTqdm
-        except Exception:
-            pass
-    except Exception:
-        pass
+        except Exception as exc:
+            # tqdm.auto patch is best-effort; tqdm.tqdm patch already succeeded.
+            logger.debug("[vllm] tqdm.auto silence skipped: %s", exc)
+    except Exception as exc:
+        logger.debug("[vllm] global tqdm silencing skipped: %s", exc)
 
 os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "60")
 try:
     import importlib.util as _ilu
     if _ilu.find_spec("hf_transfer") is not None:
         os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
-except Exception:
-    pass
+except Exception as exc:
+    # hf_transfer is an optional speedup; absence is not a problem.
+    logger.debug("[vllm] hf_transfer probe skipped: %s", exc)
 
 
 # ---------------------------------------------------------------------------
@@ -160,15 +162,15 @@ def _teardown_vllm(engine) -> None:
         logger.debug("[vllm] parallel-state teardown raised (ignored): %s", exc)
     try:
         del engine
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[vllm] `del engine` raised (ignored): %s", exc)
     gc.collect()
     try:
         import torch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[vllm] cuda.empty_cache failed (ignored): %s", exc)
 
 
 # ---------------------------------------------------------------------------

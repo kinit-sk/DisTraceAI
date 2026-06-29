@@ -21,7 +21,9 @@ from core.claims.cw_detector import CheckWorthinessDetector
 from core.converters.polynarrative import metadata_for as _poly_metadata_for
 from core.converters.polynarrative import parse_train_annotations, parse_dev_annotations
 from core.ids import article_name_from_relpath
-from core.knowledge_base import KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI
+from core.knowledge_base import (
+    KnowledgeBase, DATASET_POLYNARRATIVE, DATASET_FAKECTI, DATASET_EUVSDISINFO,
+)
 from core.structures import ArticleClaims, CheckWorthyClaim
 
 logger = logging.getLogger(__name__)
@@ -29,7 +31,33 @@ console = Console()
 
 POLYNARRATIVE_DATA = Path("data/PolyNarrative")
 FAKECTI_CSV        = Path("data/FakeCTI/FakeCTI.csv")
+EUVSDISINFO_DATA   = Path("data/EUvsDisinfo")
 KNOWLEDGE_ROOT     = Path("knowledge")
+
+
+def _kb_articles(kb: KnowledgeBase, dataset_slug: str):
+    """Yield ``(article_name, text, source_path, meta)`` for each KB article.
+
+    Used for datasets whose raw form was imported via a converter rather than
+    streamed from a local raw file (currently: EUvsDisinfo). The tuple shape
+    matches ``_polynarrative_articles`` / ``_fakecti_articles`` so the same
+    ``_process_dataset`` consumer works unchanged.
+    """
+    for art in kb.articles(dataset_slug):
+        text = (art.content or "").strip()
+        if not text:
+            continue
+        source_path = art.url or f"{dataset_slug}://{art.id}"
+        meta = {
+            "title":  art.title or "",
+            "author": art.author,
+            "metadata": {
+                "source_domain":   art.source_domain or "",
+                "source_language": art.source_language or "UND",
+                "published_at":    art.published_at,
+            },
+        }
+        yield art.id, text, source_path, meta
 
 # ---------------------------------------------------------------------------
 # Sentence splitting
@@ -379,5 +407,37 @@ def generate(detector: CheckWorthinessDetector,
             "new_cw_claims": claims, "total_in_kb": total}
     else:
         console.print(f"[yellow]FakeCTI not found at {FAKECTI_CSV} — skipping.[/yellow]")
+
+    # EUvsDisinfo
+    # The raw EUvsDisinfo data is loaded into the KB via the converter — once
+    # done, downstream pipeline steps see EUvsDisinfo articles like any other
+    # dataset. If the user already ran Generate Dataset (or another converter
+    # entry point), the data is already in the KB and we just iterate; if not,
+    # auto-convert when the raw CSV(s) exist under data/EUvsDisinfo/.
+    if not kb.articles(DATASET_EUVSDISINFO) and EUVSDISINFO_DATA.exists():
+        try:
+            from core.converters.euvsdisinfo import convert as _eu_convert
+            console.print(
+                f"\n[bold]EUvsDisinfo[/bold] — importing from "
+                f"{EUVSDISINFO_DATA}…")
+            n_imported = _eu_convert(EUVSDISINFO_DATA, KNOWLEDGE_ROOT)
+            console.print(f"  {n_imported} articles imported into KB")
+        except Exception as exc:
+            logger.warning(
+                "[gen_cw] EUvsDisinfo auto-import failed (%s); skipping.", exc)
+
+    if kb.articles(DATASET_EUVSDISINFO):
+        console.print(f"\n[bold]EUvsDisinfo[/bold]  [dim](KB)[/dim]")
+        proc, skip, claims, total = _process_dataset(
+            DATASET_EUVSDISINFO,
+            _kb_articles(kb, DATASET_EUVSDISINFO),
+            detector, kb)
+        summary[DATASET_EUVSDISINFO] = {
+            "processed": proc, "skipped": skip,
+            "new_cw_claims": claims, "total_in_kb": total}
+    else:
+        console.print(
+            f"[yellow]EUvsDisinfo not present in KB and no raw data under "
+            f"{EUVSDISINFO_DATA} — skipping.[/yellow]")
 
     return summary

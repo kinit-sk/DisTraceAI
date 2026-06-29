@@ -1,12 +1,13 @@
-# DisTraceAI runtime requirements (single "distrace" env).
-# vLLM 0.22 brings its own matched torch (2.11) + CUDA 13.0 runtime and pulls
-# transformers>=5, so we do NOT pin torch here. transformers is left unpinned so
-# vLLM resolves a v5 that supports Qwen3.5 / Gemma 4; the check-worthiness
-# detectors (mDeBERTa / XLM-R) load fine under that same transformers v5, so a
-# single environment serves the whole pipeline.
-
-# inference: one library for LLM generation + embeddings.
-vllm==0.22.1
+# DisTraceAI shared pipeline requirements (BOTH backends).
+#
+# The inference library itself is NOT pinned here — vLLM is installed by the
+# vllm branch of setup.sh, llama-cpp-python is built from source in the
+# llama-cpp branch. Pinning vllm here would force-pull it into the llama-cpp
+# env (slow + incompatible CUDA stack).
+#
+# transformers is also left unpinned: vLLM pulls v5; the llama-cpp branch
+# resolves a recent v4. The check-worthiness detectors (mDeBERTa / XLM-R) work
+# on both.
 
 # retrieval
 # NodeRAG is NOT installed from PyPI — it's a patched local clone installed by
@@ -19,11 +20,27 @@ chromadb
 numpy
 pandas
 scikit-learn
+
+# Recent sklearn (>=1.7) imports `narwhals.stable.v2`, which only exists in
+# narwhals >= 2.0. The llama-cpp env was hitting a transitively-pinned older
+# narwhals and crashing with `ModuleNotFoundError: narwhals.stable.v2` the
+# moment sentence-transformers imported sklearn. Pinning explicitly here
+# stops the resolver from picking a 1.x backslide.
+narwhals>=2.0
+
 rank-bm25
 feedparser
 trafilatura
 fasttext-langdetect
 bertopic
+
+# Used by the llama-cpp backend for the embedder; vLLM provides its own
+# embedder engine but importing sentence-transformers is harmless there.
+sentence-transformers
+
+# Veracity step (web evidence stage). The DuckDuckGo Instant Answer API is
+# nearly useless for fact-check queries; this is the proper search adapter.
+duckduckgo-search
 
 # hub downloads (faster, more robust large-file transfers)
 hf_transfer

@@ -53,8 +53,10 @@ def _active_backend():
         from config import Config
         cfg = Config.load()
         name = getattr(cfg, "llm_backend", name)
-    except Exception:
-        pass
+    except Exception as exc:
+        # Early bootstrap (e.g. unit tests, raw import without a config.json)
+        # legitimately reaches here. Use env-var / default and move on.
+        logger.debug("[models] Config.load() unavailable yet: %s", exc)
     from core.llm_backends import get_backend
     return get_backend(name)
 
